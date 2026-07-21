@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ADOFAI.SteamIntegration;
 using GDMiniJSON;
 using Steamworks;
 using UnityEngine;
@@ -13,16 +14,16 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
         private const string VersionKey = "cloud_version";
         private const string SettingsKey = "settings";
 
-        public static bool IsSteamAvailable => SteamManager.Initialized;
+        public static bool IsSteamAvailable => SteamController.initialized;
 
         public static bool HasCloudFile()
         {
-            return SteamManager.Initialized && SteamRemoteStorage.FileExists(CloudFileName);
+            return SteamController.initialized && SteamRemoteStorage.FileExists(CloudFileName);
         }
 
         public static bool TryReadFromCloud(Settings settings)
         {
-            if (!SteamManager.Initialized)
+            if (!SteamController.initialized)
             {
                 Main.Log("[CloudSettings] Steam not initialized, skipping cloud read.");
                 return false;
@@ -34,18 +35,10 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
                 return false;
             }
 
-            int fileSize = SteamRemoteStorage.GetFileSize(CloudFileName);
-            if (fileSize <= 0)
+            byte[] data = SteamRemoteStorage.FileRead(CloudFileName);
+            if (data == null || data.Length == 0)
             {
-                Main.Log("[CloudSettings] Cloud file size is zero or negative.");
-                return false;
-            }
-
-            byte[] data = new byte[fileSize];
-            int bytesRead = SteamRemoteStorage.FileRead(CloudFileName, data, fileSize);
-            if (bytesRead <= 0)
-            {
-                Main.Log("[CloudSettings] Cloud file read returned empty.");
+                Main.Log("[CloudSettings] Cloud file is empty or could not be read.");
                 return false;
             }
 
@@ -96,7 +89,7 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
 
         public static bool WriteToCloud(Settings settings)
         {
-            if (!SteamManager.Initialized)
+            if (!SteamController.initialized)
             {
                 Main.Log("[CloudSettings] Steam not initialized, skipping cloud write.");
                 return false;
@@ -116,7 +109,7 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
             }
 
             byte[] data = Encoding.UTF8.GetBytes(json);
-            bool success = SteamRemoteStorage.FileWrite(CloudFileName, data, data.Length);
+            bool success = SteamRemoteStorage.FileWrite(CloudFileName, data);
             if (success)
             {
                 Main.Log("[CloudSettings] Cloud settings written successfully.");

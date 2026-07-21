@@ -305,8 +305,8 @@
     <Reference Include="UnityModManager">
       <HintPath>$(ManagedAssembliesDir)\UnityModManager\UnityModManager.dll</HintPath>
     </Reference>
-    <Reference Include="com.rlabrecque.steamworks.net">
-      <HintPath>$(ManagedAssembliesDir)\com.rlabrecque.steamworks.net.dll</HintPath>
+    <Reference Include="Facepunch.Steamworks.Win64">
+      <HintPath>$(ManagedAssembliesDir)\Facepunch.Steamworks.Win64.dll</HintPath>
     </Reference>
   </ItemGroup>
 
