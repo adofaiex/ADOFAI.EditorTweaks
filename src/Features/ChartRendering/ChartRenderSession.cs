@@ -348,6 +348,15 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 yield break;
             }
 
+            if (audioCapture == null || audioCapture.CapturedSampleFrames <= 0)
+            {
+                result.Success = false;
+                result.Message = "Unity AudioRenderer captured no audio samples.";
+                Cleanup(frameCapture, encoder, restoreEditor: false, deleteTemp: true);
+                Finish(onComplete, result);
+                yield break;
+            }
+
             StageText = "Finalizing video";
             DetailText = Path.GetFileName(tempVideoPath);
             bool backgroundOk = false;

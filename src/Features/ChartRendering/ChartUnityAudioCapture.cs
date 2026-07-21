@@ -8,6 +8,8 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 {
     internal sealed class ChartUnityAudioCapture : IDisposable
     {
+        private const int NoSampleGraceFrames = 30;
+
         private readonly string path;
         private readonly int sampleRate;
         private readonly int channelCount;
@@ -16,6 +18,8 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         private float[]? managedSamples;
         private byte[]? sampleBytes;
         private long dataBytes;
+        private int captureFrameCount;
+        private int consecutiveZeroSampleFrames;
         private bool started;
 
         public ChartUnityAudioCapture(string path)
@@ -35,13 +39,38 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public double CapturedSeconds => sampleRate <= 0 ? 0.0 : CapturedSampleFrames / (double)sampleRate;
 
+        public int ConsecutiveZeroSampleFrames => consecutiveZeroSampleFrames;
+
         public void Begin()
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) ?? string.Empty);
             stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
             WriteHeader(dataSize: 0);
-            AudioRenderer.Start();
+            if (!AudioRenderer.Start())
+            {
+                ChartRenderDiagnostics.Log("AudioRenderer.Start returned false; attempting one recovery.");
+                try
+                {
+                    AudioRenderer.Stop();
+                }
+                catch
+                {
+                }
+
+                if (!AudioRenderer.Start())
+                {
+                    stream.Dispose();
+                    stream = null;
+                    throw new InvalidOperationException("Unity AudioRenderer could not enter capture mode.");
+                }
+
+                ChartRenderDiagnostics.Log("AudioRenderer recovery succeeded.");
+            }
+
+            captureFrameCount = 0;
+            consecutiveZeroSampleFrames = 0;
             started = true;
+            ChartRenderDiagnostics.Log("AudioRenderer capture started. sampleRate=" + sampleRate + " channels=" + channelCount + ".");
         }
 
         public void CaptureFrame()
@@ -55,11 +84,32 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             int floatCount = Math.Max(0, sampleCount * channelCount);
             if (floatCount == 0)
             {
+                captureFrameCount++;
+                consecutiveZeroSampleFrames++;
+                if (consecutiveZeroSampleFrames == 1 || consecutiveZeroSampleFrames % 10 == 0)
+                {
+                    ChartRenderDiagnostics.Log("AudioRenderer returned zero samples. captureFrame=" + captureFrameCount
+                        + " consecutiveZeroFrames=" + consecutiveZeroSampleFrames + ".");
+                }
+
+                if (consecutiveZeroSampleFrames >= NoSampleGraceFrames)
+                {
+                    throw new InvalidOperationException("Unity AudioRenderer returned no samples for "
+                        + consecutiveZeroSampleFrames + " consecutive capture frames.");
+                }
+
                 return;
             }
 
             EnsureBuffers(floatCount);
-            AudioRenderer.Render(samples);
+            if (!AudioRenderer.Render(samples))
+            {
+                throw new InvalidOperationException("Unity AudioRenderer failed to render capture frame "
+                    + captureFrameCount + ".");
+            }
+
+            captureFrameCount++;
+            consecutiveZeroSampleFrames = 0;
             samples.CopyTo(managedSamples!);
             Buffer.BlockCopy(managedSamples!, 0, sampleBytes!, 0, floatCount * sizeof(float));
             stream.Write(sampleBytes!, 0, floatCount * sizeof(float));
