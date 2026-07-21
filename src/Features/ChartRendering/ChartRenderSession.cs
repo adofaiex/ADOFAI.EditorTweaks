@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using ADOFAI.EditorTweaks.Features.VideoBackgroundSync;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -452,6 +453,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         {
             DisableRenderAutoPlayback(resetEndFloor: true);
             IsActive = false;
+            VideoBackgroundSyncPatches.RestoreRenderSettings();
             IsRendering = false;
             ChartRenderCustomFrameRate.End();
             ChartRenderVisualClock.End();

@@ -106,6 +106,16 @@ video.playbackSpeed = conductor.song.pitch
 
 这样加速或变速播放时，视频背景跟随音乐 pitch。
 
+## 离线渲染期间的帧同步
+
+视频渲染使用 `Time.captureFramerate`，因此渲染期间会临时调整每个 `VideoPlayer`：
+
+- `timeUpdateMode` 切换为 `VideoTimeUpdateMode.GameTime`，让视频跟随 Unity 捕获帧时钟。
+- `skipOnDrop` 设为 `false`，宁可让渲染等待解码，也不允许视频为了追赶时间主动丢帧。
+- 启动阶段最多做一次时间校正，渲染进行中不再周期性写入 `VideoPlayer.time`，避免反复 seek 造成解码器重复准备和画面卡顿。
+
+渲染结束或失败时会恢复 VideoPlayer 原来的 `timeUpdateMode` 和 `skipOnDrop` 设置，不改变正常游戏播放行为。
+
 ## 踩坑记录
 
 - 不能每帧无条件 seek，长视频会卡顿或反复 prepare。

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ADOFAI.EditorTweaks.Features.ChartRendering;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Video;
@@ -21,6 +22,11 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
         {
             private static void Postfix(scrVfxPlus __instance)
             {
+                if (States.TryGetValue(__instance.GetInstanceID(), out SyncState state))
+                {
+                    state.RestoreRenderSettings();
+                }
+
                 States.Remove(__instance.GetInstanceID());
             }
         }
@@ -28,6 +34,18 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
         [HarmonyPatch(typeof(scrVfxPlus), "Update")]
         private static class ScrVfxPlusUpdatePatch
         {
+            private static void Prefix(scrVfxPlus __instance)
+            {
+                if (ChartRenderSession.IsRendering)
+                {
+                    ConfigureForRender(__instance);
+                }
+                else if (States.TryGetValue(__instance.GetInstanceID(), out SyncState state))
+                {
+                    state.RestoreRenderSettings();
+                }
+            }
+
             private static void Postfix(scrVfxPlus __instance)
             {
                 if (!Main.Settings.EnableVideoBackgroundSyncFix)
@@ -72,6 +90,8 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
                 States[id] = state;
             }
 
+            bool rendering = ChartRenderSession.IsRendering;
+
             bool justStarted = !state.WasPlaying && video.isPlaying;
             bool justMarkedPlayed = !state.WasMarkedPlayed && vfx.hasPlayed;
             if (justStarted || justMarkedPlayed)
@@ -85,6 +105,11 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
                 video.time = targetTime;
                 video.playbackSpeed = conductor.song.pitch;
                 video.Play();
+                if (rendering)
+                {
+                    state.RenderStartupSeekUsed = true;
+                }
+
                 state.StartupFramesLeft = StartupSyncFrames;
                 state.StartupSeekAttempts = 0;
             }
@@ -97,6 +122,16 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
                 (inStartupWindow && error > SoftDesyncSeconds && state.StartupSeekAttempts < MaxStartupSeekAttempts)
                 || error > HardDesyncSeconds;
 
+            if (rendering)
+            {
+                // Unity's capture-frame clock can make a VideoPlayer decode more slowly than
+                // the forced chart clock. Do not keep seeking during the render; that causes
+                // the decoder to restart and produces repeated/dropped-looking frames.
+                shouldSeek = inStartupWindow
+                    && error > SoftDesyncSeconds
+                    && !state.RenderStartupSeekUsed;
+            }
+
             if (shouldSeek)
             {
                 float cooldown = inStartupWindow ? StartupSeekCooldown : RuntimeSeekCooldown;
@@ -105,6 +140,10 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
                     video.time = targetTime;
                     state.LastSeekRealtime = Time.unscaledTime;
                     state.StartupSeekAttempts++;
+                    if (rendering)
+                    {
+                        state.RenderStartupSeekUsed = true;
+                    }
                 }
             }
 
@@ -115,6 +154,68 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
 
             state.WasPlaying = video.isPlaying;
             state.WasMarkedPlayed = vfx.hasPlayed;
+        }
+
+        internal static void RestoreRenderSettings()
+        {
+            foreach (SyncState state in States.Values)
+            {
+                state.RestoreRenderSettings();
+            }
+        }
+
+        private static void ConfigureForRender(scrVfxPlus vfx)
+        {
+            VideoPlayer video = vfx.videoBG;
+            if (video == null)
+            {
+                return;
+            }
+
+            int id = vfx.GetInstanceID();
+            if (!States.TryGetValue(id, out SyncState state))
+            {
+                state = new SyncState();
+                States[id] = state;
+            }
+
+            if (state.RenderConfigurationAttempted && state.RenderVideo == video)
+            {
+                return;
+            }
+
+            state.RestoreRenderSettings();
+            state.RenderVideo = video;
+            state.RenderConfigurationAttempted = true;
+            state.RenderStartupSeekUsed = false;
+            state.StartupFramesLeft = StartupSyncFrames;
+            state.StartupSeekAttempts = 0;
+
+            if (video.canSetTimeUpdateMode)
+            {
+                state.OriginalTimeUpdateMode = video.timeUpdateMode;
+                state.HasOriginalTimeUpdateMode = true;
+                video.timeUpdateMode = VideoTimeUpdateMode.GameTime;
+            }
+            else
+            {
+                ChartRenderDiagnostics.Log("VideoPlayer does not allow changing timeUpdateMode during render.");
+            }
+
+            if (video.canSetSkipOnDrop)
+            {
+                state.OriginalSkipOnDrop = video.skipOnDrop;
+                state.HasOriginalSkipOnDrop = true;
+                video.skipOnDrop = false;
+            }
+            else
+            {
+                ChartRenderDiagnostics.Log("VideoPlayer does not allow changing skipOnDrop during render.");
+            }
+
+            ChartRenderDiagnostics.Log("Video capture mode configured. timeUpdateMode="
+                + (video.canSetTimeUpdateMode ? video.timeUpdateMode.ToString() : "unchanged")
+                + " skipOnDrop=" + (video.canSetSkipOnDrop ? video.skipOnDrop.ToString() : "unchanged") + ".");
         }
 
         private static bool TryGetTargetVideoTime(scrVfxPlus vfx, scrConductor conductor, VideoPlayer video, out double targetTime)
@@ -158,6 +259,42 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
             public int StartupSeekAttempts;
 
             public float LastSeekRealtime = -100f;
+
+            public bool RenderConfigurationAttempted;
+
+            public VideoPlayer? RenderVideo;
+
+            public bool HasOriginalTimeUpdateMode;
+
+            public VideoTimeUpdateMode OriginalTimeUpdateMode;
+
+            public bool HasOriginalSkipOnDrop;
+
+            public bool OriginalSkipOnDrop;
+
+            public bool RenderStartupSeekUsed;
+
+            public void RestoreRenderSettings()
+            {
+                if (RenderVideo != null)
+                {
+                    if (HasOriginalTimeUpdateMode && RenderVideo.canSetTimeUpdateMode)
+                    {
+                        RenderVideo.timeUpdateMode = OriginalTimeUpdateMode;
+                    }
+
+                    if (HasOriginalSkipOnDrop && RenderVideo.canSetSkipOnDrop)
+                    {
+                        RenderVideo.skipOnDrop = OriginalSkipOnDrop;
+                    }
+                }
+
+                RenderConfigurationAttempted = false;
+                RenderVideo = null;
+                HasOriginalTimeUpdateMode = false;
+                HasOriginalSkipOnDrop = false;
+                RenderStartupSeekUsed = false;
+            }
         }
     }
 }
