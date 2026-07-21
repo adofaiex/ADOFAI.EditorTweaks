@@ -5,10 +5,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ffmpegPackageName = "ffmpeg-8.1.1-essentials_build"
+$ffmpegPackageName = "ffmpeg-8.1.2-essentials_build"
 $url = "https://www.gyan.dev/ffmpeg/builds/packages/$ffmpegPackageName.zip"
-$expectedSha256 = "6f58ce889f59c311410f7d2b18895b33c03456463486f3b1ebc93d97a0f54541"
-$sourceCommit = "239f2c733d"
+$expectedSha256 = "db580001caa24ac104c8cb856cd113a87b0a443f7bdf47d8c12b1d740584a2ec"
+$sourceCommit = "38b88335f9"
 $sourceUrl = "https://github.com/FFmpeg/FFmpeg/tree/$sourceCommit"
 $sourceArchiveUrl = "https://github.com/FFmpeg/FFmpeg/archive/$sourceCommit.zip"
 $buildPageUrl = "https://www.gyan.dev/ffmpeg/builds/"
@@ -135,7 +135,15 @@ try {
     Write-Host "Downloading FFmpeg from $url"
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
     
-    $actualSha256 = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $zipStream = [System.IO.File]::OpenRead($zipPath)
+    try {
+        $actualSha256 = ([BitConverter]::ToString($sha256.ComputeHash($zipStream))).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $zipStream.Dispose()
+        $sha256.Dispose()
+    }
     if ($actualSha256 -ne $expectedSha256) {
         throw "FFmpeg archive SHA-256 mismatch. Expected $expectedSha256 but got $actualSha256."
     }
