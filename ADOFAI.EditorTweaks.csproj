@@ -59,6 +59,9 @@
     <Reference Include="netstandard">
       <HintPath>$(ManagedAssembliesDir)\netstandard.dll</HintPath>
     </Reference>
+    <Reference Include="mscorlib">
+      <HintPath>$(ManagedAssembliesDir)\mscorlib.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>$(ManagedAssembliesDir)\UnityEngine.dll</HintPath>
     </Reference>
