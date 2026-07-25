@@ -120,6 +120,6 @@ jobs:
               --repo $repo `
               --title "ADOFAI Editor Tweaks $env:RELEASE_TAG" `
               --notes-file $env:NOTES_PATH `
-              --target $env:RELEASE_TAG `
+              --verify-tag `
               $latest
           }
