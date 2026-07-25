@@ -133,7 +133,7 @@ try {
     
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
     Write-Host "Downloading FFmpeg from $url"
-    Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+    Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -TimeoutSec 300
     
     $sha256 = [System.Security.Cryptography.SHA256]::Create()
     $zipStream = [System.IO.File]::OpenRead($zipPath)
