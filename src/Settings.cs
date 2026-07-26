@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.CloudSettings;
+using ADOFAI.EditorTweaks.Patching;
 using UnityModManagerNet;
 using UnityEngine;
 
@@ -189,6 +191,7 @@ namespace ADOFAI.EditorTweaks
             GUILayout.Label(Text("title"), titleStyle);
             GUILayout.Space(4);
 
+            DrawPatchCompatibilityStatus();
             DrawCloudSyncSection(modEntry);
 
             DrawSection(Text("fixesSection"));
@@ -885,6 +888,135 @@ namespace ADOFAI.EditorTweaks
             }
 
             GUILayout.EndVertical();
+        }
+
+        private static void DrawPatchCompatibilityStatus()
+        {
+            IReadOnlyList<PatchGroupStatus> statuses = PatchManager.Statuses;
+            int activeCount = 0;
+            foreach (PatchGroupStatus status in statuses)
+            {
+                if (status.State == PatchGroupState.Active)
+                {
+                    activeCount++;
+                }
+            }
+
+            GUILayout.BeginVertical(cloudSectionBoxStyle);
+            GUILayout.Label(Text("patchCompatibilitySection"), cloudTitleStyle);
+
+            string summaryKey = activeCount == statuses.Count && !PatchManager.HasRegistrationErrors
+                ? "patchCompatibilityAllAvailable"
+                : "patchCompatibilityPartial";
+            string summary = Text(summaryKey)
+                .Replace("{active}", activeCount.ToString(CultureInfo.InvariantCulture))
+                .Replace("{total}", statuses.Count.ToString(CultureInfo.InvariantCulture));
+            GUILayout.Label(summary, cloudStatusStyle);
+            GUILayout.Label(Text("patchCompatibilityHint"), hintStyle);
+
+            foreach (PatchGroupStatus status in statuses)
+            {
+                Color previousColor = GUI.contentColor;
+                GUI.contentColor = GetPatchStatusColor(status.State);
+                GUILayout.Label(BuildPatchStatusText(status), cloudStatusStyle);
+                GUI.contentColor = previousColor;
+            }
+
+            if (PatchManager.HasRegistrationErrors)
+            {
+                Color previousColor = GUI.contentColor;
+                GUI.contentColor = new Color(1f, 0.55f, 0.55f);
+                GUILayout.Label(Text("patchRegistrationError"), cloudStatusStyle);
+                GUI.contentColor = previousColor;
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        private static string BuildPatchStatusText(PatchGroupStatus status)
+        {
+            string stateText;
+            switch (status.State)
+            {
+                case PatchGroupState.Active:
+                    stateText = Text("patchStateActive");
+                    break;
+                case PatchGroupState.Failed:
+                    stateText = Text("patchStateFailed");
+                    break;
+                case PatchGroupState.Blocked:
+                    stateText = Text("patchStateBlocked");
+                    break;
+                default:
+                    stateText = Text("patchStateInactive");
+                    break;
+            }
+
+            string text = "• " + Text(status.DisplayNameKey) + ": " + stateText;
+            if (status.State == PatchGroupState.Failed)
+            {
+                string patchName = GetShortPatchName(status.FailedPatchName);
+                string reason = CompactPatchReason(status.Reason);
+                if (!string.IsNullOrEmpty(patchName))
+                {
+                    text += " (" + patchName + ")";
+                }
+
+                if (!string.IsNullOrEmpty(reason))
+                {
+                    text += " — " + reason;
+                }
+            }
+            else if (status.State == PatchGroupState.Blocked && status.BlockedBy.HasValue)
+            {
+                PatchGroupStatus? dependency = PatchManager.GetStatus(status.BlockedBy.Value);
+                if (dependency != null)
+                {
+                    text += " — " + Text("patchBlockedBy") + " " + Text(dependency.DisplayNameKey);
+                }
+            }
+
+            return text;
+        }
+
+        private static Color GetPatchStatusColor(PatchGroupState state)
+        {
+            switch (state)
+            {
+                case PatchGroupState.Active:
+                    return new Color(0.55f, 1f, 0.55f);
+                case PatchGroupState.Failed:
+                    return new Color(1f, 0.55f, 0.55f);
+                case PatchGroupState.Blocked:
+                    return new Color(1f, 0.78f, 0.42f);
+                default:
+                    return new Color(0.72f, 0.72f, 0.72f);
+            }
+        }
+
+        private static string GetShortPatchName(string fullName)
+        {
+            if (string.IsNullOrEmpty(fullName))
+            {
+                return string.Empty;
+            }
+
+            int separator = Mathf.Max(fullName.LastIndexOf('.'), fullName.LastIndexOf('+'));
+            return separator >= 0 && separator + 1 < fullName.Length
+                ? fullName.Substring(separator + 1)
+                : fullName;
+        }
+
+        private static string CompactPatchReason(string reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                return string.Empty;
+            }
+
+            string compact = reason.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            const int maxLength = 160;
+            return compact.Length <= maxLength ? compact : compact.Substring(0, maxLength - 1) + "…";
         }
 
         private void UploadToCloud(UnityModManager.ModEntry modEntry)

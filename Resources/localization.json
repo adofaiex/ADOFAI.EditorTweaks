@@ -36,6 +36,96 @@
       "zh": "浮窗"
     },
     {
+      "key": "patchCompatibilitySection",
+      "en": "Game version compatibility",
+      "zh": "游戏版本兼容状态"
+    },
+    {
+      "key": "patchCompatibilityAllAvailable",
+      "en": "All {total} feature groups are available.",
+      "zh": "全部 {total} 个功能组均可用。"
+    },
+    {
+      "key": "patchCompatibilityPartial",
+      "en": "{active}/{total} feature groups are available. Other features remain isolated and usable.",
+      "zh": "{active}/{total} 个功能组可用；其他功能仍已隔离并可继续使用。"
+    },
+    {
+      "key": "patchCompatibilityHint",
+      "en": "This reports compatibility with the current game version, not whether a setting is enabled.",
+      "zh": "这里显示的是与当前游戏版本的兼容性，不代表对应设置是否开启。"
+    },
+    {
+      "key": "patchStateActive",
+      "en": "Available",
+      "zh": "可用"
+    },
+    {
+      "key": "patchStateFailed",
+      "en": "Unavailable",
+      "zh": "不可用"
+    },
+    {
+      "key": "patchStateBlocked",
+      "en": "Disabled by dependency",
+      "zh": "因依赖功能不可用而停用"
+    },
+    {
+      "key": "patchStateInactive",
+      "en": "Inactive",
+      "zh": "未启用"
+    },
+    {
+      "key": "patchBlockedBy",
+      "en": "requires",
+      "zh": "依赖"
+    },
+    {
+      "key": "patchRegistrationError",
+      "en": "Patch registration is incomplete. See the log for details.",
+      "zh": "补丁注册不完整，请查看日志了解详情。"
+    },
+    {
+      "key": "patchFeatureNumericDrag",
+      "en": "Numeric drag",
+      "zh": "数值拖动"
+    },
+    {
+      "key": "patchFeatureCameraRelativeDecorationDrag",
+      "en": "Camera-relative decoration drag",
+      "zh": "镜头相对装饰拖动"
+    },
+    {
+      "key": "patchFeatureDecorationMoveSnap",
+      "en": "Decoration move snapping",
+      "zh": "装饰移动吸附"
+    },
+    {
+      "key": "patchFeatureDecorationPivot",
+      "en": "Decoration pivot",
+      "zh": "装饰轴心"
+    },
+    {
+      "key": "patchFeatureVideoBackgroundSync",
+      "en": "Video background sync",
+      "zh": "视频背景同步"
+    },
+    {
+      "key": "patchFeatureEditorPreferences",
+      "en": "Editor preference persistence",
+      "zh": "编辑器偏好持久化"
+    },
+    {
+      "key": "patchFeatureEditorOverlayInputGuard",
+      "en": "Editor overlay input guard",
+      "zh": "编辑器浮窗输入保护"
+    },
+    {
+      "key": "patchFeatureChartRendering",
+      "en": "Chart rendering",
+      "zh": "谱面渲染"
+    },
+    {
       "key": "enableNumericDrag",
       "en": "Enable numeric drag fields",
       "zh": "启用数值输入框拖动调节"
@@ -494,6 +584,11 @@
       "key": "chartRendererMissingFfmpeg",
       "en": "Missing Tools/ffmpeg.exe in the mod folder.",
       "zh": "Mod 目录缺少 Tools/ffmpeg.exe。"
+    },
+    {
+      "key": "chartRendererIncompatible",
+      "en": "Chart rendering is unavailable for the current game version. Check the mod settings and log.",
+      "zh": "谱面渲染与当前游戏版本不兼容，请查看 Mod 设置页和日志。"
     },
     {
       "key": "chartRendererSelectedRangeMissing",

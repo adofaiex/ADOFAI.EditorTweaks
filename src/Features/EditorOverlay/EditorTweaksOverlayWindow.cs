@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
+using ADOFAI.EditorTweaks.Patching;
 using UnityEngine;
 
 namespace ADOFAI.EditorTweaks.Features.EditorOverlay
@@ -412,7 +413,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
 
         private void StartChartRender()
         {
-            if (Main.Mod == null)
+            if (Main.Mod == null || !PatchManager.IsAvailable(PatchFeature.ChartRendering))
             {
                 return;
             }
@@ -429,6 +430,11 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
 
         private static string GetChartRenderDisabledReason()
         {
+            if (!PatchManager.IsAvailable(PatchFeature.ChartRendering))
+            {
+                return Settings.Text("chartRendererIncompatible");
+            }
+
             scnEditor editor = ADOBase.editor;
             if (!ChartRenderSession.IsPlayableLevelLoaded())
             {

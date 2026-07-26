@@ -2,6 +2,23 @@
 
 本文档列出当前项目的全部 Harmony Patch。新增、删除或改动 Patch 时必须同步更新这里。
 
+## PatchManager 隔离策略
+
+Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager 将全部 31 个 Harmony Patch 划分为 8 个功能组，每组使用独立的 Harmony ID：
+
+| 功能组 | Patch 数量 | 依赖 |
+| --- | ---: | --- |
+| Numeric Drag | 5 | 无 |
+| Camera Relative Decoration Drag | 2 | 无 |
+| Decoration Move Snap | 1 | 无 |
+| Decoration Pivot | 3 | 无 |
+| Video Background Sync | 2 | 无 |
+| Editor Preferences | 1 | 无 |
+| Editor Overlay Input Guard | 9 | 无 |
+| Chart Rendering | 8 | Editor Overlay Input Guard |
+
+同组任一 Patch 应用失败时会卸载该组已经应用的全部 Patch，并继续加载其他功能组。Chart Rendering 的依赖组不可用时不会尝试应用，以免离线渲染在缺少输入保护的情况下进入半可用状态。设置页显示各组兼容状态，完整异常记录在 Unity Mod Manager 日志中。
+
 ## NumericDrag
 
 | 文件 | 目标方法 | 类型 | 条件 | 作用 | 风险点 |
@@ -55,11 +72,13 @@
 | 文件 | 目标方法 | 类型 | 条件 | 作用 | 风险点 |
 | --- | --- | --- | --- | --- | --- |
 | `ChartRenderVisualClock.cs` | `scrConductor.set_songposition_minusi` | Prefix | `ChartRenderVisualClock.TryGetSongPosition` 成功 | 把 conductor 视觉时间强制为输出帧时间 | 必须在播放 schedule 后锚定，否则起点相位会错 |
-| `ChartRenderVisualClock.cs` | `scrConductor.get_calibration_i` | Prefix | `ChartRenderSession.IsRendering` | 返回 `0`，去掉玩家输入偏移对视觉相位的影响 | 不影响音频，音频来自 Unity AudioRenderer |
+| `ChartRenderVisualClock.cs` | `scrConductor.get_songposition_minusi` | Postfix | `ChartRenderVisualClock.TryGetSongPosition` 成功 | 读取视觉时间时返回当前输出帧对应的强制时间 | 与 setter Patch 配合，避免游戏 Update 覆盖离线时间轴 |
 | `ChartRenderAutoPlayer.cs` | `scrConductor.Update` | Postfix | `IsRendering`、`IsAutoPlaybackReady` 且视觉时钟活跃 | 自动补打当前帧应命中的砖块 | 必须等视觉时钟锚定后才允许自动打击；每帧最多 16 次 |
 | `ChartRenderAutoPlayer.cs` | `AsyncInputUtils.AdjustAngle(scrPlayer, ulong)` | Prefix | `IsRendering` | 跳过异步输入角度修正，记录 suppressed 计数 | 这是防止球突然跳角的重要 Patch |
+| `ChartRenderAutoPlayer.cs` | `scrPlayer.Hit` | Prefix | 渲染选中段落且下一砖超过结束砖块 | 阻止自动打击越过选中段落终点 | 只影响离线渲染期间的段落边界 |
 | `ChartRenderAudioPatches.cs` | `scrSfx.PlaySfx(AudioClip, MixerGroup, float, float, float)` | Prefix | `IsRendering && group == InterfaceParent` | 屏蔽 UMM / 菜单 / 界面音效进入音频捕获 | 只屏蔽 InterfaceParent，不屏蔽谱面音效 |
 | `ChartRenderJudgmentPatches.cs` | `scrHitTextManager.ShowHitText(HitMargin, scrPlanet, float)` | Prefix | `IsRendering && !ChartRenderShowHitJudgments` | 导出时隐藏 Perfect / Early / Late 等判定字 | 只影响渲染期间 |
+| `ChartRenderCustomFrameRate.cs` | `scrCamera.UpdateCustomFrameRateScreen` | Prefix | 离线渲染期间 | 记录自定义帧率画面刷新，只在游戏刷新画面时捕获新帧 | 避免自定义 FPS 谱面产生无意义的重复捕获 |
 
 ## 非 Harmony 但同样关键的 Hook
 

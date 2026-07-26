@@ -1,7 +1,6 @@
 using System.IO;
-using System.Reflection;
 using ADOFAI.EditorTweaks.Features.EditorOverlay;
-using HarmonyLib;
+using ADOFAI.EditorTweaks.Patching;
 using UnityModManagerNet;
 
 namespace ADOFAI.EditorTweaks
@@ -9,8 +8,6 @@ namespace ADOFAI.EditorTweaks
     public static class Main
     {
         public static UnityModManager.ModEntry? Mod { get; private set; }
-
-        public static Harmony? Harmony { get; private set; }
 
         public static Settings Settings { get; private set; } = null!;
 
@@ -24,8 +21,6 @@ namespace ADOFAI.EditorTweaks
             modEntry.OnToggle = OnToggle;
             modEntry.OnGUI = Settings.OnGUI;
             modEntry.OnSaveGUI = Settings.OnSaveGUI;
-
-            Harmony = new Harmony(modEntry.Info.Id);
 
             if (!Settings.HasShownReadme)
             {
@@ -43,14 +38,21 @@ namespace ADOFAI.EditorTweaks
             if (value)
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks enabled.");
-                Harmony?.PatchAll(Assembly.GetExecutingAssembly());
-                EditorTweaksOverlayWindow.Ensure();
+                PatchManager.ApplyAll(modEntry.Info.Id);
+                if (PatchManager.IsAvailable(PatchFeature.EditorOverlayInputGuard))
+                {
+                    EditorTweaksOverlayWindow.Ensure();
+                }
+                else
+                {
+                    EditorTweaksOverlayWindow.Destroy();
+                }
             }
             else
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks disabled.");
-                Harmony?.UnpatchAll(modEntry.Info.Id);
                 EditorTweaksOverlayWindow.Destroy();
+                PatchManager.UnpatchAll();
             }
 
             return true;
