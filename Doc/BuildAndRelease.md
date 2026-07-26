@@ -34,11 +34,11 @@ dotnet build ADOFAI.EditorTweaks.csproj -c Release /p:CreateModPackage=true /p:B
 
 ### 发布新版本
 
-例如当前代码已经准备好 `1.2.8`：
+例如当前代码已经准备好 `1.3.0`：
 
 ```powershell
-git tag -a 1.2.8 -m "发布 1.2.8"
-git push origin 1.2.8
+git tag -a 1.3.0 -m "发布 1.3.0"
+git push origin 1.3.0
 ```
 
 推送标签后，Actions 会自动：
