@@ -102,19 +102,35 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
 
             if (!video.isPlaying && vfx.hasPlayed && state.StartupFramesLeft > 0)
             {
-                video.time = targetTime;
                 video.playbackSpeed = conductor.song.pitch;
-                video.Play();
-                if (rendering)
+                if (!rendering)
                 {
-                    state.RenderStartupSeekUsed = true;
+                    video.time = targetTime;
                 }
 
+                video.Play();
                 state.StartupFramesLeft = StartupSyncFrames;
                 state.StartupSeekAttempts = 0;
             }
 
             video.playbackSpeed = conductor.song.pitch;
+            if (rendering && !state.RenderInitialSyncApplied && video.isPlaying)
+            {
+                state.RenderInitialSyncApplied = true;
+                if (!justStarted && !justMarkedPlayed)
+                {
+                    double actualBeforeSeek = video.time;
+                    video.time = targetTime;
+                    ChartRenderDiagnostics.Log("Applied one-time video render sync. target="
+                        + targetTime.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)
+                        + " actualBeforeSeek=" + actualBeforeSeek.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + ".");
+                }
+                else
+                {
+                    ChartRenderDiagnostics.Log("Using game's initial video sync for render. target="
+                        + targetTime.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + ".");
+                }
+            }
 
             double error = Mathf.Abs((float)(video.time - targetTime));
             bool inStartupWindow = state.StartupFramesLeft > 0;
@@ -124,12 +140,10 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
 
             if (rendering)
             {
-                // Unity's capture-frame clock can make a VideoPlayer decode more slowly than
-                // the forced chart clock. Do not keep seeking during the render; that causes
-                // the decoder to restart and produces repeated/dropped-looking frames.
-                shouldSeek = inStartupWindow
-                    && error > SoftDesyncSeconds
-                    && !state.RenderStartupSeekUsed;
+                // The render path performs at most one initial seek. Repeated time assignments,
+                // playback-speed correction and skip-on-drop all produce visibly uneven motion
+                // with WindowsVideoMedia, so the video runs continuously after startup.
+                shouldSeek = false;
             }
 
             if (shouldSeek)
@@ -140,10 +154,6 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
                     video.time = targetTime;
                     state.LastSeekRealtime = Time.unscaledTime;
                     state.StartupSeekAttempts++;
-                    if (rendering)
-                    {
-                        state.RenderStartupSeekUsed = true;
-                    }
                 }
             }
 
@@ -162,6 +172,16 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
             {
                 state.RestoreRenderSettings();
             }
+        }
+
+        internal static bool HasActiveVideoBackground()
+        {
+            scrVfxPlus? vfx = scrVfxPlus.instance;
+            VideoPlayer? video = vfx == null ? null : vfx.videoBG;
+            return video != null
+                && video.gameObject.activeSelf
+                && video.isPrepared
+                && Persistence.visualEffects == VisualEffects.Full;
         }
 
         private static void ConfigureForRender(scrVfxPlus vfx)
@@ -187,7 +207,9 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
             state.RestoreRenderSettings();
             state.RenderVideo = video;
             state.RenderConfigurationAttempted = true;
-            state.RenderStartupSeekUsed = false;
+            state.RenderInitialSyncApplied = false;
+            state.WasPlaying = video.isPlaying;
+            state.WasMarkedPlayed = vfx.hasPlayed;
             state.StartupFramesLeft = StartupSyncFrames;
             state.StartupSeekAttempts = 0;
 
@@ -272,7 +294,7 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
 
             public bool OriginalSkipOnDrop;
 
-            public bool RenderStartupSeekUsed;
+            public bool RenderInitialSyncApplied;
 
             public void RestoreRenderSettings()
             {
@@ -293,7 +315,7 @@ namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
                 RenderVideo = null;
                 HasOriginalTimeUpdateMode = false;
                 HasOriginalSkipOnDrop = false;
-                RenderStartupSeekUsed = false;
+                RenderInitialSyncApplied = false;
             }
         }
     }

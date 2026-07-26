@@ -111,8 +111,10 @@ video.playbackSpeed = conductor.song.pitch
 视频渲染使用 `Time.captureFramerate`，因此渲染期间会临时调整每个 `VideoPlayer`：
 
 - `timeUpdateMode` 切换为 `VideoTimeUpdateMode.GameTime`，让视频跟随 Unity 捕获帧时钟。
-- `skipOnDrop` 设为 `false`，宁可让渲染等待解码，也不允许视频为了追赶时间主动丢帧。
-- 启动阶段最多做一次时间校正，渲染进行中不再周期性写入 `VideoPlayer.time`，避免反复 seek 造成解码器重复准备和画面卡顿。
+- `skipOnDrop` 设为 `false`，避免主动丢视频帧造成抽帧感。
+- 从头播放时只使用游戏原版的启动定位；接管已经播放中的场景时，Mod 最多补一次 `VideoPlayer.time` 定位。
+- 启动后不再 seek、不动态调整 `playbackSpeed`，视频始终按谱面 pitch 连续播放。
+- 检测到视频背景时将渲染处理速度限制到输出 FPS，避免离线渲染跑得比 WindowsVideoMedia 解码快。带视频背景的导出速度会更接近实时。
 
 渲染结束或失败时会恢复 VideoPlayer 原来的 `timeUpdateMode` 和 `skipOnDrop` 设置，不改变正常游戏播放行为。
 

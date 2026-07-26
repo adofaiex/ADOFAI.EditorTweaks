@@ -182,7 +182,16 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             }
 
             Time.captureFramerate = Math.Max(1, settings.ChartRenderFps);
-            Application.targetFrameRate = Math.Max(1000, settings.ChartRenderFps * 4);
+            if (VideoBackgroundSyncPatches.HasActiveVideoBackground())
+            {
+                Application.targetFrameRate = Math.Max(1, settings.ChartRenderFps);
+                WriteLog("Video background detected. Render processing capped to "
+                    + Application.targetFrameRate + " FPS for continuous decoding.");
+            }
+            else
+            {
+                Application.targetFrameRate = Math.Max(1000, settings.ChartRenderFps * 4);
+            }
 
             int fps = Math.Max(1, settings.ChartRenderFps);
             double completionTailSeconds = GetEffectiveCompletionTailSeconds();
