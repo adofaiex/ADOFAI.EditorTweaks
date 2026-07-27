@@ -15,6 +15,8 @@
 ## Features
 
 - [ChartRendering.md](ChartRendering.md)：离线谱面视频渲染、定帧、视觉时钟、自动打击、音频捕获、FFmpeg、诊断日志。
+- [Api/README.md](Api/README.md)：公共 API 文档索引。
+- [Api/ChartRendering.md](Api/ChartRendering.md)：供其他 Mod 调用的强类型渲染任务 API、生命周期、错误码和示例。
 - [PatchInventory.md#archiveio](PatchInventory.md#archiveio)：常见压缩包接管、旧 ZIP 文件名识别和失败隔离。
 - [DecorationSelection.md](DecorationSelection.md)：Camera / CameraAspect 装饰拖动、轴心、吸附。
 - [EditorOverlay.md](EditorOverlay.md)：编辑器浮窗、渲染进度窗、输入遮罩。

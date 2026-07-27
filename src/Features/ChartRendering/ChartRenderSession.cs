@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using ADOFAI.EditorTweaks.Api.Rendering;
 using ADOFAI.EditorTweaks.Features.VideoBackgroundSync;
 using UnityEngine;
 using UnityModManagerNet;
@@ -15,25 +16,36 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         private const double CompletionFallbackSeconds = 30.0;
 
         private readonly UnityModManager.ModEntry modEntry;
+        private readonly ChartRenderConfiguration configuration;
+        private readonly ChartRenderTask apiTask;
         private readonly Settings settings;
         private readonly ChartRenderProgressModel progress = new ChartRenderProgressModel();
         private readonly ChartRenderPlaybackController playbackController;
         private readonly string captureSource;
 
         private bool cancelRequested;
+        private bool finished;
         private double renderDurationSeconds = 1.0;
         private string tempDirectory = string.Empty;
         private string tempVideoPath = string.Empty;
         private string capturedAudioPath = string.Empty;
         private string outputPath = string.Empty;
+        private int outputWidth;
+        private int outputHeight;
         private ChartUnityAudioCapture? audioCapture;
+        private IChartFrameCapture? frameCapture;
+        private FfmpegEncoder? encoder;
+        private ChartRenderFramePipeline? framePipeline;
+        private Action<ChartRenderResult>? completionCallback;
         private ChartRenderRange renderRange = ChartRenderRange.WholeLevel();
         private bool renderAutoPlaybackEnabled;
 
-        public ChartRenderSession(UnityModManager.ModEntry modEntry, Settings settings)
+        public ChartRenderSession(UnityModManager.ModEntry modEntry, ChartRenderConfiguration configuration, ChartRenderTask apiTask)
         {
             this.modEntry = modEntry;
-            this.settings = settings;
+            this.configuration = configuration;
+            this.apiTask = apiTask;
+            settings = configuration.Settings;
             captureSource = ChartRenderOptionValues.NormalizeCaptureSource(settings.ChartRenderCaptureSource);
             playbackController = new ChartRenderPlaybackController(settings);
         }
@@ -74,13 +86,22 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public bool CapturesGameView => captureSource == ChartRenderOptionValues.CaptureSourceGameView;
 
+        public int OutputWidth => outputWidth;
+
+        public int OutputHeight => outputHeight;
+
+        public string OutputPath => outputPath;
+
         public void Cancel()
         {
             cancelRequested = true;
         }
 
+        private bool IsCancellationRequested => cancelRequested || apiTask.IsCancellationRequested;
+
         public IEnumerator Run(Action<ChartRenderResult> onComplete)
         {
+            completionCallback = onComplete;
             IsActive = true;
             IsRendering = true;
             IsAutoPlaybackReady = false;
@@ -91,15 +112,13 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             MemoryBudgetText = string.Empty;
             QueueBudgetText = string.Empty;
 
-            IChartFrameCapture? frameCapture = null;
-            FfmpegEncoder? encoder = null;
-            ChartRenderFramePipeline? framePipeline = null;
             ChartRenderResult result = new ChartRenderResult();
             Exception? failure;
 
             if (!TryPrepare(result, out failure))
             {
                 result.Success = false;
+                result.ErrorCode = ChartRenderErrorCode.InitializationFailed;
                 result.Message = failure?.Message ?? result.Message;
                 Finish(onComplete, result);
                 yield break;
@@ -107,9 +126,13 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
             yield return null;
 
+            apiTask.SetState(ChartRenderTaskState.WaitingForPlayback);
             if (!TryStartPlayback(out failure))
             {
                 result.Success = false;
+                result.ErrorCode = configuration.PlaybackMode == ChartRenderPlaybackMode.AttachToCurrentPlayback
+                    ? ChartRenderErrorCode.PlaybackNotActive
+                    : ChartRenderErrorCode.InitializationFailed;
                 result.Message = failure?.Message ?? "Failed to start level playback.";
                 Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
                 Finish(onComplete, result);
@@ -117,7 +140,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             }
 
             int waitFrames = 0;
-            while (!cancelRequested && waitFrames < settings.ChartRenderFps * 10)
+            while (!IsCancellationRequested && waitFrames < settings.ChartRenderFps * 10)
             {
                 if (ADOBase.conductor != null && IsPlaybackScheduled())
                 {
@@ -129,10 +152,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 yield return null;
             }
 
-            if (cancelRequested)
+            if (IsCancellationRequested)
             {
                 result.Success = false;
                 result.Message = "Canceled.";
+                result.Canceled = true;
+                result.ErrorCode = ChartRenderErrorCode.Canceled;
                 Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
                 Finish(onComplete, result);
                 yield break;
@@ -141,6 +166,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             if (ADOBase.conductor == null || !IsPlaybackScheduled())
             {
                 result.Success = false;
+                result.ErrorCode = ChartRenderErrorCode.PlaybackNotActive;
                 result.Message = "Timed out while waiting for level playback.";
                 Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
                 Finish(onComplete, result);
@@ -151,7 +177,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             {
                 int readyWaitFrames = 0;
                 int readyWaitLimit = settings.ChartRenderFps * 20;
-                while (!cancelRequested && readyWaitFrames < readyWaitLimit && !IsPartialRangeCaptureReady())
+                while (!IsCancellationRequested && readyWaitFrames < readyWaitLimit && !IsPartialRangeCaptureReady())
                 {
                     readyWaitFrames++;
                     StageText = Settings.Text("chartRendererWaitingRangeStart");
@@ -159,10 +185,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                     yield return null;
                 }
 
-                if (cancelRequested)
+                if (IsCancellationRequested)
                 {
                     result.Success = false;
                     result.Message = "Canceled.";
+                    result.Canceled = true;
+                    result.ErrorCode = ChartRenderErrorCode.Canceled;
                     Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
                     Finish(onComplete, result);
                     yield break;
@@ -171,6 +199,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 if (!IsPartialRangeCaptureReady())
                 {
                     result.Success = false;
+                    result.ErrorCode = ChartRenderErrorCode.InitializationFailed;
                     result.Message = Settings.Text("chartRendererRangeStartTimeout");
                     Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
                     Finish(onComplete, result);
@@ -205,6 +234,8 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 bool showPreview = captureSource == ChartRenderOptionValues.CaptureSourceCamera
                     && ChartRenderOptionValues.NormalizePreviewMode(settings.ChartRenderPreviewMode) != ChartRenderOptionValues.PreviewMinimal;
                 frameCapture = ChartFrameCaptureFactory.Create(settings, captureSource, showPreview);
+                outputWidth = frameCapture.Width;
+                outputHeight = frameCapture.Height;
                 ChartRenderMemoryBudget budget = ChartRenderMemoryBudget.Create(frameCapture.Width, frameCapture.Height);
                 MemoryBudgetText = budget.DisplaySummary;
                 QueueBudgetText = budget.QueueSummary;
@@ -236,11 +267,30 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 BeginForcedVisualClock();
                 SetForcedFrameTimeFromAudioCursor(0);
                 AutoPlaybackEndFloor = renderRange.AutoPlaybackEndFloor;
-                EnableRenderAutoPlayback();
+                if (configuration.PlaybackMode == ChartRenderPlaybackMode.RendererControlled)
+                {
+                    EnableRenderAutoPlayback();
+                }
+                else if (configuration.PlaybackMode == ChartRenderPlaybackMode.RestartWithoutAutoPlay)
+                {
+                    RDC.auto = false;
+                    IsAutoPlaybackReady = false;
+                    renderAutoPlaybackEnabled = false;
+                    WriteLog("Internal auto playback disabled for RestartWithoutAutoPlay.");
+                }
+                else
+                {
+                    IsAutoPlaybackReady = false;
+                    renderAutoPlaybackEnabled = false;
+                    WriteLog("Attached to current playback without changing its auto-play state.");
+                }
+
+                apiTask.SetState(ChartRenderTaskState.Rendering);
                 ChartRenderDiagnostics.LogFrame(0, 0);
             }, out failure))
             {
                 result.Success = false;
+                result.ErrorCode = ChartRenderErrorCode.InitializationFailed;
                 result.Message = failure?.Message ?? "Failed to initialize renderer.";
                 Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
                 Finish(onComplete, result);
@@ -249,6 +299,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
             int requestedFrames = 0;
             int completionFrame = -1;
+            int manualCompletionTailFrames = Mathf.Max(0, Mathf.CeilToInt(Math.Max(0f, settings.ChartRenderCompletionTailSeconds) * fps));
             int fallbackExtraFrames = Math.Max(completionTailFrames, Mathf.CeilToInt((float)(CompletionFallbackSeconds * fps)));
             int renderFrameLimit = progress.TotalFrames + fallbackExtraFrames;
             bool estimateExpandedToFallback = false;
@@ -256,15 +307,15 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             DetailText = Path.GetFileName(outputPath);
             yield return null;
 
-            while (requestedFrames < renderFrameLimit && !cancelRequested && failure == null)
+            while (requestedFrames < renderFrameLimit && !IsCancellationRequested && failure == null)
             {
                 ChartRenderDiagnostics.SetFrame(requestedFrames);
-                if (!Try(() => framePipeline!.WaitForPendingSlot(encoder!, () => cancelRequested), out failure))
+                if (!Try(() => framePipeline!.WaitForPendingSlot(encoder!, () => IsCancellationRequested), out failure))
                 {
                     break;
                 }
 
-                if (failure != null || cancelRequested)
+                if (failure != null || IsCancellationRequested)
                 {
                     break;
                 }
@@ -287,7 +338,15 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                     SetForcedFrameTimeFromAudioCursor(requestedFrames);
                     ChartRenderDiagnostics.LogFrame(requestedFrames, renderFrameLimit);
                     DrainReadyFrames(framePipeline!, encoder!);
-                    if (completionFrame < 0 && HasReachedLevelEnd())
+                    if (completionFrame < 0 && apiTask.IsFinishRequested)
+                    {
+                        completionFrame = requestedFrames;
+                        DisableRenderAutoPlayback(resetEndFloor: false);
+                        renderFrameLimit = completionFrame + manualCompletionTailFrames;
+                        progress.SetTotalFrames(renderFrameLimit);
+                        WriteLog("Caller requested completion at frame " + completionFrame + "; rendering tail to frame " + renderFrameLimit + ".");
+                    }
+                    else if (completionFrame < 0 && HasReachedLevelEnd())
                     {
                         completionFrame = requestedFrames;
                         if (renderRange.IsPartial)
@@ -320,7 +379,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 DetailText = Path.GetFileName(outputPath);
             }
 
-            while (framePipeline != null && framePipeline.PendingCount > 0 && !cancelRequested && failure == null)
+            while (framePipeline != null && framePipeline.PendingCount > 0 && !IsCancellationRequested && failure == null)
             {
                 if (!Try(() => DrainReadyFrames(framePipeline!, encoder!), out failure))
                 {
@@ -346,10 +405,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             ChartRenderVisualClock.End();
             RestoreState();
 
-            if (cancelRequested)
+            if (IsCancellationRequested)
             {
                 result.Success = false;
                 result.Message = "Canceled.";
+                result.Canceled = true;
+                result.ErrorCode = ChartRenderErrorCode.Canceled;
                 Cleanup(frameCapture, encoder, restoreEditor: false, deleteTemp: true);
                 Finish(onComplete, result);
                 yield break;
@@ -358,6 +419,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             if (failure != null)
             {
                 result.Success = false;
+                result.ErrorCode = ChartRenderErrorCode.RenderingFailed;
                 result.Message = failure.Message;
                 Cleanup(frameCapture, encoder, restoreEditor: false, deleteTemp: true);
                 Finish(onComplete, result);
@@ -367,6 +429,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             if (audioCapture == null || audioCapture.CapturedSampleFrames <= 0)
             {
                 result.Success = false;
+                result.ErrorCode = ChartRenderErrorCode.RenderingFailed;
                 result.Message = "Unity AudioRenderer captured no audio samples.";
                 Cleanup(frameCapture, encoder, restoreEditor: false, deleteTemp: true);
                 Finish(onComplete, result);
@@ -374,6 +437,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             }
 
             StageText = "Finalizing video";
+            apiTask.SetState(ChartRenderTaskState.Finalizing);
             DetailText = Path.GetFileName(tempVideoPath);
             bool backgroundOk = false;
             yield return RunBackground(() => encoder!.CompleteVideo(), encoder, result, deleteTempOnCancel: true, ok => backgroundOk = ok);
@@ -431,30 +495,39 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             };
 
             thread.Start();
+            bool canceled = false;
             while (!done.IsSet)
             {
-                if (cancelRequested)
+                if (!canceled && IsCancellationRequested)
                 {
+                    canceled = true;
                     encoder?.Dispose();
                     result.Success = false;
                     result.Message = "Canceled.";
-                    if (deleteTempOnCancel)
-                    {
-                        DeleteTempDirectory();
-                    }
-
-                    done.Dispose();
-                    onDone(false);
-                    yield break;
+                    result.Canceled = true;
+                    result.ErrorCode = ChartRenderErrorCode.Canceled;
                 }
 
                 yield return null;
             }
 
+            thread.Join();
             done.Dispose();
+            if (canceled)
+            {
+                if (deleteTempOnCancel)
+                {
+                    DeleteTempDirectory();
+                }
+
+                onDone(false);
+                yield break;
+            }
+
             if (backgroundFailure != null)
             {
                 result.Success = false;
+                result.ErrorCode = ChartRenderErrorCode.RenderingFailed;
                 result.Message = backgroundFailure.Message;
                 Cleanup(null, encoder, restoreEditor: false, deleteTemp: deleteTempOnFailure);
                 onDone(false);
@@ -466,6 +539,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         private void Finish(Action<ChartRenderResult> onComplete, ChartRenderResult result)
         {
+            if (finished)
+            {
+                return;
+            }
+
+            finished = true;
             DisableRenderAutoPlayback(resetEndFloor: true);
             IsActive = false;
             VideoBackgroundSyncPatches.RestoreRenderSettings();
@@ -479,7 +558,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         private void DrainReadyFrames(ChartRenderFramePipeline framePipeline, FfmpegEncoder encoder)
         {
-            framePipeline.DrainReadyFrames(encoder, () => cancelRequested);
+            framePipeline.DrainReadyFrames(encoder, () => IsCancellationRequested);
             progress.UpdateFrames(framePipeline.WrittenFrames, framePipeline.DuplicateFrames);
         }
 
@@ -504,16 +583,18 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 tempVideoPath = Path.Combine(tempDirectory, "temp_video.mp4");
                 capturedAudioPath = Path.Combine(tempDirectory, "audio.wav");
                 ChartRenderDiagnostics.Begin(Path.Combine(tempDirectory, "render.log"));
-                renderRange = ChartRenderRange.CreateFromSettings(settings);
+                renderRange = configuration.Range;
                 WriteLog("Capture source locked for this render: " + captureSource + ".");
 
-                string levelName = GetLevelName();
-                string fileName = ChartRenderPaths.MakeSafeFileName(levelName)
-                    + renderRange.FileNameSuffix
-                    + "_"
-                    + DateTime.Now.ToString("yyyyMMdd_HHmmss")
-                    + ChartRenderOptionValues.GetVideoFormatExtension(settings.ChartRenderVideoFormat);
-                outputPath = Path.Combine(export, fileName);
+                string extension = ChartRenderOptionValues.GetVideoFormatExtension(settings.ChartRenderVideoFormat);
+                string requestedName = configuration.OutputFileName;
+                string baseName = string.IsNullOrWhiteSpace(requestedName)
+                    ? ChartRenderPaths.MakeSafeFileName(GetLevelName())
+                        + renderRange.FileNameSuffix
+                        + "_"
+                        + DateTime.Now.ToString("yyyyMMdd_HHmmss")
+                    : ChartRenderPaths.MakeSafeFileName(Path.GetFileNameWithoutExtension(requestedName));
+                outputPath = GetUniqueOutputPath(export, baseName, extension);
                 result.OutputPath = outputPath;
                 WriteLog("Render range: " + renderRange.DisplayText
                     + " start=" + renderRange.StartFloor
@@ -524,7 +605,27 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         private bool TryStartPlayback(out Exception? failure)
         {
-            return Try(() => playbackController.StartPlayback(renderRange), out failure);
+            return Try(() => playbackController.StartPlayback(renderRange, configuration.PlaybackMode), out failure);
+        }
+
+        public void AbortNow(ChartRenderErrorCode errorCode, string message)
+        {
+            if (finished)
+            {
+                return;
+            }
+
+            cancelRequested = true;
+            ChartRenderResult result = new ChartRenderResult
+            {
+                Success = false,
+                Canceled = true,
+                ErrorCode = errorCode,
+                Message = message ?? "Canceled.",
+                OutputPath = string.Empty
+            };
+            Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
+            Finish(completionCallback ?? (_ => { }), result);
         }
 
         private void EnableRenderAutoPlayback()
@@ -782,6 +883,17 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             DisableRenderAutoPlayback(resetEndFloor: true);
             frameCapture?.Dispose();
             encoder?.Dispose();
+            if (ReferenceEquals(this.frameCapture, frameCapture))
+            {
+                this.frameCapture = null;
+            }
+
+            if (ReferenceEquals(this.encoder, encoder))
+            {
+                this.encoder = null;
+            }
+
+            framePipeline = null;
             audioCapture?.Dispose();
             audioCapture = null;
             ChartRenderCustomFrameRate.End();
@@ -813,6 +925,26 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             catch
             {
             }
+        }
+
+        private static string GetUniqueOutputPath(string directory, string baseName, string extension)
+        {
+            string candidate = Path.Combine(directory, baseName + extension);
+            if (!File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            for (int suffix = 1; suffix < 10000; suffix++)
+            {
+                candidate = Path.Combine(directory, baseName + "_" + suffix + extension);
+                if (!File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            throw new IOException("Unable to choose a unique output file name.");
         }
 
         private void RestoreState()

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using ADOFAI.EditorTweaks.Api.Rendering;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Patching;
 using UnityEngine;
@@ -32,7 +33,6 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         private GUIStyle? rowStyle;
         private Texture2D? pixel;
         private Vector2 scrollPosition;
-        private ChartRenderSession? chartRenderSession;
         private string chartRenderMessage = string.Empty;
         private float drawWidth;
 
@@ -66,8 +66,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             mouseCaptureReleaseFrame = -1;
         }
 
-        public static bool IsRenderOverlayActive => ChartRenderSession.IsRendering
-            || (instance != null && instance.chartRenderSession != null && instance.chartRenderSession.IsActive);
+        public static bool IsRenderOverlayActive => ChartRenderService.IsActive;
 
         public static bool ShouldBlockEditorInput()
         {
@@ -137,7 +136,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
 
         private void OnGUI()
         {
-            if (ShouldHideForGameViewCapture())
+            if (ShouldHideForActiveTask())
             {
                 HandleHiddenGameViewCaptureInput();
                 return;
@@ -152,7 +151,8 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             ClampToScreen();
 
             Rect oldRect = windowRect;
-            bool renderModalActive = chartRenderSession != null && chartRenderSession.IsActive;
+            ChartRenderTask? activeTask = ChartRenderApi.CurrentTask;
+            bool renderModalActive = activeTask != null && activeTask.ShowBuiltInProgressUi;
             GUI.depth = -900;
 
             bool oldGuiEnabled = GUI.enabled;
@@ -164,7 +164,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
 
             if (renderModalActive)
             {
-                DrawRenderOverlay(chartRenderSession!);
+                DrawRenderOverlay(activeTask!);
             }
 
             if (!renderModalActive && Vector2.Distance(oldRect.position, windowRect.position) > 0.1f)
@@ -177,6 +177,12 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
 
         private static bool ShouldDraw()
         {
+            ChartRenderTask? activeTask = ChartRenderApi.CurrentTask;
+            if (activeTask != null && activeTask.ShowBuiltInProgressUi)
+            {
+                return true;
+            }
+
             if (!Main.Settings.ShowEditorOverlay)
             {
                 return false;
@@ -184,7 +190,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
 
             return (ADOBase.isEditingLevel && ADOBase.editor != null)
                 || ChartRenderSession.IsPlayableLevelLoaded()
-                || ChartRenderSession.IsRendering;
+                || ChartRenderService.IsActive;
         }
 
         private bool IsMouseInsideWindow()
@@ -358,7 +364,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             DrawRect(new Rect(panelRect.x, panelRect.y + 1f, 3f, panelRect.height - 2f), new Color(0.35f, 0.65f, 0.85f, 0.45f));
 
             string disabledReason = GetChartRenderDisabledReason();
-            bool isRendering = chartRenderSession != null && chartRenderSession.IsActive;
+            bool isRendering = ChartRenderApi.CurrentTask != null;
             bool canRender = string.IsNullOrEmpty(disabledReason) && !isRendering;
             bool oldGuiEnabled = GUI.enabled;
             string status = canRender ? Settings.Text("chartRendererReady") : disabledReason;
@@ -464,13 +470,22 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             }
 
             chartRenderMessage = string.Empty;
-            chartRenderSession = new ChartRenderSession(Main.Mod, Main.Settings);
-            StartCoroutine(chartRenderSession.Run(result =>
+            ChartRenderRequest request = ChartRenderApi.CreateRequestFromCurrentSettings();
+            request.PlaybackMode = ChartRenderPlaybackMode.RendererControlled;
+            request.ShowBuiltInProgressUi = true;
+            ChartRenderStartResult start = ChartRenderApi.Start(request);
+            if (!start.Success || start.Task == null)
+            {
+                chartRenderMessage = Settings.Text("chartRendererFailed") + ": " + start.Message;
+                return;
+            }
+
+            start.Task.Completed += (_, result) =>
             {
                 chartRenderMessage = result.Success
                     ? Settings.Text("chartRendererDone") + ": " + result.OutputPath
                     : Settings.Text("chartRendererFailed") + ": " + result.Message;
-            }));
+            };
         }
 
         private static string GetChartRenderDisabledReason()
@@ -511,7 +526,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             return string.Empty;
         }
 
-        private void DrawRenderOverlay(ChartRenderSession activeSession)
+        private void DrawRenderOverlay(ChartRenderTask activeTask)
         {
             string previewMode = ChartRenderOptionValues.NormalizePreviewMode(Main.Settings.ChartRenderPreviewMode);
             float dimAlpha = previewMode == ChartRenderOptionValues.PreviewFull ? 0.72f : 0.86f;
@@ -531,45 +546,52 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             DrawRect(new Rect(panel.x, panel.y, 1f, panel.height), new Color(0.65f, 0.82f, 0.86f, 0.82f));
             DrawRect(new Rect(panel.xMax - 1f, panel.y, 1f, panel.height), new Color(0.65f, 0.82f, 0.86f, 0.82f));
 
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, 26f), activeSession.StageText, titleStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 54f, panel.width - 48f, 24f), activeSession.DetailText, labelStyle);
+            ChartRenderProgress activeProgress = activeTask.Progress;
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, 26f), activeProgress.Stage, titleStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 54f, panel.width - 48f, 24f), activeProgress.Detail, labelStyle);
 
             Rect bar = new Rect(panel.x + 24f, panel.y + 92f, panel.width - 48f, 18f);
             DrawRect(bar, new Color(0.10f, 0.12f, 0.13f, 1f));
-            DrawRect(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(activeSession.Progress), bar.height), new Color(0.36f, 0.75f, 0.80f, 0.95f));
+            DrawRect(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(activeProgress.Value), bar.height), new Color(0.36f, 0.75f, 0.80f, 0.95f));
             DrawRect(new Rect(bar.x, bar.y, bar.width, 1f), new Color(0.24f, 0.42f, 0.46f, 0.95f));
             DrawRect(new Rect(bar.x, bar.yMax - 1f, bar.width, 1f), new Color(0.24f, 0.42f, 0.46f, 0.95f));
 
-            float duplicatePercent = activeSession.DuplicateRatio * 100f;
-            float progressPercent = activeSession.Progress * 100f;
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 122f, panel.width - 48f, 22f), $"模式: 离线定帧 | 编码器: {activeSession.EncoderName}", labelStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 144f, panel.width - 48f, 22f), $"写入帧: {activeSession.WrittenFrames}/{activeSession.TotalFrames} ({progressPercent:0.0}%)", labelStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 166f, panel.width - 48f, 22f), $"处理速度: {activeSession.ProcessingFps:0.0} 帧/秒（只影响等待时间，不等于成品帧率）", labelStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 188f, panel.width - 48f, 22f), $"重复帧: {activeSession.DuplicateFrames} ({duplicatePercent:0.00}%) - {FormatSmoothness(activeSession.SmoothnessText)}", labelStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 210f, panel.width - 48f, 22f), $"预计剩余: {activeSession.EstimatedRemaining:hh\\:mm\\:ss}", labelStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 232f, panel.width - 48f, 22f), $"内存: {activeSession.MemoryBudgetText}", labelStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 254f, panel.width - 48f, 22f), $"队列: {activeSession.QueueBudgetText}", labelStyle);
+            float duplicatePercent = activeProgress.DuplicateRatio * 100f;
+            float progressPercent = activeProgress.Value * 100f;
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 122f, panel.width - 48f, 22f), $"模式: 离线定帧 | 编码器: {activeProgress.EncoderName}", labelStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 144f, panel.width - 48f, 22f), $"写入帧: {activeProgress.WrittenFrames}/{activeProgress.TotalFrames} ({progressPercent:0.0}%)", labelStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 166f, panel.width - 48f, 22f), $"处理速度: {activeProgress.ProcessingFramesPerSecond:0.0} 帧/秒（只影响等待时间，不等于成品帧率）", labelStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 188f, panel.width - 48f, 22f), $"重复帧: {activeProgress.DuplicateFrames} ({duplicatePercent:0.00}%)", labelStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 210f, panel.width - 48f, 22f), $"预计剩余: {activeProgress.EstimatedRemaining:hh\\:mm\\:ss}", labelStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 232f, panel.width - 48f, 22f), $"内存: {activeProgress.MemoryBudget}", labelStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 254f, panel.width - 48f, 22f), $"队列: {activeProgress.QueueBudget}", labelStyle);
             if (GUI.Button(new Rect(panel.x + panel.width - 144f, panel.y + panel.height - 46f, 120f, 30f), Settings.Text("chartRendererCancel"), buttonStyle))
             {
-                activeSession.Cancel();
+                activeTask.Cancel();
             }
         }
 
-        private bool ShouldHideForGameViewCapture()
+        private static bool ShouldHideForActiveTask()
         {
-            return chartRenderSession != null
-                && chartRenderSession.IsActive
-                && chartRenderSession.CapturesGameView;
+            ChartRenderTask? activeTask = ChartRenderApi.CurrentTask;
+            return activeTask != null
+                && (!activeTask.ShowBuiltInProgressUi
+                    || activeTask.CaptureSource == ChartRenderCaptureSource.GameView);
         }
 
-        private void HandleHiddenGameViewCaptureInput()
+        private static void HandleHiddenGameViewCaptureInput()
         {
-            if (chartRenderSession == null || Event.current.type != EventType.KeyDown || Event.current.keyCode != KeyCode.Escape)
+            ChartRenderTask? activeTask = ChartRenderApi.CurrentTask;
+            if (activeTask == null
+                || !activeTask.ShowBuiltInProgressUi
+                || activeTask.CaptureSource != ChartRenderCaptureSource.GameView
+                || Event.current.type != EventType.KeyDown
+                || Event.current.keyCode != KeyCode.Escape)
             {
                 return;
             }
 
-            chartRenderSession.Cancel();
+            activeTask.Cancel();
             Event.current.Use();
         }
 

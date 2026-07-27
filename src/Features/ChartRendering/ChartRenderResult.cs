@@ -1,3 +1,5 @@
+using ADOFAI.EditorTweaks.Api.Rendering;
+
 namespace ADOFAI.EditorTweaks.Features.ChartRendering
 {
     internal sealed class ChartRenderResult
@@ -7,5 +9,9 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         public string Message = string.Empty;
 
         public string OutputPath = string.Empty;
+
+        public bool Canceled;
+
+        public ChartRenderErrorCode ErrorCode;
     }
 }

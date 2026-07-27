@@ -19,6 +19,8 @@
 | 构建 | .NET SDK/MSBuild、PowerShell | 同步游戏引用、下载依赖、部署、打包和版本校验。 |
 | 自动发行 | GitHub Actions、GitHub Release | 根据版本标签构建并发布 Release 产物。 |
 
+公共集成层使用普通 .NET 强类型 API，位于 `ADOFAI.EditorTweaks.Api.Rendering`。调用方只接触请求、任务、进度、结果和显式编号枚举，不直接依赖 Unity 对象、UMM 对象、Harmony、RenderTexture 或 FFmpeg。
+
 ## 运行时宿主
 
 项目编译为 `ADOFAI.EditorTweaks.dll`，入口由 `Info.json` 指向：
@@ -91,6 +93,8 @@ ChartRenderSession
 ├── ChartUnityAudioCapture            离线音频捕获
 └── FfmpegEncoder                     视频编码和音画合成
 ```
+
+`ChartRenderService` 位于会话之上，负责全局单任务互斥、主线程协程、公共任务状态和内置进度 UI。内置浮窗也调用相同的 `ChartRenderApi`，避免产生第二套启动与清理逻辑。
 
 ### 摄像机后端
 

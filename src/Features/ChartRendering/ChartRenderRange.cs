@@ -1,20 +1,24 @@
 using System;
 using System.Collections.Generic;
+using ADOFAI.EditorTweaks.Api.Rendering;
 using UnityEngine;
 
 namespace ADOFAI.EditorTweaks.Features.ChartRendering
 {
     internal sealed class ChartRenderRange
     {
-        private ChartRenderRange(bool isPartial, int startFloor, int endFloor, int floorCount)
+        private ChartRenderRange(bool isPartial, bool isCurrentPlayback, int startFloor, int endFloor, int floorCount)
         {
             IsPartial = isPartial;
+            IsCurrentPlayback = isCurrentPlayback;
             StartFloor = startFloor;
             EndFloor = endFloor;
             FloorCount = floorCount;
         }
 
         public bool IsPartial { get; }
+
+        public bool IsCurrentPlayback { get; }
 
         public int StartFloor { get; }
 
@@ -24,16 +28,36 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public int AutoPlaybackEndFloor => IsPartial ? EndFloor : int.MaxValue;
 
-        public string FileNameSuffix => IsPartial ? "_f" + StartFloor + "-f" + EndFloor : string.Empty;
+        public string FileNameSuffix => IsCurrentPlayback
+            ? "_current"
+            : IsPartial ? "_f" + StartFloor + "-f" + EndFloor : string.Empty;
 
-        public string DisplayText => IsPartial
+        public string DisplayText => IsCurrentPlayback
+            ? "Current playback to end"
+            : IsPartial
             ? Settings.Text("chartRenderSelectedRangeActive") + " " + StartFloor + " - " + EndFloor
             : Settings.Text("chartRenderSelectedRangeWholeLevel");
 
         public static ChartRenderRange WholeLevel()
         {
             int count = GetPlayableFloorCount();
-            return new ChartRenderRange(isPartial: false, startFloor: 0, endFloor: Math.Max(0, count - 1), floorCount: count);
+            return new ChartRenderRange(isPartial: false, isCurrentPlayback: false, startFloor: 0, endFloor: Math.Max(0, count - 1), floorCount: count);
+        }
+
+        public static ChartRenderRange CreateFromRequest(ChartRenderRangeRequest request)
+        {
+            request = request ?? ChartRenderRangeRequest.WholeLevel();
+            switch (request.Mode)
+            {
+                case ChartRenderRangeMode.CurrentEditorSelection:
+                    return CreateFromEditorSelection();
+                case ChartRenderRangeMode.ExplicitFloors:
+                    return CreateExplicit(request.StartFloor, request.EndFloor);
+                case ChartRenderRangeMode.CurrentPlaybackToEnd:
+                    return CreateCurrentPlaybackToEnd();
+                default:
+                    return WholeLevel();
+            }
         }
 
         public static ChartRenderRange CreateFromSettings(Settings settings)
@@ -43,6 +67,11 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 return WholeLevel();
             }
 
+            return CreateFromEditorSelection();
+        }
+
+        private static ChartRenderRange CreateFromEditorSelection()
+        {
             scnEditor editor = ADOBase.editor;
             if (editor == null)
             {
@@ -62,7 +91,35 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 throw new InvalidOperationException(Settings.Text("chartRendererSelectedRangeMissing"));
             }
 
-            return new ChartRenderRange(isPartial: true, startFloor, endFloor, Math.Max(0, selectedCount));
+            return new ChartRenderRange(isPartial: true, isCurrentPlayback: false, startFloor, endFloor, Math.Max(0, selectedCount));
+        }
+
+        private static ChartRenderRange CreateExplicit(int startFloor, int endFloor)
+        {
+            int floorCount = GetPlayableFloorCount();
+            if (startFloor < 0 || endFloor <= startFloor || endFloor >= floorCount)
+            {
+                throw new InvalidOperationException("The explicit floor range is outside the loaded level.");
+            }
+
+            return new ChartRenderRange(
+                isPartial: true,
+                isCurrentPlayback: false,
+                startFloor,
+                endFloor,
+                endFloor - startFloor + 1);
+        }
+
+        private static ChartRenderRange CreateCurrentPlaybackToEnd()
+        {
+            int floorCount = GetPlayableFloorCount();
+            int startFloor = Mathf.Clamp(ChartRenderPlaybackController.GetPrimaryPlayerFloor(), 0, Math.Max(0, floorCount - 1));
+            return new ChartRenderRange(
+                isPartial: false,
+                isCurrentPlayback: true,
+                startFloor,
+                Math.Max(0, floorCount - 1),
+                Math.Max(0, floorCount - startFloor));
         }
 
         public static bool TryGetEditorSelectedRange(out int startFloor, out int endFloor, out int selectedCount)
@@ -114,6 +171,13 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             int safeEnd = Mathf.Clamp(EndFloor, safeStart, floors.Count - 1);
             if (!IsPartial)
             {
+                if (IsCurrentPlayback)
+                {
+                    double currentSongPosition = ADOBase.conductor == null ? 0.0 : ADOBase.conductor.songposition_minusi;
+                    double currentPlaybackEndTime = floors[floors.Count - 1].entryTimePitchAdj;
+                    return Math.Max(1.0, currentPlaybackEndTime - currentSongPosition + Math.Max(0.0, tailSeconds));
+                }
+
                 return Math.Max(1.0, floors[floors.Count - 1].entryTimePitchAdj + Math.Max(0.0, tailSeconds));
             }
 

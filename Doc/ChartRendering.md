@@ -15,6 +15,8 @@
 | 文件 | 职责 |
 | --- | --- |
 | `ChartRenderSession.cs` | 一次渲染的主协程。负责状态机、阶段切换、结束检测、取消和总调度。 |
+| `ChartRenderService.cs` | 唯一任务宿主，管理公共 API、全局互斥、任务状态和进度快照。 |
+| `src/Api/Rendering` | 对其他 Mod 开放的请求、任务、结果、错误码和枚举。 |
 | `ChartRenderPlaybackController.cs` | 保存/恢复编辑器状态，按整首或片段起点启动官方播放路径，管理 `RDC.auto` 启用时机。 |
 | `ChartRenderFramePipeline.cs` | 管理 GPU readback pending 队列、帧 buffer pool、FFmpeg 写入反压。 |
 | `ChartRenderMemoryBudget.cs` | 按输出分辨率计算单帧大小、内存预算、GPU pending 上限和 FFmpeg 队列上限。 |
@@ -35,14 +37,17 @@
 
 ## 入口
 
-渲染由 `EditorTweaksOverlayWindow.StartChartRender()` 启动：
+所有入口统一通过公共 `ChartRenderApi` 启动：
 
 ```text
-chartRenderSession = new ChartRenderSession(Main.Mod, Main.Settings)
-StartCoroutine(chartRenderSession.Run(callback))
+ChartRenderApi.Start(request)
+    -> ChartRenderService
+    -> ChartRenderSession
 ```
 
-渲染是否可用由 `ChartRenderSession.IsPlayableLevelLoaded()` 和 `HasRenderableAudio()` 判断。
+编辑器浮窗也只负责从当前用户设置创建请求，不再直接持有 `ChartRenderSession`。公共接口和调用示例见 [Api/ChartRendering.md](Api/ChartRendering.md)。
+
+渲染是否可用由 PatchManager 状态、`ChartRenderSession.IsPlayableLevelLoaded()` 和 `HasRenderableAudio()` 共同判断。
 
 编辑器环境：
 

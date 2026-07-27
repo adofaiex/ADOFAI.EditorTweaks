@@ -65,6 +65,7 @@ UnityModManager -> ADOFAI.EditorTweaks.Main.Load
 
 公共基础：
 
+- `Api/Rendering`：稳定的公共请求、任务、进度、结果和枚举；不暴露 Unity 或编码内部类型。
 - `Patching/PatchManager.cs`：补丁分组、依赖、兼容状态和整组回滚。
 - `Settings.cs`：UMM 设置对象、设置 UI、默认值、渲染参数范围校验。
 - `Localization.cs`：JSON 本地化加载和语言选择。
@@ -106,6 +107,8 @@ ChartRenderSession.IsRendering
 - `ChartFrameCaptureFactory` 根据本次任务锁定的 `ChartRenderCaptureSource` 创建后端。
 
 两个后端共用 `ChartRenderFramePipeline`、音频捕获和编码流程。详细生命周期见 [ChartRendering.md](ChartRendering.md)。
+
+`ChartRenderService` 是唯一任务所有者和协程宿主。内置浮窗与其他 Mod 都通过 `ChartRenderApi` 创建请求；Service 把公共请求复制为内部配置，再创建 `ChartRenderSession`。公共 API 因此不依赖浮窗是否显示，也不会把调用方的单次设置写回玩家配置。接口参考见 [Api/ChartRendering.md](Api/ChartRendering.md)。
 
 ## 设置与本地化
 

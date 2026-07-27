@@ -14,6 +14,7 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
 - 编辑器内快捷设置浮窗。
 - 自定义谱面、官谱、`scnGame` 场景下的离线定帧视频渲染。
 - 摄像机纯净画面与游戏最终画面两种渲染来源。
+- 面向其他 Mod 的强类型谱面渲染任务 API。
 - 渲染时的画面、音频、输入、UI 遮罩和诊断日志。
 
 玩家操作请看 [用户手册](Resources/README.html)。开发资料放在 [Doc](Doc/README.md)，完整技术选型见 [技术栈与运行时依赖](Doc/TechnologyStack.md)。
@@ -210,6 +211,8 @@ ZIP 文件名解析由 Mod 负责：优先采用 UTF-8 标志或有效 Unicode P
 ## 离线谱面视频渲染
 
 这是当前 Mod 最大的功能。它直接从 Unity 游戏画面导出视频，不录制 Windows 桌面。默认摄像机模式只导出干净的谱面画面；兼容模式也可以导出包含游戏和编辑器 UI 的最终游戏画面。
+
+其他 Mod 可以引用 `ADOFAI.EditorTweaks.dll`，通过 `ADOFAI.EditorTweaks.Api.Rendering.ChartRenderApi` 创建独立请求、启动或附着渲染、读取进度、正常完成和取消任务。内置浮窗本身也使用同一入口。公共接口不暴露 Unity 捕获器、Harmony、Settings 或 FFmpeg 实例，详见 [Doc/Api/ChartRendering.md](Doc/Api/ChartRendering.md)。
 
 ### 支持场景
 

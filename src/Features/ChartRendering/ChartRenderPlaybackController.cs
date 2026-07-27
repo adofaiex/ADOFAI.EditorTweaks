@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using ADOFAI.EditorTweaks.Api.Rendering;
 using UnityEngine;
 
 namespace ADOFAI.EditorTweaks.Features.ChartRendering
@@ -12,6 +13,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         private readonly Settings settings;
         private RenderState? savedState;
+        private bool ownsPlayback;
 
         public ChartRenderPlaybackController(Settings settings)
         {
@@ -20,7 +22,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public bool PlaybackStartsAtBeginning { get; private set; }
 
-        public void StartPlayback(ChartRenderRange renderRange)
+        public void StartPlayback(ChartRenderRange renderRange, ChartRenderPlaybackMode playbackMode)
         {
             savedState = RenderState.Capture();
             Time.captureFramerate = Math.Max(1, settings.ChartRenderFps);
@@ -33,6 +35,18 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             }
 
             PlaybackStartsAtBeginning = false;
+            ownsPlayback = playbackMode != ChartRenderPlaybackMode.AttachToCurrentPlayback;
+            if (!ownsPlayback)
+            {
+                if (!IsPlaybackScheduled())
+                {
+                    throw new InvalidOperationException("Playback is not active.");
+                }
+
+                ChartRenderDiagnostics.Log("Attaching renderer to current playback without restarting it.");
+                return;
+            }
+
             if (ADOBase.editor != null)
             {
                 StartEditorPlayback(renderRange.StartFloor);
@@ -40,7 +54,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 return;
             }
 
-            PlaybackStartsAtBeginning = StartGameScenePlayback();
+            PlaybackStartsAtBeginning = StartGameScenePlayback(renderRange.StartFloor);
         }
 
         public void RestoreState()
@@ -53,7 +67,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             try
             {
                 scnEditor editor = ADOBase.editor;
-                if (editor != null && (editor.playMode || !editor.inStrictlyEditingMode))
+                if (ownsPlayback && editor != null && (editor.playMode || !editor.inStrictlyEditingMode))
                 {
                     editor.SwitchToEditMode();
                 }
@@ -147,7 +161,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 + " auto=" + RDC.auto + ".");
         }
 
-        private static bool StartGameScenePlayback()
+        private static bool StartGameScenePlayback(int startFloor)
         {
             scrController controller = ADOBase.controller;
             if (controller == null || !IsPlayableLevelLoaded())
@@ -161,13 +175,9 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 + " state=" + controller.state);
 
             RDC.auto = false;
-            if (IsPlaybackScheduled())
-            {
-                ChartRenderDiagnostics.Log("Game scene playback is already scheduled; capturing current timeline.");
-                return false;
-            }
-
-            GCS.checkpointNum = 0;
+            List<scrFloor>? floors = ADOBase.lm == null ? null : ADOBase.lm.listFloors;
+            int lastFloor = floors == null ? 0 : Math.Max(0, floors.Count - 1);
+            GCS.checkpointNum = Mathf.Clamp(startFloor, 0, lastFloor);
             AbortWaitingForStartCoroutine(controller);
             HidePressToStart();
             scrUIController.instance?.txtCountdown?.GetComponent<scrCountdown>()?.ShowGetReady();
@@ -183,7 +193,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 gameLevel.FinishCustomLevelLoading(checkpoint);
             }
 
-            return true;
+            return checkpoint <= 0;
         }
 
         private static void AbortWaitingForStartCoroutine(scrController controller)

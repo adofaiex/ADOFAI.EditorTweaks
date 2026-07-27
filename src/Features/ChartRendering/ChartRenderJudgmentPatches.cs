@@ -7,7 +7,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
     {
         private static bool Prefix()
         {
-            return !ChartRenderSession.IsRendering || Main.Settings.ChartRenderShowHitJudgments;
+            return !ChartRenderSession.IsRendering || ChartRenderService.ShowHitJudgments;
         }
     }
 }

@@ -1,4 +1,6 @@
 using System.IO;
+using System.Threading;
+using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.EditorOverlay;
 using ADOFAI.EditorTweaks.Patching;
 using UnityModManagerNet;
@@ -11,8 +13,11 @@ namespace ADOFAI.EditorTweaks
 
         public static Settings Settings { get; private set; } = null!;
 
+        internal static int UnityThreadId { get; private set; }
+
         public static bool Load(UnityModManager.ModEntry modEntry)
         {
+            UnityThreadId = Thread.CurrentThread.ManagedThreadId;
             Mod = modEntry;
             Localization.Load(modEntry);
             Settings = Settings.Load(modEntry);
@@ -39,6 +44,15 @@ namespace ADOFAI.EditorTweaks
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks enabled.");
                 PatchManager.ApplyAll(modEntry.Info.Id);
+                if (PatchManager.IsAvailable(PatchFeature.ChartRendering))
+                {
+                    ChartRenderService.Ensure();
+                }
+                else
+                {
+                    ChartRenderService.Destroy();
+                }
+
                 if (PatchManager.IsAvailable(PatchFeature.EditorOverlayInputGuard))
                 {
                     EditorTweaksOverlayWindow.Ensure();
@@ -52,6 +66,7 @@ namespace ADOFAI.EditorTweaks
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks disabled.");
                 EditorTweaksOverlayWindow.Destroy();
+                ChartRenderService.Destroy();
                 PatchManager.UnpatchAll();
             }
 
