@@ -2,7 +2,7 @@
 
 ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModManager Mod。它的定位不是做大型功能包，而是把编辑器里长期影响工作流的细节补齐，并提供一个可以直接导出谱面视频的离线渲染器。
 
-当前版本：`1.3.1`。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：`1.3.2`。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 当前版本主要包含：
 
@@ -10,11 +10,13 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
 - Camera / CameraAspect 装饰拖动、轴心显示和移动吸附修复。
 - 从中途播放时的视频背景同步修复。
 - 官方编辑器偏好设置即时保存。
+- 常见谱面压缩包读取、旧 ZIP 多语言文件名识别和兼容原版的 ADOZIP 导出。
 - 编辑器内快捷设置浮窗。
 - 自定义谱面、官谱、`scnGame` 场景下的离线定帧视频渲染。
+- 摄像机纯净画面与游戏最终画面两种渲染来源。
 - 渲染时的画面、音频、输入、UI 遮罩和诊断日志。
 
-更细的模块文档放在 [Doc](Doc/README.md)。根 README 负责说明项目整体架构、功能入口、Patch 总表和渲染核心原理。
+玩家操作请看 [用户手册](Resources/README.html)。开发资料放在 [Doc](Doc/README.md)，完整技术选型见 [技术栈与运行时依赖](Doc/TechnologyStack.md)。
 
 ## 项目结构
 
@@ -29,6 +31,7 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
 ├── README.md
 ├── Doc/
 │   ├── Architecture.md
+│   ├── TechnologyStack.md
 │   ├── BuildAndRelease.md
 │   ├── PatchInventory.md
 │   ├── ChartRendering.md
@@ -39,6 +42,7 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
 │   ├── SettingsAndLocalization.md
 │   └── VideoBackgroundSync.md
 ├── Resources/
+│   ├── README.html
 │   └── localization.json
 ├── scripts/
 │   ├── BumpModVersion.ps1
@@ -46,10 +50,13 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
 │   └── PackageMod.ps1
 └── src/
     ├── Main.cs
+    ├── Patching/
     ├── Settings.cs
     ├── Localization.cs
     └── Features/
+        ├── ArchiveIo/
         ├── ChartRendering/
+        ├── CloudSettings/
         ├── DecorationSelection/
         ├── EditorOverlay/
         ├── EditorPreferences/
@@ -69,13 +76,14 @@ UnityModManager 加载 `ADOFAI.EditorTweaks.Main.Load`。
 
 启用 Mod 时：
 
-- `Harmony.PatchAll(Assembly.GetExecutingAssembly())` 应用所有 Patch。
-- `EditorTweaksOverlayWindow.Ensure()` 创建一个 `DontDestroyOnLoad` 的 IMGUI 浮窗宿主。
+- `PatchManager.ApplyAll(modEntry.Info.Id)` 按功能组独立应用 Patch。
+- 任一组失败时只回滚该组，其他功能继续启用。
+- 只有输入保护组可用时，`EditorTweaksOverlayWindow.Ensure()` 才创建浮窗宿主。
 
 禁用 Mod 时：
 
-- `Harmony.UnpatchAll(modEntry.Info.Id)` 移除本 Mod 的 Patch。
 - `EditorTweaksOverlayWindow.Destroy()` 销毁浮窗宿主并清理鼠标捕获状态。
+- `PatchManager.UnpatchAll()` 清理所有分组 Harmony ID。
 
 ## 功能总览
 
@@ -189,6 +197,16 @@ songposition_minusi - countdownOffset + vidOffset
 
 详见 [Doc/EditorOverlay.md](Doc/EditorOverlay.md)。
 
+### 压缩包处理
+
+`ArchiveIo` 功能组接管游戏的 `ZipUtils.Unzip` 和 `ZipUtils.Zip`。读取侧使用 SharpSevenZip 2.0.109 和随 Mod 分发的 x64 `7z.dll`，支持 ZIP、ADOZIP、RAR、7z、TAR、GZip、BZip2、XZ、CAB 及常见压缩 TAR。
+
+ZIP 文件名解析由 Mod 负责：优先采用 UTF-8 标志或有效 Unicode Path Extra Field；旧包可以自动识别或手动指定 CP949、GB18030、Shift-JIS、CP437。自动模式以整个压缩包为单位，结合严格字节往返、路径合法性、谱面资源引用和文字分布评分。
+
+解压继续限制 10,000 条目和 2,000 MiB 总量，并拒绝路径穿越、绝对路径、重复目标和覆盖已有文件。编辑器导出仍创建标准 ZIP 格式的 `.adozip`，保留资源相对目录和 Unicode 文件名，确保未安装 Mod 的原版游戏仍能读取。
+
+补丁初始化会验证托管依赖与 x64 `7z.dll`。失败时只回滚 Archive I/O 组并保留游戏原有压缩方法。实现与依赖说明见 [Doc/TechnologyStack.md](Doc/TechnologyStack.md)，补丁入口见 [Doc/PatchInventory.md](Doc/PatchInventory.md)。
+
 ## 离线谱面视频渲染
 
 这是当前 Mod 最大的功能。它直接从 Unity 游戏画面导出视频，不录制 Windows 桌面。默认摄像机模式只导出干净的谱面画面；兼容模式也可以导出包含游戏和编辑器 UI 的最终游戏画面。
@@ -229,6 +247,8 @@ songposition_minusi - countdownOffset + vidOffset
 - **游戏画面渲染（兼容模式）**：在 `WaitForEndOfFrame` 后捕获 Unity 最终游戏画面，包含额外摄像机、编辑器 UI、游戏 UI 和屏幕空间 Canvas，适合摄像机模式遗漏效果的特殊谱面。
 
 游戏画面模式直接使用开始渲染时的 `Screen.width × Screen.height` 作为成品分辨率，不读取摄像机模式的输出宽高设置。渲染期间必须保持窗口尺寸不变，否则任务会安全失败并恢复播放状态。
+
+这是因为该模式读取的是已经按当前 backbuffer 分辨率完成合成的最终帧；把 1080p 最终帧写入 4K 纹理只能得到插值放大，不能增加几何、UI 或后处理的真实采样。需要原生高分辨率时使用摄像机模式，或先把游戏实际分辨率设到目标大小。两条管线的完整技术栈和分辨率限制见 [Doc/ChartRendering.md](Doc/ChartRendering.md#画面捕获)。
 
 为避免把 Mod UI 录入成品，游戏画面模式运行时会隐藏 EditorTweaks 浮窗和进度遮罩；按 `Esc` 可以取消。渲染预览设置只影响摄像机模式。
 
@@ -396,12 +416,15 @@ FFmpeg 写入队列也按内存预算计算，不再固定缓存大量帧。队�
 | EditorOverlay | `scrPlayer.CountValidKeysPressed` | Prefix | 渲染时按键数为 0 |
 | EditorOverlay | `StandaloneInputModule.Process` | Prefix | 阻止 Unity UI 背景点击 |
 | ChartRendering | `scrConductor.set_songposition_minusi` | Prefix | 强制离线视觉时钟 |
-| ChartRendering | `scrConductor.get_calibration_i` | Prefix | 渲染时去掉输入偏移 |
+| ChartRendering | `scrConductor.get_songposition_minusi` | Postfix | 读取时返回离线视觉时间 |
 | ChartRendering | `scrConductor.Update` | Postfix | 自动补打到当前帧 |
 | ChartRendering | `scrPlayer.Hit` | Prefix | 片段渲染时阻止命中选区终点之后的砖块 |
 | ChartRendering | `AsyncInputUtils.AdjustAngle(scrPlayer, ulong)` | Prefix | 防止异步输入角度修正造成跳动 |
 | ChartRendering | `scrSfx.PlaySfx(AudioClip, MixerGroup, float, float, float)` | Prefix | 屏蔽界面音进入渲染音频 |
 | ChartRendering | `scrHitTextManager.ShowHitText` | Prefix | 控制导出时是否显示判定文字 |
+| ChartRendering | `scrCamera.UpdateCustomFrameRateScreen` | Prefix | 保留谱面限制帧率效果 |
+| ArchiveIo | `ZipUtils.Unzip` | Prefix | 接管常见压缩包解压和旧 ZIP 文件名识别 |
+| ArchiveIo | `ZipUtils.Zip` | Prefix | 导出保留资源目录的标准 ZIP/ADOZIP |
 
 ## 设置
 
@@ -410,6 +433,7 @@ UMM 设置面板分成基础设置和高级设置。修改后会保存，渲染�
 基础渲染设置：
 
 - 导出目录。
+- 画面捕获方式：摄像机渲染或游戏画面渲染。
 - 分辨率快捷预设：1080p、2K、4K。
 - 视频宽度。
 - 视频高度。
@@ -420,6 +444,8 @@ UMM 设置面板分成基础设置和高级设置。修改后会保存，渲染�
 - 是否仅渲染编辑器当前选中段落。
 - 一键恢复渲染默认。
 
+分辨率预设和宽高只用于摄像机模式。游戏画面模式直接使用任务开始时的游戏分辨率。
+
 高级渲染设置默认隐藏：
 
 - 工作区目录。
@@ -427,6 +453,7 @@ UMM 设置面板分成基础设置和高级设置。修改后会保存，渲染�
 - 视频码率。默认自动推荐：1080p60 约 20 Mbps、2K60 约 35 Mbps、4K60 约 60 Mbps。
 - 编码档位。
 - 实验性回读格式。
+- 音频格式和视频容器。
 - 渲染预览模式。
 - 音频同步偏移，正数让音频提前，负数让音频延后。
 
@@ -466,7 +493,7 @@ dotnet build
 - 验证 `GameExePath`。
 - 如果 `tools/ffmpeg.exe` 不存在，则运行 `scripts/EnsureFfmpeg.ps1` 下载 FFmpeg。
 - 清空并重建 `out/`。
-- 复制 DLL、`Info.json`、`Resources`、`Tools` 到 `out/`。
+- 复制 DLL、托管依赖、`Info.json`、`Resources`、`Tools`、`ThirdParty` 和许可证到 `out/`。
 - 生成 `Build/<ModId>-<Version>/`。
 - 生成 `Build/<ModId>-<Version>.zip`。
 - 部署到游戏目录 `Mods/ADOFAI.EditorTweaks/`。
@@ -509,7 +536,8 @@ dotnet build
 - 装饰吸附值为 `0` 时关闭吸附。
 - 从中途播放带视频背景的谱面，视频背景不明显延迟。
 - 自定义谱面、官谱、`scnGame` 场景都能开始渲染。
-- 渲染成品不包含编辑器 UI、UMM UI、进度窗或菜单音效。
+- 摄像机模式成品不包含编辑器 UI、UMM UI、进度窗或菜单音效。
+- 游戏画面模式包含最终游戏和编辑器 UI，但不包含 EditorTweaks 浮窗；输出跟随游戏分辨率且方向正确。
 - 成品分辨率、帧率、尾巴秒数符合设置。
 - 音频和画面对齐，结尾不被切掉。
 - `render.log` 里没有 `PLAYER_FAILED`、异常 `FLOOR_JUMP` 或 FFmpeg 错误。

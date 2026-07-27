@@ -23,6 +23,33 @@ dotnet build ADOFAI.EditorTweaks.csproj -c Release /p:CreateModPackage=true /p:B
 
 第一次在安装了游戏的机器上构建时会自动生成并同步 `lib/`。这些 DLL 是编译引用，不会被复制进最终 Mod 包。正式发行时不要使用会自动递增版本号的 `build-release.bat`，除非你确实要在本地修改 `Info.json`。发布版本应先提交正确的 `Info.json` 和 `CHANGELOG.md`，再创建同名 Git 标签。
 
+### 最终包结构检查
+
+发行前至少确认以下文件进入 `out/`、Build 目录和最终 ZIP：
+
+```text
+ADOFAI.EditorTweaks.dll
+Info.json
+SharpSevenZip.dll
+Resources/
+├── README.html
+├── FFmpegReference.html
+└── localization.json
+Tools/
+├── ffmpeg.exe
+├── FFmpeg-BUILD.txt
+├── FFmpeg-SOURCE.txt
+└── FFmpeg-NOTICE.txt
+ThirdParty/
+├── 7-Zip/
+│   ├── License.txt
+│   └── x64/7z.dll
+├── FFmpeg/GPL-3.0.txt
+└── SharpSevenZip/LICENSE.txt
+```
+
+`lib/`、源代码、工作区、渲染临时文件和历史 Build 目录不得混入发布包。`SharpSevenZip.dll` 必须位于 Mod 根目录；`7z.dll` 必须保持在 `ThirdParty/7-Zip/x64/`，运行时按该相对位置加载。
+
 ## GitHub Actions 自动构建
 
 工作流文件是 `.github/workflows/release.yml`。它支持两种入口：
@@ -34,11 +61,11 @@ dotnet build ADOFAI.EditorTweaks.csproj -c Release /p:CreateModPackage=true /p:B
 
 ### 发布新版本
 
-例如当前代码已经准备好 `1.3.1`：
+例如当前代码已经准备好 `1.3.2`：
 
 ```powershell
-git tag -a 1.3.1 -m "发布 1.3.1"
-git push origin 1.3.1
+git tag -a 1.3.2 -m "发布 1.3.2"
+git push origin 1.3.2
 ```
 
 推送标签后，Actions 会自动：

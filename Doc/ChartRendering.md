@@ -1,9 +1,11 @@
 # ChartRendering 模块
 
-`src/Features/ChartRendering` 是谱面视频渲染器。它负责把当前游戏内关卡离线导出为 MP4，核心目标是：
+`src/Features/ChartRendering` 是谱面视频渲染器。它负责把当前游戏内关卡离线导出为视频，核心目标是：
 
 - 不录桌面。
-- 不录编辑器 UI 或 UMM UI。
+- 默认摄像机模式输出不带屏幕空间 UI 的纯净谱面画面。
+- 兼容模式输出 Unity 最终游戏画面，包括额外摄像机、游戏 UI 和编辑器 UI。
+- 两种模式都不会把 EditorTweaks 自己的浮窗或进度窗口录入成品。
 - 支持编辑器自定义谱面、`scnGame` 自定义关卡、官谱和旧官谱场景。
 - 成品帧率由设置决定，机器慢只影响等待时间，不影响视频时间轴。
 - 音频直接来自 Unity mixer 离线渲染，尽量贴近游戏实际播放结果。
@@ -23,7 +25,7 @@
 | `ChartGameViewFrameCapture.cs` | 在帧末按当前游戏分辨率捕获最终游戏画面并异步读回。 |
 | `ChartUnityAudioCapture.cs` | 使用 Unity `AudioRenderer` 离线捕获音频并写成 float32 WAV。 |
 | `FfmpegEncoder.cs` | FFmpeg rawvideo pipe、GPU/CPU 编码选择、视频完成、音频 mux。 |
-| `ChartRenderVisualClock.cs` | 强制视觉时间轴，Patch conductor 的 `songposition_minusi` 和 `calibration_i`。 |
+| `ChartRenderVisualClock.cs` | 强制视觉时间轴，Patch conductor 的 `songposition_minusi` 读写。 |
 | `ChartRenderAutoPlayer.cs` | 渲染期间自动补打砖块，并 suppress 异步输入角度修正。 |
 | `ChartRenderAudioPatches.cs` | 屏蔽界面音效进入成品音频。 |
 | `ChartRenderJudgmentPatches.cs` | 根据设置隐藏或显示判定文字。 |
@@ -242,7 +244,61 @@ Patch 点：
 
 ## 画面捕获
 
-渲染会话创建时会锁定 `ChartRenderCaptureSource`，渲染途中修改设置只影响下一次任务。两个后端都实现 `IChartFrameCapture`，并输出相同尺寸和像素格式的 `ChartPendingFrame`，因此共用 GPU readback 队列、重复帧逻辑和 FFmpeg 管线。
+渲染会话创建时会锁定 `ChartRenderCaptureSource`，渲染途中修改设置只影响下一次任务。当前有两条画面管线：
+
+| 对比项 | 摄像机渲染 | 游戏画面渲染 |
+| --- | --- | --- |
+| 实现类 | `ChartCameraFrameCapture` | `ChartGameViewFrameCapture` |
+| Unity 画面来源 | `Bgcamstatic`、`BGcam`、`camobj` 三台官方摄像机 | 帧末已经合成完成的最终游戏画面 |
+| 捕获 API | `Camera.targetTexture` | `ScreenCapture.CaptureScreenshotIntoRenderTexture` |
+| RenderTexture | 用户设置的宽高、24-bit depth、`ARGB32` | `Screen.width × Screen.height`、无 depth、`ARGB32` |
+| 是否包含 Screen Space UI | 否 | 是 |
+| 是否包含额外摄像机 | 只包含接入的官方三摄像机链 | 包含最终屏幕上实际可见的摄像机结果 |
+| 是否包含编辑器/游戏 UI | 否 | 是 |
+| 是否支持独立输出分辨率 | 是 | 否，输出跟随当前游戏分辨率 |
+| 预览模式 | 支持 Overlaycam + quad 预览 | 不启用，避免画面递归 |
+| 原始帧方向 | 需要一次 `vflip` | 不需要 `vflip` |
+| 主要用途 | 普通谱面、干净画面、2K/4K/自定义尺寸 | 特殊摄像机、屏幕空间 UI、最终屏幕效果兼容 |
+
+### 两条管线共用的技术栈
+
+两种模式只替换“从哪里取得一帧画面”，时间轴、音频和编码部分保持一致：
+
+```text
+ChartRenderSession 主线程协程
+    -> Time.captureFramerate 固定输出时间步长
+    -> ChartRenderVisualClock 固定当前谱面视觉时间
+    -> ChartRenderAutoPlayer 补打当前帧应命中的砖块
+    -> WaitForEndOfFrame 等待本帧所有正常渲染完成
+    -> AudioRenderer.Render() 捕获本帧最终混音
+    -> IChartFrameCapture.RequestFrame()
+    -> AsyncGPUReadback.Request()
+    -> ChartPendingFrame
+    -> ChartRenderFramePipeline 排序、复用 buffer、处理反压
+    -> FfmpegEncoder stdin raw RGBA/BGRA
+    -> H.264 临时视频
+
+AudioRenderer 捕获结果
+    -> float32 WAV
+
+临时 H.264 视频 + float32 WAV
+    -> FFmpeg 合成为最终文件
+```
+
+共同使用的主要技术：
+
+- Unity 协程和 `WaitForEndOfFrame`：保证捕获发生在正确的帧阶段。
+- `Time.captureFramerate`：把游戏逻辑推进固定到用户选择的输出 FPS。
+- Harmony Patch：固定 conductor 视觉时间、自动打击、保护片段终点并排除界面音。
+- `RenderTextureFormat.ARGB32`：两个后端统一使用 8-bit 四通道画面目标。
+- `AsyncGPUReadback`：避免使用同步 `ReadPixels` 阻塞 GPU/CPU。
+- `TextureFormat.RGBA32` 或实验性 `BGRA32`：作为 FFmpeg rawvideo 输入格式。
+- `ChartRenderMemoryBudget`：根据实际输出宽高限制 GPU pending 数和编码队列容量。
+- 数组池与有界队列：复用单帧大数组，并在编码跟不上时对渲染协程施加反压。
+- Unity `AudioRenderer`：按相同固定帧时钟捕获游戏最终混音。
+- FFmpeg：接收 rawvideo、编码 H.264，并与 WAV 合成为 MP4、MKV 或 MOV。
+
+`IChartFrameCapture` 只暴露当前后端真实的 `Width`、`Height`、`PixelFormatName`、`RequiresVerticalFlip` 和 `RequestFrame()`。`ChartRenderSession` 必须在后端创建完成后，使用这些真实尺寸创建内存预算与 FFmpeg，而不是继续使用设置中的摄像机宽高。这样游戏画面模式才能完整遵守当前窗口尺寸。
 
 ### 摄像机渲染
 
@@ -261,13 +317,22 @@ Patch 点：
 - `oldQuadActive`
 - `oldQuadTexture`
 
-然后把三台相机都指向同一个 `RenderTexture(width, height, 24, ARGB32)`。
+然后把三台相机都指向同一个 `RenderTexture(width, height, 24, ARGB32)`。这里的 `width` 和 `height` 来自 `ChartRenderWidth`、`ChartRenderHeight`，并不依赖 `Screen.width` 和 `Screen.height`。
 
 为什么使用官方相机链：
 
 - 官谱和旧官谱场景的摄像机层级不一定和自定义谱一致。
 - 背景、滤镜、视频背景、overlay quad 都由官方 `scrCamera` 管。
 - 自建相机容易漏掉后处理或 depth 顺序。
+
+为什么摄像机模式能够超出游戏窗口分辨率：
+
+- `Camera.targetTexture` 让三台摄像机直接重新光栅化到指定大小的离屏纹理。
+- 例如游戏窗口是 `1280×720`，捕获纹理仍可以创建为 `3840×2160`。
+- 摄像机投影、装饰、背景和支持该相机链的后处理会按 4K 目标重新采样，因此这是真正按更高像素数渲染，不是把 720p 图片放大。
+- 代价是显存、GPU 回读、内存和 rawvideo 带宽都按像素数增加；4K 单帧 RGBA 约 31.6 MiB。
+
+该能力只覆盖被三台摄像机绘制到目标纹理的内容。Screen Space Overlay UI、未接入这条相机链的额外摄像机，以及只在最终屏幕合成阶段出现的效果不会自动进入捕获纹理。
 
 读回默认：
 
@@ -278,6 +343,14 @@ AsyncGPUReadback.Request(captureTarget, 0, TextureFormat.RGBA32)
 高级设置可以切到实验性的 `TextureFormat.BGRA32`。如果当前 Unity runtime 不支持 BGRA，会记录日志并回退 RGBA。
 
 完成后 `request.GetData<byte>()` copy 到复用的 byte[]，交给 `ChartRenderFramePipeline` 再写入 FFmpeg writer。
+
+摄像机 RenderTexture 的回读原点与 FFmpeg 期待的行顺序相反，所以 `RequiresVerticalFlip = true`。编码过滤链使用：
+
+```text
+vflip,pad=ceil(iw/2)*2:ceil(ih/2)*2
+```
+
+`vflip` 只执行一次，`pad` 只在宽高为奇数时补齐 H.264/yuv420p 需要的偶数尺寸。
 
 ### 游戏画面渲染
 
@@ -296,6 +369,40 @@ ScreenCapture.CaptureScreenshotIntoRenderTexture(captureTarget)
 渲染期间如果 `Screen.width` 或 `Screen.height` 改变，会立即终止本次任务并走既有清理和播放状态恢复流程，不会在存在 pending GPU readback 时重建纹理。`render.log` 会记录捕获模式、游戏分辨率、回读格式、垂直翻转策略和屏幕捕获异常。
 
 摄像机 RenderTexture 的原始回读需要 FFmpeg `vflip`；`ScreenCapture` 的回读方向已经与视频输入一致，因此游戏画面模式不应用 `vflip`。两个后端通过 `IChartFrameCapture.RequiresVerticalFlip` 分别声明方向，避免重复翻转。
+
+### 为什么游戏画面模式不能超分辨率渲染
+
+这里的“不能”指不能像摄像机模式一样，在保持当前游戏窗口为 1080p 的同时获得包含所有最终 UI 和屏幕效果的原生 4K 帧。
+
+游戏画面模式捕获的是 Unity 已经提交到当前游戏画面的最终结果。到 `WaitForEndOfFrame` 时：
+
+1. 所有摄像机已经按当前游戏分辨率完成光栅化。
+2. Screen Space Overlay、编辑器 UI、IMGUI 和最终屏幕效果已经按当前屏幕像素布局完成合成。
+3. `ScreenCapture` 取得的是这张已经完成的最终帧，而不是一份可以指定任意分辨率重新渲染的场景描述。
+
+因此，假设当前游戏分辨率是 `1920×1080`：
+
+- 创建一个 `3840×2160` RenderTexture 再把最终画面写进去，只会放大已有的 1080p 像素。
+- 使用 `Graphics.Blit`、FFmpeg scale 或其他插值，同样只是双线性/双三次放大，不会恢复缺失的几何采样、文字边缘和后处理细节。
+- 输出文件虽然可以标记为 4K，但不属于原生 4K 渲染；文档和 UI 不应把这种放大称为“超分辨率渲染”。
+
+要真正让“最终游戏画面”按 4K 生成，必须让 Unity 的整个展示链本身运行在 4K，包括所有摄像机、各类 Canvas、IMGUI、后处理和最终 backbuffer。简单地把官方三台摄像机改到 4K RenderTexture 无法覆盖 Screen Space Overlay 与其他额外摄像机；逐个接管所有摄像机和 UI Canvas 又会失去兼容模式“所见即所得”的意义，并且很容易漏掉特殊谱面的自定义合成。
+
+项目也不在任务开始后临时调用 `Screen.SetResolution`，原因是：
+
+- 会改变玩家窗口或全屏模式，可能受显示器最大分辨率、Windows 缩放和显卡设置限制。
+- 分辨率变化会让 UI 重新布局，捕获内容不再等同于用户开始渲染前看到的画面。
+- 已提交的 `AsyncGPUReadbackRequest` 仍引用旧纹理；运行中重建会增加资源生命周期和驱动错误风险。
+- 无边框全屏、独占全屏和窗口模式对超出桌面的尺寸行为不一致，无法保证所有用户得到相同结果。
+
+当前策略因此是：
+
+- 游戏画面模式：忠实输出当前 `Screen.width × Screen.height`，不进行伪超分辨率放大。
+- 摄像机模式：需要 2K、4K 或自定义高分辨率时使用，得到真正重新渲染的摄像机画面。
+- 如果必须得到包含 UI 的原生 4K 游戏画面，应先在游戏或显卡驱动中把实际游戏分辨率设置为 4K，再开始游戏画面渲染。
+- 后期 AI 放大可以作为外部处理步骤，但它不属于本渲染器的原生画面管线。
+
+这也是渲染期间禁止改变窗口尺寸的原因。`ChartGameViewFrameCapture` 在每次 `RequestFrame()` 前比较当前 `Screen.width/height` 与构造时记录的值；变化后立即抛出明确错误，让会话进入统一清理路径，而不是生成前后分辨率不同或引用已释放纹理的视频。
 
 ## 内存预算与队列
 
