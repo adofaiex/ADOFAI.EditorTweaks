@@ -376,14 +376,54 @@
       "zh": "BGRA"
     },
     {
+      "key": "chartRenderCaptureSource",
+      "en": "Capture source",
+      "zh": "画面捕获方式"
+    },
+    {
+      "key": "chartRenderCaptureSourceHint",
+      "en": "Camera is the clean, high-resolution default. Game View captures the final image including UI and extra cameras, and outputs at the current game resolution. It hides the EditorTweaks overlay; press Esc to cancel.",
+      "zh": "摄像机是干净且支持独立高分辨率的默认模式。游戏画面模式会捕获包含 UI 和额外摄像机的最终画面，并按当前游戏分辨率输出；它会隐藏 EditorTweaks 浮窗，按 Esc 可取消。"
+    },
+    {
+      "key": "chartRenderCaptureSourceCamera",
+      "en": "Camera rendering (recommended)",
+      "zh": "摄像机渲染（推荐）"
+    },
+    {
+      "key": "chartRenderCaptureSourceGameView",
+      "en": "Game View rendering (compatibility)",
+      "zh": "游戏画面渲染（兼容模式）"
+    },
+    {
+      "key": "chartRenderCaptureSourceCameraShort",
+      "en": "Camera",
+      "zh": "摄像机"
+    },
+    {
+      "key": "chartRenderCaptureSourceGameViewShort",
+      "en": "Game View",
+      "zh": "游戏画面"
+    },
+    {
+      "key": "chartRenderGameViewResolution",
+      "en": "Game resolution",
+      "zh": "游戏分辨率"
+    },
+    {
+      "key": "chartRenderGameViewResolutionHint",
+      "en": "Game View mode uses this resolution directly. Keep the game window size unchanged until rendering finishes.",
+      "zh": "游戏画面模式会直接使用此分辨率输出；渲染结束前请保持游戏窗口尺寸不变。"
+    },
+    {
       "key": "chartRenderPreviewMode",
       "en": "Render preview",
       "zh": "渲染预览"
     },
     {
       "key": "chartRenderPreviewModeHint",
-      "en": "Full shows the chart while rendering. Minimal hides the preview and only keeps the progress overlay.",
-      "zh": "完整预览会显示谱面画面；极简模式会隐藏预览，只保留进度遮罩。"
+      "en": "Camera mode only. Full shows the chart while rendering. Minimal hides the camera preview and only keeps the progress overlay. Game View mode always shows the live game image.",
+      "zh": "仅用于摄像机模式。完整预览会显示谱面画面；极简模式会隐藏摄像机预览，只保留进度遮罩。游戏画面模式始终显示实时游戏画面。"
     },
     {
       "key": "chartRenderPreviewFull",
@@ -614,6 +654,16 @@
       "key": "chartRendererIncompatible",
       "en": "Chart rendering is unavailable for the current game version. Check the mod settings and log.",
       "zh": "谱面渲染与当前游戏版本不兼容，请查看 Mod 设置页和日志。"
+    },
+    {
+      "key": "chartRendererInvalidGameViewSize",
+      "en": "The current game view size is invalid. Restore the game window and try again.",
+      "zh": "当前游戏画面尺寸无效，请恢复游戏窗口后重试。"
+    },
+    {
+      "key": "chartRendererGameViewSizeChanged",
+      "en": "The game window size changed during rendering. Keep the window size unchanged and try again.",
+      "zh": "渲染期间游戏窗口尺寸发生变化，请保持窗口尺寸不变后重试。"
     },
     {
       "key": "chartRendererSelectedRangeMissing",

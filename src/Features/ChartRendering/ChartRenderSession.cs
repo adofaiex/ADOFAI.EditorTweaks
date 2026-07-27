@@ -18,6 +18,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         private readonly Settings settings;
         private readonly ChartRenderProgressModel progress = new ChartRenderProgressModel();
         private readonly ChartRenderPlaybackController playbackController;
+        private readonly string captureSource;
 
         private bool cancelRequested;
         private double renderDurationSeconds = 1.0;
@@ -33,6 +34,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         {
             this.modEntry = modEntry;
             this.settings = settings;
+            captureSource = ChartRenderOptionValues.NormalizeCaptureSource(settings.ChartRenderCaptureSource);
             playbackController = new ChartRenderPlaybackController(settings);
         }
 
@@ -70,6 +72,8 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public string QueueBudgetText { get; private set; } = string.Empty;
 
+        public bool CapturesGameView => captureSource == ChartRenderOptionValues.CaptureSourceGameView;
+
         public void Cancel()
         {
             cancelRequested = true;
@@ -87,7 +91,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             MemoryBudgetText = string.Empty;
             QueueBudgetText = string.Empty;
 
-            ChartFrameCapture? frameCapture = null;
+            IChartFrameCapture? frameCapture = null;
             FfmpegEncoder? encoder = null;
             ChartRenderFramePipeline? framePipeline = null;
             ChartRenderResult result = new ChartRenderResult();
@@ -198,14 +202,15 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             int completionTailFrames = Mathf.Max(0, Mathf.CeilToInt((float)(completionTailSeconds * fps)));
             if (!Try(() =>
             {
-                ChartRenderMemoryBudget budget = ChartRenderMemoryBudget.Create(settings.ChartRenderWidth, settings.ChartRenderHeight);
+                bool showPreview = captureSource == ChartRenderOptionValues.CaptureSourceCamera
+                    && ChartRenderOptionValues.NormalizePreviewMode(settings.ChartRenderPreviewMode) != ChartRenderOptionValues.PreviewMinimal;
+                frameCapture = ChartFrameCaptureFactory.Create(settings, captureSource, showPreview);
+                ChartRenderMemoryBudget budget = ChartRenderMemoryBudget.Create(frameCapture.Width, frameCapture.Height);
                 MemoryBudgetText = budget.DisplaySummary;
                 QueueBudgetText = budget.QueueSummary;
-                bool showPreview = ChartRenderOptionValues.NormalizePreviewMode(settings.ChartRenderPreviewMode) != ChartRenderOptionValues.PreviewMinimal;
                 renderDurationSeconds = CalculateTotalDuration();
                 int totalFrames = Math.Max(1, Mathf.CeilToInt((float)(renderDurationSeconds * fps)));
                 progress.SetTotalFrames(totalFrames);
-                frameCapture = new ChartFrameCapture(settings.ChartRenderWidth, settings.ChartRenderHeight, settings.ChartRenderCaptureFormat, showPreview);
                 audioCapture = new ChartUnityAudioCapture(capturedAudioPath);
                 audioCapture.Begin();
                 framePipeline = new ChartRenderFramePipeline(budget);
@@ -213,14 +218,15 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                     ChartRenderPaths.GetFfmpegPath(),
                     tempVideoPath,
                     outputPath,
-                    settings.ChartRenderWidth,
-                    settings.ChartRenderHeight,
+                    frameCapture.Width,
+                    frameCapture.Height,
                     settings.ChartRenderFps,
                     settings.ChartRenderCrf,
                     settings.ChartRenderBitrateMbps,
                     settings.ChartRenderEncoderMode,
                     settings.ChartRenderPreset,
                     frameCapture.PixelFormatName,
+                    frameCapture.RequiresVerticalFlip,
                     budget.MaxEncoderQueueFrames,
                     settings.ChartRenderAudioSyncOffsetMs,
                     settings.ChartRenderAudioFormat,
@@ -499,6 +505,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 capturedAudioPath = Path.Combine(tempDirectory, "audio.wav");
                 ChartRenderDiagnostics.Begin(Path.Combine(tempDirectory, "render.log"));
                 renderRange = ChartRenderRange.CreateFromSettings(settings);
+                WriteLog("Capture source locked for this render: " + captureSource + ".");
 
                 string levelName = GetLevelName();
                 string fileName = ChartRenderPaths.MakeSafeFileName(levelName)
@@ -770,7 +777,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 : ADOBase.conductor.song.pitch;
         }
 
-        private void Cleanup(ChartFrameCapture? frameCapture, FfmpegEncoder? encoder, bool restoreEditor, bool deleteTemp)
+        private void Cleanup(IChartFrameCapture? frameCapture, FfmpegEncoder? encoder, bool restoreEditor, bool deleteTemp)
         {
             DisableRenderAutoPlayback(resetEndFloor: true);
             frameCapture?.Dispose();

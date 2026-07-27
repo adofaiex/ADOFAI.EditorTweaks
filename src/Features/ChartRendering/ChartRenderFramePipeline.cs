@@ -35,7 +35,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             DuplicateFrames = 0;
         }
 
-        public void RequestFrame(ChartFrameCapture frameCapture, int index)
+        public void RequestFrame(IChartFrameCapture frameCapture, int index)
         {
             pendingFrames.Enqueue(QueuedFrameOutput.Capture(frameCapture.RequestFrame(index)));
             pendingGpuFrames++;
@@ -93,7 +93,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             pendingGpuFrames = 0;
         }
 
-        private void WriteCapturedFrame(ChartFrameCapture.PendingFrame pending, FfmpegEncoder encoder, Func<bool> isCancelRequested)
+        private void WriteCapturedFrame(ChartPendingFrame pending, FfmpegEncoder encoder, Func<bool> isCancelRequested)
         {
             byte[] buffer = RentFrameBuffer();
             try
@@ -177,19 +177,19 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         private sealed class QueuedFrameOutput
         {
-            private QueuedFrameOutput(ChartFrameCapture.PendingFrame? pendingFrame, int index)
+            private QueuedFrameOutput(ChartPendingFrame? pendingFrame, int index)
             {
                 PendingFrame = pendingFrame;
                 Index = index;
             }
 
-            public ChartFrameCapture.PendingFrame? PendingFrame { get; }
+            public ChartPendingFrame? PendingFrame { get; }
 
             public int Index { get; }
 
             public bool Done => PendingFrame == null || PendingFrame.Done;
 
-            public static QueuedFrameOutput Capture(ChartFrameCapture.PendingFrame pendingFrame)
+            public static QueuedFrameOutput Capture(ChartPendingFrame pendingFrame)
             {
                 return new QueuedFrameOutput(pendingFrame, pendingFrame.Index);
             }

@@ -4,7 +4,38 @@ using UnityEngine.Rendering;
 
 namespace ADOFAI.EditorTweaks.Features.ChartRendering
 {
-    internal sealed class ChartFrameCapture : IDisposable
+    internal interface IChartFrameCapture : IDisposable
+    {
+        string PixelFormatName { get; }
+
+        int Width { get; }
+
+        int Height { get; }
+
+        bool RequiresVerticalFlip { get; }
+
+        ChartPendingFrame RequestFrame(int index, int repeatCount = 1);
+    }
+
+    internal static class ChartFrameCaptureFactory
+    {
+        public static IChartFrameCapture Create(Settings settings, string captureSource, bool showPreview)
+        {
+            string source = ChartRenderOptionValues.NormalizeCaptureSource(captureSource);
+            if (source == ChartRenderOptionValues.CaptureSourceGameView)
+            {
+                return new ChartGameViewFrameCapture(settings.ChartRenderCaptureFormat);
+            }
+
+            return new ChartCameraFrameCapture(
+                settings.ChartRenderWidth,
+                settings.ChartRenderHeight,
+                settings.ChartRenderCaptureFormat,
+                showPreview);
+        }
+    }
+
+    internal sealed class ChartCameraFrameCapture : IChartFrameCapture
     {
         private readonly int height;
         private readonly RenderTexture captureTarget;
@@ -21,12 +52,14 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         private readonly bool oldOverlayActive;
         private readonly bool oldQuadActive;
 
-        public ChartFrameCapture(int width, int height, string captureFormat, bool showPreview)
+        public ChartCameraFrameCapture(int width, int height, string captureFormat, bool showPreview)
         {
             this.height = height;
+            Width = width;
+            Height = height;
             rowBytes = width * 4;
-            readbackFormat = ResolveReadbackFormat(captureFormat);
-            PixelFormatName = readbackFormat.ToString() == "BGRA32" ? "bgra" : "rgba";
+            readbackFormat = ChartFrameReadback.ResolveFormat(captureFormat);
+            PixelFormatName = ChartFrameReadback.GetPixelFormatName(readbackFormat);
 
             scrCamera camera = scrCamera.instance;
             if (camera == null)
@@ -76,19 +109,26 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 quadRenderer.material.mainTexture = captureTarget;
             }
 
-            ChartRenderDiagnostics.Log("Frame capture camera chain: Bgcamstatic="
+            ChartRenderDiagnostics.Log("Frame capture mode=camera. Camera chain: Bgcamstatic="
                 + CameraName(bgStaticCamera) + ", BGcam=" + CameraName(bgCamera)
                 + ", camobj=" + CameraName(mainCamera)
                 + ", scene=" + ADOBase.sceneName
+                + ", output=" + Width + "x" + Height
                 + ", readback=" + PixelFormatName
                 + ", preview=" + showPreview + ".");
         }
 
         public string PixelFormatName { get; }
 
-        public PendingFrame RequestFrame(int index, int repeatCount = 1)
+        public int Width { get; }
+
+        public int Height { get; }
+
+        public bool RequiresVerticalFlip => true;
+
+        public ChartPendingFrame RequestFrame(int index, int repeatCount = 1)
         {
-            return new PendingFrame(index, repeatCount, AsyncGPUReadback.Request(captureTarget, 0, readbackFormat), rowBytes, height);
+            return new ChartPendingFrame(index, repeatCount, AsyncGPUReadback.Request(captureTarget, 0, readbackFormat), rowBytes, height);
         }
 
         public void Dispose()
@@ -128,7 +168,11 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             return camera == null ? "<null>" : camera.name + "(depth=" + camera.depth + ")";
         }
 
-        private static TextureFormat ResolveReadbackFormat(string captureFormat)
+    }
+
+    internal static class ChartFrameReadback
+    {
+        public static TextureFormat ResolveFormat(string captureFormat)
         {
             if (ChartRenderOptionValues.NormalizeCaptureFormat(captureFormat) != ChartRenderOptionValues.CaptureBgra)
             {
@@ -150,42 +194,47 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             return TextureFormat.RGBA32;
         }
 
-        public sealed class PendingFrame
+        public static string GetPixelFormatName(TextureFormat format)
         {
-            private readonly int byteLength;
-            private readonly AsyncGPUReadbackRequest request;
+            return format.ToString() == "BGRA32" ? "bgra" : "rgba";
+        }
+    }
 
-            public PendingFrame(int index, int repeatCount, AsyncGPUReadbackRequest request, int rowBytes, int height)
+    internal sealed class ChartPendingFrame
+    {
+        private readonly int byteLength;
+        private readonly AsyncGPUReadbackRequest request;
+
+        public ChartPendingFrame(int index, int repeatCount, AsyncGPUReadbackRequest request, int rowBytes, int height)
+        {
+            Index = index;
+            RepeatCount = Math.Max(1, repeatCount);
+            this.request = request;
+            byteLength = rowBytes * height;
+        }
+
+        public int Index { get; }
+
+        public int RepeatCount { get; }
+
+        public int ByteLength => byteLength;
+
+        public bool Done => request.done;
+
+        public void Complete(byte[] destination)
+        {
+            if (request.hasError)
             {
-                Index = index;
-                RepeatCount = Math.Max(1, repeatCount);
-                this.request = request;
-                byteLength = rowBytes * height;
+                throw new InvalidOperationException("AsyncGPUReadback failed for frame " + Index + ".");
             }
 
-            public int Index { get; }
-
-            public int RepeatCount { get; }
-
-            public int ByteLength => byteLength;
-
-            public bool Done => request.done;
-
-            public void Complete(byte[] destination)
+            Unity.Collections.NativeArray<byte> source = request.GetData<byte>();
+            if (destination.Length < source.Length)
             {
-                if (request.hasError)
-                {
-                    throw new InvalidOperationException("AsyncGPUReadback failed for frame " + Index + ".");
-                }
-
-                Unity.Collections.NativeArray<byte> source = request.GetData<byte>();
-                if (destination.Length < source.Length)
-                {
-                    throw new InvalidOperationException("Frame buffer is too small.");
-                }
-
-                source.CopyTo(destination);
+                throw new InvalidOperationException("Frame buffer is too small.");
             }
+
+            source.CopyTo(destination);
         }
     }
 }

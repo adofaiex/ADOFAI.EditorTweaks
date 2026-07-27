@@ -191,7 +191,7 @@ songposition_minusi - countdownOffset + vidOffset
 
 ## 离线谱面视频渲染
 
-这是当前 Mod 最大的功能。目标是直接从游戏场景导出 MP4，而不是录屏、不是录编辑器 UI。
+这是当前 Mod 最大的功能。它直接从 Unity 游戏画面导出视频，不录制 Windows 桌面。默认摄像机模式只导出干净的谱面画面；兼容模式也可以导出包含游戏和编辑器 UI 的最终游戏画面。
 
 ### 支持场景
 
@@ -214,7 +214,7 @@ songposition_minusi - countdownOffset + vidOffset
 5. 等待 `ADOBase.conductor` 确认播放已经 schedule。
 6. `BeginForcedVisualClock()` 锚定视觉时钟。
 7. 创建 `ChartRenderMemoryBudget` 和 `ChartRenderFramePipeline`，按分辨率限制 GPU 回读和 FFmpeg 写入队列。
-8. 创建 `ChartFrameCapture`，把官方相机链输出到专用 `RenderTexture`。
+8. 根据设置创建摄像机或游戏画面捕获后端，并输出到专用 `RenderTexture`。
 9. 创建 `ChartUnityAudioCapture`，使用 Unity `AudioRenderer` 离线捕获音频。
 10. 创建 `FfmpegEncoder`，按编码档位选择 NVENC 或 x264。
 11. 锚定视觉时钟后才启用 `RDC.auto` 和 `IsAutoPlaybackReady`。
@@ -222,6 +222,15 @@ songposition_minusi - countdownOffset + vidOffset
 13. 检测到谱面结束后继续录制尾巴秒数。
 14. 完成视频编码，再把 WAV 音频 mux 成最终 MP4。
 15. 恢复编辑器、`RDC.auto`、checkpoint、`Time.captureFramerate`、`Application.targetFrameRate` 和 vSync。
+
+### 画面捕获方式
+
+- **摄像机渲染（默认、推荐）**：沿用官方 `Bgcamstatic`、`BGcam`、`camobj` 摄像机链。它不包含屏幕空间 UI，能够独立于游戏窗口按目标分辨率渲染，适合普通谱面和高分辨率导出。
+- **游戏画面渲染（兼容模式）**：在 `WaitForEndOfFrame` 后捕获 Unity 最终游戏画面，包含额外摄像机、编辑器 UI、游戏 UI 和屏幕空间 Canvas，适合摄像机模式遗漏效果的特殊谱面。
+
+游戏画面模式直接使用开始渲染时的 `Screen.width × Screen.height` 作为成品分辨率，不读取摄像机模式的输出宽高设置。渲染期间必须保持窗口尺寸不变，否则任务会安全失败并恢复播放状态。
+
+为避免把 Mod UI 录入成品，游戏画面模式运行时会隐藏 EditorTweaks 浮窗和进度遮罩；按 `Esc` 可以取消。渲染预览设置只影响摄像机模式。
 
 ### 选中段落渲染
 
@@ -315,7 +324,7 @@ FFmpeg 写入队列也按内存预算计算，不再固定缓存大量帧。队�
 视频参数：
 
 - 输入：`-f rawvideo -pixel_format rgba -video_size WxH -framerate FPS -i -`
-- 翻转：`-vf vflip`，因为 Unity readback 坐标和视频坐标上下相反。
+- 翻转：摄像机模式使用 `vflip`；游戏画面模式的回读方向已经正确，不再重复翻转。
 - 像素格式：`yuv420p`，保证常见播放器和网站兼容。
 
 编码档位：

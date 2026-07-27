@@ -12,6 +12,9 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         public const string CaptureRgba = "rgba";
         public const string CaptureBgra = "bgra";
 
+        public const string CaptureSourceCamera = "camera";
+        public const string CaptureSourceGameView = "game-view";
+
         public const string VideoFormatMp4 = "mp4";
         public const string VideoFormatMkv = "mkv";
         public const string VideoFormatMov = "mov";
@@ -38,6 +41,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         {
             CaptureRgba,
             CaptureBgra
+        };
+
+        public static readonly string[] CaptureSources =
+        {
+            CaptureSourceCamera,
+            CaptureSourceGameView
         };
 
         public static readonly string[] AudioFormats =
@@ -85,6 +94,13 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             return (value ?? string.Empty).Trim().ToLowerInvariant() == CaptureBgra
                 ? CaptureBgra
                 : CaptureRgba;
+        }
+
+        public static string NormalizeCaptureSource(string? value)
+        {
+            return (value ?? string.Empty).Trim().ToLowerInvariant() == CaptureSourceGameView
+                ? CaptureSourceGameView
+                : CaptureSourceCamera;
         }
 
         public static string NormalizePreviewMode(string? value)

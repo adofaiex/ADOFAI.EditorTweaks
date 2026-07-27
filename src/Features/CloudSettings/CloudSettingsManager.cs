@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.SteamIntegration;
 using GDMiniJSON;
 using Steamworks;
@@ -153,6 +154,7 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
                 ["ChartRenderPreset"] = s.ChartRenderPreset ?? string.Empty,
                 ["ChartRenderEncoderMode"] = s.ChartRenderEncoderMode ?? string.Empty,
                 ["ChartRenderCaptureFormat"] = s.ChartRenderCaptureFormat ?? string.Empty,
+                ["ChartRenderCaptureSource"] = s.ChartRenderCaptureSource ?? string.Empty,
                 ["ChartRenderPreviewMode"] = s.ChartRenderPreviewMode ?? string.Empty,
                 ["ChartRenderAudioFormat"] = s.ChartRenderAudioFormat ?? string.Empty,
                 ["ChartRenderVideoFormat"] = s.ChartRenderVideoFormat ?? string.Empty,
@@ -188,6 +190,7 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
             s.ChartRenderPreset = GetStringValue(d, "ChartRenderPreset") ?? "veryfast";
             s.ChartRenderEncoderMode = GetStringValue(d, "ChartRenderEncoderMode") ?? string.Empty;
             s.ChartRenderCaptureFormat = GetStringValue(d, "ChartRenderCaptureFormat") ?? string.Empty;
+            s.ChartRenderCaptureSource = GetStringValue(d, "ChartRenderCaptureSource") ?? ChartRenderOptionValues.CaptureSourceCamera;
             s.ChartRenderPreviewMode = GetStringValue(d, "ChartRenderPreviewMode") ?? string.Empty;
             s.ChartRenderAudioFormat = GetStringValue(d, "ChartRenderAudioFormat") ?? string.Empty;
             s.ChartRenderVideoFormat = GetStringValue(d, "ChartRenderVideoFormat") ?? string.Empty;

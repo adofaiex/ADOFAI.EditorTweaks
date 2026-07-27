@@ -19,7 +19,8 @@
 | `ChartRenderProgressModel.cs` | 计算进度、处理速度、ETA、重复帧比例和流畅度提示。 |
 | `ChartRenderOptionValues.cs` | 统一管理编码档位、回读格式、预览模式等设置值。 |
 | `ChartRenderRange.cs` | 解析整首/选中段落渲染范围，估算片段时长，提供片段结束检测。 |
-| `ChartFrameCapture.cs` | 使用官方 `scrCamera` 相机链捕获画面到 `RenderTexture`，并用 `AsyncGPUReadback` 异步读回。 |
+| `ChartFrameCapture.cs` | 定义统一捕获接口、后端工厂、摄像机捕获和共享 GPU readback 帧。 |
+| `ChartGameViewFrameCapture.cs` | 在帧末按当前游戏分辨率捕获最终游戏画面并异步读回。 |
 | `ChartUnityAudioCapture.cs` | 使用 Unity `AudioRenderer` 离线捕获音频并写成 float32 WAV。 |
 | `FfmpegEncoder.cs` | FFmpeg rawvideo pipe、GPU/CPU 编码选择、视频完成、音频 mux。 |
 | `ChartRenderVisualClock.cs` | 强制视觉时间轴，Patch conductor 的 `songposition_minusi` 和 `calibration_i`。 |
@@ -86,7 +87,7 @@ StartCoroutine(chartRenderSession.Run(callback))
    - 估算总时长。
    - 创建 `ChartRenderMemoryBudget`。
    - 创建 `ChartRenderFramePipeline`。
-   - 创建 `ChartFrameCapture`。
+   - 根据已锁定的画面捕获方式创建摄像机或游戏画面后端。
    - 创建并启动 `ChartUnityAudioCapture`。
    - 创建 `FfmpegEncoder` 并 `BeginVideo()`。
 7. 主循环：
@@ -241,7 +242,11 @@ Patch 点：
 
 ## 画面捕获
 
-`ChartFrameCapture` 不自己新建摄像机，而是使用官方 `scrCamera.instance`：
+渲染会话创建时会锁定 `ChartRenderCaptureSource`，渲染途中修改设置只影响下一次任务。两个后端都实现 `IChartFrameCapture`，并输出相同尺寸和像素格式的 `ChartPendingFrame`，因此共用 GPU readback 队列、重复帧逻辑和 FFmpeg 管线。
+
+### 摄像机渲染
+
+摄像机模式是默认值。`ChartCameraFrameCapture` 不自己新建摄像机，而是使用官方 `scrCamera.instance`：
 
 - `Bgcamstatic`
 - `BGcam`
@@ -274,6 +279,24 @@ AsyncGPUReadback.Request(captureTarget, 0, TextureFormat.RGBA32)
 
 完成后 `request.GetData<byte>()` copy 到复用的 byte[]，交给 `ChartRenderFramePipeline` 再写入 FFmpeg writer。
 
+### 游戏画面渲染
+
+兼容模式不修改任何摄像机的 `targetTexture`。每个需要新画面的输出帧在 `WaitForEndOfFrame` 后执行：
+
+```text
+ScreenCapture.CaptureScreenshotIntoRenderTexture(captureTarget)
+    -> AsyncGPUReadback(captureTarget)
+    -> 现有 ChartRenderFramePipeline
+```
+
+源纹理和成品尺寸固定为开始渲染时的 `Screen.width x Screen.height`，不读取摄像机模式保存的输出宽高，也不创建缩放或留边用的中间纹理。为了兼容 `yuv420p`，极少数奇数宽高窗口会由 FFmpeg 在右侧或底部补最多一个黑色像素。
+
+这个模式会捕获额外摄像机、游戏 UI、编辑器 UI、IMGUI 和屏幕空间 Canvas。EditorTweaks 自己的主浮窗和进度遮罩会在整个捕获期间隐藏，`Esc` 用于取消；输入保护仍保持生效，按键不会传给暂停或游玩逻辑。摄像机预览的 `Overlaycam + quad` 不会启用，避免递归画面。
+
+渲染期间如果 `Screen.width` 或 `Screen.height` 改变，会立即终止本次任务并走既有清理和播放状态恢复流程，不会在存在 pending GPU readback 时重建纹理。`render.log` 会记录捕获模式、游戏分辨率、回读格式、垂直翻转策略和屏幕捕获异常。
+
+摄像机 RenderTexture 的原始回读需要 FFmpeg `vflip`；`ScreenCapture` 的回读方向已经与视频输入一致，因此游戏画面模式不应用 `vflip`。两个后端通过 `IChartFrameCapture.RequiresVerticalFlip` 分别声明方向，避免重复翻转。
+
 ## 内存预算与队列
 
 渲染瓶颈主要来自 GPU readback、CPU 拷贝、raw frame pipe 和编码器吞吐。不能让队列按固定帧数无限堆，所以现在按分辨率计算预算：
@@ -289,7 +312,7 @@ FFmpeg 写入队列也按 `width * height * 4` 换算最大缓存帧数。队列
 
 注意：
 
-- FFmpeg 侧用 `-vf vflip` 翻转画面。
+- FFmpeg 只为摄像机模式应用 `vflip`；游戏画面模式保持原方向。
 - Dispose 必须恢复所有 targetTexture、quad texture 和 active 状态。
 
 ## 音频捕获
@@ -333,7 +356,7 @@ Patch `scrSfx.PlaySfx(... InterfaceParent ...)` 的原因：
 -framerate <fps>
 -i -
 -an
--vf vflip
+-vf <camera: vflip,pad | game-view: pad>
 <encoder args>
 -pix_fmt yuv420p
 temp_video.mp4

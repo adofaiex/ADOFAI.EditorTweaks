@@ -24,6 +24,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         private readonly string encoderMode;
         private readonly string customPreset;
         private readonly string inputPixelFormat;
+        private readonly bool flipVertically;
         private readonly int queueCapacityFrames;
         private readonly string audioFormat;
         private readonly string customMuxArgs;
@@ -45,6 +46,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             string encoderMode,
             string customPreset,
             string inputPixelFormat,
+            bool flipVertically,
             int queueCapacityFrames,
             float audioSyncOffsetMs,
             string audioFormat,
@@ -61,6 +63,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             this.encoderMode = ChartRenderOptionValues.NormalizeEncoderMode(encoderMode);
             this.customPreset = string.IsNullOrWhiteSpace(customPreset) ? "veryfast" : customPreset.Trim();
             this.inputPixelFormat = ChartRenderOptionValues.NormalizeCaptureFormat(inputPixelFormat);
+            this.flipVertically = flipVertically;
             this.queueCapacityFrames = Math.Max(1, queueCapacityFrames);
             this.audioSyncOffsetMs = audioSyncOffsetMs;
             this.audioFormat = ChartRenderOptionValues.NormalizeAudioFormat(audioFormat);
@@ -74,13 +77,14 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             string args = "-y -f rawvideo -pixel_format " + inputPixelFormat + " "
                 + "-video_size " + width + "x" + height + " "
                 + "-framerate " + fps + " "
-                + "-i - -an -vf vflip "
+                + "-i - -an -vf " + Quote(GetVideoFilter()) + " "
                 + GetVideoEncoderArguments() + " "
                 + "-pix_fmt yuv420p "
                 + Quote(tempVideoPath);
 
             ChartRenderDiagnostics.Log("FFmpeg video args: mode=" + encoderMode
                 + " input=" + inputPixelFormat
+                + " verticalFlip=" + flipVertically
                 + " bitrate=" + GetTargetBitrateMbps() + "M"
                 + " queueFrames=" + queueCapacityFrames
                 + " args=" + args);
@@ -93,6 +97,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 Name = "ADOFAI.EditorTweaks.FFmpegVideoWriter"
             };
             writerThread.Start();
+        }
+
+        private string GetVideoFilter()
+        {
+            const string evenSizePadding = "pad=ceil(iw/2)*2:ceil(ih/2)*2";
+            return flipVertically ? "vflip," + evenSizePadding : evenSizePadding;
         }
 
         public void WriteFrame(byte[] frame, int length, int repeatCount, Action<byte[]>? release, Func<bool>? isCancelRequested = null)

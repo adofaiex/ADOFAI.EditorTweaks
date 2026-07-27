@@ -137,6 +137,12 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
 
         private void OnGUI()
         {
+            if (ShouldHideForGameViewCapture())
+            {
+                HandleHiddenGameViewCaptureInput();
+                return;
+            }
+
             if (!ShouldDraw())
             {
                 return;
@@ -248,7 +254,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             }
 
             Rect scrollRect = new Rect(0f, 50f, width, windowRect.height - 58f);
-            Rect viewRect = new Rect(0f, 0f, width - 16f, 468f);
+            Rect viewRect = new Rect(0f, 0f, width - 16f, 500f);
             scrollPosition = GUI.BeginScrollView(scrollRect, scrollPosition, viewRect, false, true);
             drawWidth = viewRect.width;
 
@@ -345,7 +351,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         private void DrawChartRenderPanel(float y)
         {
             float width = drawWidth > 0f ? drawWidth : windowRect.width;
-            Rect panelRect = new Rect(22f, y, width - 44f, 184f);
+            Rect panelRect = new Rect(22f, y, width - 44f, 216f);
             GUI.Box(panelRect, GUIContent.none, rowStyle);
             
             // 左侧强调色条
@@ -354,6 +360,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             string disabledReason = GetChartRenderDisabledReason();
             bool isRendering = chartRenderSession != null && chartRenderSession.IsActive;
             bool canRender = string.IsNullOrEmpty(disabledReason) && !isRendering;
+            bool oldGuiEnabled = GUI.enabled;
             string status = canRender ? Settings.Text("chartRendererReady") : disabledReason;
             if (!string.IsNullOrEmpty(chartRenderMessage) && !isRendering)
             {
@@ -363,7 +370,28 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             GUI.Label(new Rect(panelRect.x + 16f, panelRect.y + 12f, panelRect.width - 32f, 34f), status, labelStyle);
             GUI.Label(new Rect(panelRect.x + 16f, panelRect.y + 46f, panelRect.width - 32f, 20f), GetChartRenderProfileText(), hintStyle);
 
-            Rect toggleRect = new Rect(panelRect.x + 16f, panelRect.y + 72f, panelRect.width - 32f, 24f);
+            string source = ChartRenderOptionValues.NormalizeCaptureSource(Main.Settings.ChartRenderCaptureSource);
+            float sourceButtonWidth = (panelRect.width - 38f) * 0.5f;
+            GUI.enabled = oldGuiEnabled && canRender && source != ChartRenderOptionValues.CaptureSourceCamera;
+            if (GUI.Button(
+                new Rect(panelRect.x + 16f, panelRect.y + 72f, sourceButtonWidth, 24f),
+                Settings.Text("chartRenderCaptureSourceCameraShort"),
+                buttonStyle))
+            {
+                SetCaptureSource(ChartRenderOptionValues.CaptureSourceCamera);
+            }
+
+            GUI.enabled = oldGuiEnabled && canRender && source != ChartRenderOptionValues.CaptureSourceGameView;
+            if (GUI.Button(
+                new Rect(panelRect.x + 22f + sourceButtonWidth, panelRect.y + 72f, sourceButtonWidth, 24f),
+                Settings.Text("chartRenderCaptureSourceGameViewShort"),
+                buttonStyle))
+            {
+                SetCaptureSource(ChartRenderOptionValues.CaptureSourceGameView);
+            }
+
+            GUI.enabled = oldGuiEnabled;
+            Rect toggleRect = new Rect(panelRect.x + 16f, panelRect.y + 104f, panelRect.width - 32f, 24f);
             bool showJudgments = GUI.Toggle(toggleRect, Main.Settings.ChartRenderShowHitJudgments, Settings.Text("chartRenderShowHitJudgments"), toggleStyle);
             if (showJudgments != Main.Settings.ChartRenderShowHitJudgments)
             {
@@ -371,7 +399,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
                 SaveSettings();
             }
 
-            Rect rangeToggleRect = new Rect(panelRect.x + 16f, panelRect.y + 98f, panelRect.width - 32f, 24f);
+            Rect rangeToggleRect = new Rect(panelRect.x + 16f, panelRect.y + 130f, panelRect.width - 32f, 24f);
             bool useSelectedRange = GUI.Toggle(rangeToggleRect, Main.Settings.ChartRenderUseSelectedRange, Settings.Text("chartRenderUseSelectedRange"), toggleStyle);
             if (useSelectedRange != Main.Settings.ChartRenderUseSelectedRange)
             {
@@ -379,24 +407,41 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
                 SaveSettings();
             }
 
-            GUI.enabled = canRender;
-            if (GUI.Button(new Rect(panelRect.x + 16f, panelRect.y + 140f, panelRect.width - 32f, 32f), Settings.Text("chartRendererRender"), buttonStyle))
+            GUI.enabled = oldGuiEnabled && canRender;
+            if (GUI.Button(new Rect(panelRect.x + 16f, panelRect.y + 172f, panelRect.width - 32f, 32f), Settings.Text("chartRendererRender"), buttonStyle))
             {
                 StartChartRender();
             }
 
-            GUI.enabled = true;
+            GUI.enabled = oldGuiEnabled;
         }
 
         private static string GetChartRenderProfileText()
         {
             Settings settings = Main.Settings;
-            int bitrate = ChartRenderBitratePresets.ResolveTargetBitrateMbps(settings.ChartRenderBitrateMbps, settings.ChartRenderWidth, settings.ChartRenderHeight, settings.ChartRenderFps);
-            return settings.ChartRenderWidth + "x" + settings.ChartRenderHeight
+            bool followsGameView = ChartRenderOptionValues.NormalizeCaptureSource(settings.ChartRenderCaptureSource) == ChartRenderOptionValues.CaptureSourceGameView;
+            int outputWidth = followsGameView ? Mathf.Max(1, Screen.width) : settings.ChartRenderWidth;
+            int outputHeight = followsGameView ? Mathf.Max(1, Screen.height) : settings.ChartRenderHeight;
+            int bitrate = ChartRenderBitratePresets.ResolveTargetBitrateMbps(settings.ChartRenderBitrateMbps, outputWidth, outputHeight, settings.ChartRenderFps);
+            return GetCaptureSourceProfileLabel(settings.ChartRenderCaptureSource)
+                + " | " + outputWidth + "x" + outputHeight
                 + " @ " + settings.ChartRenderFps + "fps"
                 + " | " + bitrate + " Mbps"
                 + " | ." + ChartRenderOptionValues.NormalizeVideoFormat(settings.ChartRenderVideoFormat)
                 + " | " + GetChartRenderRangeText();
+        }
+
+        private static string GetCaptureSourceProfileLabel(string captureSource)
+        {
+            return ChartRenderOptionValues.NormalizeCaptureSource(captureSource) == ChartRenderOptionValues.CaptureSourceGameView
+                ? Settings.Text("chartRenderCaptureSourceGameViewShort")
+                : Settings.Text("chartRenderCaptureSourceCameraShort");
+        }
+
+        private static void SetCaptureSource(string captureSource)
+        {
+            Main.Settings.ChartRenderCaptureSource = ChartRenderOptionValues.NormalizeCaptureSource(captureSource);
+            SaveSettings();
         }
 
         private static string GetChartRenderRangeText()
@@ -508,6 +553,24 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
             {
                 activeSession.Cancel();
             }
+        }
+
+        private bool ShouldHideForGameViewCapture()
+        {
+            return chartRenderSession != null
+                && chartRenderSession.IsActive
+                && chartRenderSession.CapturesGameView;
+        }
+
+        private void HandleHiddenGameViewCaptureInput()
+        {
+            if (chartRenderSession == null || Event.current.type != EventType.KeyDown || Event.current.keyCode != KeyCode.Escape)
+            {
+                return;
+            }
+
+            chartRenderSession.Cancel();
+            Event.current.Use();
         }
 
         private static string FormatSmoothness(string key)
