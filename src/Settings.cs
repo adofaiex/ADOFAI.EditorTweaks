@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using ADOFAI.EditorTweaks.Features.ArchiveIo;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.CloudSettings;
 using ADOFAI.EditorTweaks.Patching;
@@ -48,6 +49,8 @@ namespace ADOFAI.EditorTweaks
         public bool PersistEditorPreferences = true;
 
         public bool ShowEditorOverlay = true;
+
+        public string LegacyZipEncoding = LegacyZipEncodingModes.Auto;
 
         public bool EditorOverlayCollapsed = false;
 
@@ -193,6 +196,15 @@ namespace ADOFAI.EditorTweaks
 
             DrawPatchCompatibilityStatus();
             DrawCloudSyncSection(modEntry);
+
+            DrawSection(Text("archiveIoSection"));
+            LegacyZipEncoding = DrawChoiceSettingRow(
+                Text("legacyZipEncoding"),
+                Text("legacyZipEncodingHint"),
+                LegacyZipEncoding,
+                LegacyZipEncodingModes.Values,
+                GetLegacyZipEncodingLabels(),
+                LegacyZipEncodingModes.Auto);
 
             DrawSection(Text("fixesSection"));
             EnableCameraRelativeDecorationDragFix = DrawToggleRow(EnableCameraRelativeDecorationDragFix, Text("fixCameraRelativeDecorationDrag"));
@@ -698,6 +710,18 @@ namespace ADOFAI.EditorTweaks
             };
         }
 
+        private static string[] GetLegacyZipEncodingLabels()
+        {
+            return new[]
+            {
+                Text("legacyZipEncodingAuto"),
+                "CP949",
+                "GB18030",
+                "Shift-JIS",
+                "CP437"
+            };
+        }
+
         private static string[] GetPreviewModeLabels()
         {
             return new[]
@@ -781,6 +805,7 @@ namespace ADOFAI.EditorTweaks
 
         private void NormalizeChartRenderSettings()
         {
+            LegacyZipEncoding = LegacyZipEncodingModes.Normalize(LegacyZipEncoding);
             ChartRenderWidth = MakeEven(Mathf.Clamp(ChartRenderWidth, MinChartRenderSize, MaxChartRenderWidth));
             ChartRenderHeight = MakeEven(Mathf.Clamp(ChartRenderHeight, MinChartRenderSize, MaxChartRenderHeight));
             ChartRenderFps = Mathf.Clamp(ChartRenderFps, MinChartRenderFps, MaxChartRenderFps);

@@ -319,4 +319,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="SharpSevenZip" Version="2.0.109" />
+  </ItemGroup>
+
 </Project>

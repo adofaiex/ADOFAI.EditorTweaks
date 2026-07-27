@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using ADOFAI.EditorTweaks.Features.ArchiveIo;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.DecorationSelection;
 using ADOFAI.EditorTweaks.Features.EditorOverlay;
@@ -21,7 +22,8 @@ namespace ADOFAI.EditorTweaks.Patching
         VideoBackgroundSync,
         EditorPreferences,
         EditorOverlayInputGuard,
-        ChartRendering
+        ChartRendering,
+        ArchiveIo
     }
 
     internal enum PatchGroupState
@@ -138,7 +140,12 @@ namespace ADOFAI.EditorTweaks.Patching
                     typeof(ChartRenderJudgmentPatches),
                     typeof(ChartRenderCustomFrameRateScreenPatch)
                 },
-                PatchFeature.EditorOverlayInputGuard)
+                PatchFeature.EditorOverlayInputGuard),
+            new PatchGroupDefinition(
+                PatchFeature.ArchiveIo,
+                "archive-io",
+                "patchFeatureArchiveIo",
+                new[] { typeof(ArchiveIoPatches) })
         };
 
         private static readonly Dictionary<PatchFeature, PatchGroupStatus> statuses = new Dictionary<PatchFeature, PatchGroupStatus>();
@@ -234,6 +241,11 @@ namespace ADOFAI.EditorTweaks.Patching
                     harmony.CreateClassProcessor(patchType).Patch();
                 }
 
+                if (definition.Feature == PatchFeature.ArchiveIo)
+                {
+                    ArchiveService.EnableAdditionalArchiveExtensions();
+                }
+
                 activeHarmonies[definition.Feature] = harmony;
                 activeHarmonyIds[definition.Feature] = harmonyId;
                 status.State = PatchGroupState.Active;
@@ -241,6 +253,20 @@ namespace ADOFAI.EditorTweaks.Patching
             }
             catch (Exception exception)
             {
+                if (definition.Feature == PatchFeature.ArchiveIo)
+                {
+                    try
+                    {
+                        ArchiveService.DisableAdditionalArchiveExtensions();
+                    }
+                    catch (Exception cleanupException)
+                    {
+                        LogError(
+                            "[PatchManager] Failed to restore archive extensions: "
+                            + cleanupException);
+                    }
+                }
+
                 try
                 {
                     harmony.UnpatchAll(harmonyId);
@@ -419,6 +445,20 @@ namespace ADOFAI.EditorTweaks.Patching
 
         private static void ClearActivePatches()
         {
+            if (activeHarmonies.ContainsKey(PatchFeature.ArchiveIo))
+            {
+                try
+                {
+                    ArchiveService.DisableAdditionalArchiveExtensions();
+                }
+                catch (Exception exception)
+                {
+                    LogError(
+                        "[PatchManager] Failed to restore archive extensions: "
+                        + exception);
+                }
+            }
+
             foreach (KeyValuePair<PatchFeature, Harmony> activeHarmony in activeHarmonies)
             {
                 if (!activeHarmonyIds.TryGetValue(activeHarmony.Key, out string harmonyId))

@@ -31,6 +31,11 @@
       "zh": "修复"
     },
     {
+      "key": "archiveIoSection",
+      "en": "Level archives",
+      "zh": "谱面压缩包"
+    },
+    {
       "key": "overlaySection",
       "en": "Overlay",
       "zh": "浮窗"
@@ -124,6 +129,26 @@
       "key": "patchFeatureChartRendering",
       "en": "Chart rendering",
       "zh": "谱面渲染"
+    },
+    {
+      "key": "patchFeatureArchiveIo",
+      "en": "Archive compression and extraction",
+      "zh": "压缩包压缩与解压"
+    },
+    {
+      "key": "legacyZipEncoding",
+      "en": "Legacy ZIP filename encoding",
+      "zh": "旧版 ZIP 文件名编码"
+    },
+    {
+      "key": "legacyZipEncodingHint",
+      "en": "RAR, 7z, TAR, GZip, BZip2, XZ and CAB are detected automatically. This option only controls Korean, Chinese, Japanese and DOS filenames in old ZIP archives.",
+      "zh": "RAR、7z、TAR、GZip、BZip2、XZ 和 CAB 会自动识别。此选项仅控制旧 ZIP 中的韩文、中文、日文和 DOS 文件名。"
+    },
+    {
+      "key": "legacyZipEncodingAuto",
+      "en": "Auto",
+      "zh": "自动检测"
     },
     {
       "key": "enableNumericDrag",

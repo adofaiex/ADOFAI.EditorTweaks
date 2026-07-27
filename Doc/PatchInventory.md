@@ -4,7 +4,7 @@
 
 ## PatchManager 隔离策略
 
-Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager 将全部 31 个 Harmony Patch 划分为 8 个功能组，每组使用独立的 Harmony ID：
+Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager 将全部 33 个 Harmony Patch 划分为 9 个功能组，每组使用独立的 Harmony ID：
 
 | 功能组 | Patch 数量 | 依赖 |
 | --- | ---: | --- |
@@ -16,6 +16,7 @@ Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager �
 | Editor Preferences | 1 | 无 |
 | Editor Overlay Input Guard | 9 | 无 |
 | Chart Rendering | 8 | Editor Overlay Input Guard |
+| Archive I/O | 2 | 无 |
 
 同组任一 Patch 应用失败时会卸载该组已经应用的全部 Patch，并继续加载其他功能组。Chart Rendering 的依赖组不可用时不会尝试应用，以免离线渲染在缺少输入保护的情况下进入半可用状态。设置页显示各组兼容状态，完整异常记录在 Unity Mod Manager 日志中。
 
@@ -79,6 +80,15 @@ Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager �
 | `ChartRenderAudioPatches.cs` | `scrSfx.PlaySfx(AudioClip, MixerGroup, float, float, float)` | Prefix | `IsRendering && group == InterfaceParent` | 屏蔽 UMM / 菜单 / 界面音效进入音频捕获 | 只屏蔽 InterfaceParent，不屏蔽谱面音效 |
 | `ChartRenderJudgmentPatches.cs` | `scrHitTextManager.ShowHitText(HitMargin, scrPlanet, float)` | Prefix | `IsRendering && !ChartRenderShowHitJudgments` | 导出时隐藏 Perfect / Early / Late 等判定字 | 只影响渲染期间 |
 | `ChartRenderCustomFrameRate.cs` | `scrCamera.UpdateCustomFrameRateScreen` | Prefix | 离线渲染期间 | 记录自定义帧率画面刷新，只在游戏刷新画面时捕获新帧 | 避免自定义 FPS 谱面产生无意义的重复捕获 |
+
+## ArchiveIo
+
+| 文件 | 目标方法 | 类型 | 条件 | 作用 | 风险点 |
+| --- | --- | --- | --- | --- | --- |
+| `ArchiveIoPatches.cs` | `ZipUtils.Unzip` | Prefix | ArchiveIo 组初始化成功 | 按文件内容识别 ZIP/ADOZIP、RAR、7z、TAR、GZip、BZip2、XZ、CAB 等格式并逐条目安全解压；旧 ZIP 额外修复文件名编码 | `7z.dll` 缺失或位数错误时整组回滚，继续使用原版 |
+| `ArchiveIoPatches.cs` | `ZipUtils.Zip` | Prefix | ArchiveIo 组初始化成功 | 使用标准 ZIP Deflate 导出并保留资源相对目录 | 导出文件存在重复相对路径时会明确失败 |
+
+ArchiveIo 启用时会把常见压缩格式加入编辑器打开谱面和 CLS 导入的文件筛选列表，停用 Mod 时恢复游戏原有列表。压缩导出仍固定生成兼容原版游戏的 ZIP 格式 `.adozip`。
 
 ## 非 Harmony 但同样关键的 Hook
 

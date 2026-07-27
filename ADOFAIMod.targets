@@ -66,14 +66,26 @@
         <MakeDir Directories="$(OutDir)Resources" />
         <MakeDir Directories="$(OutDir)Tools" />
         <MakeDir Directories="$(OutDir)ThirdParty" />
+        <MakeDir Directories="$(OutDir)ThirdParty\7-Zip\x64" />
+        <MakeDir Directories="$(OutDir)ThirdParty\SharpSevenZip" />
         <ItemGroup>
             <FilesToCopy Include="$(OutputPath)$(AssemblyName).dll" />
+            <ManagedDependencyFiles Include="$(OutputPath)SharpSevenZip.dll" />
+            <ManagedDependencyFiles Include="$(OutputPath)System.Memory.dll" />
+            <ManagedDependencyFiles Include="$(OutputPath)System.Buffers.dll" />
+            <ManagedDependencyFiles Include="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
+            <ManagedDependencyFiles Include="$(OutputPath)System.Numerics.Vectors.dll" Condition="Exists('$(OutputPath)System.Numerics.Vectors.dll')" />
+            <SevenZipNativeFile Include="$(OutputPath)x64\7z.dll" />
+            <SharpSevenZipLicenseFile Include="$(NuGetPackageRoot)sharpsevenzip\2.0.109\LICENSE" />
             <FilesToCopy Include="$(ProjectDir)Info.json" />
             <ResourceFiles Include="$(ProjectDir)Resources\**\*" Exclude="$(ProjectDir)Resources\**\*\" />
             <ToolFiles Include="$(ProjectDir)Tools\**\*" Exclude="$(ProjectDir)Tools\**\*\" />
             <ThirdPartyFiles Include="$(ProjectDir)ThirdParty\**\*" Exclude="$(ProjectDir)ThirdParty\**\*\" />
         </ItemGroup>
         <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="@(ManagedDependencyFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="@(SevenZipNativeFile)" DestinationFolder="$(OutDir)ThirdParty\7-Zip\x64" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="@(SharpSevenZipLicenseFile)" DestinationFiles="$(OutDir)ThirdParty\SharpSevenZip\LICENSE.txt" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ResourceFiles)" DestinationFolder="$(OutDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ToolFiles)" DestinationFolder="$(OutDir)Tools\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ThirdPartyFiles)" DestinationFolder="$(OutDir)ThirdParty\%(RecursiveDir)" SkipUnchangedFiles="true" />
