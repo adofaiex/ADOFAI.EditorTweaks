@@ -2,7 +2,7 @@
 
 ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModManager Mod。它的定位不是做大型功能包，而是把编辑器里长期影响工作流的细节补齐，并提供一个可以直接导出谱面视频的离线渲染器。
 
-当前版本：`1.3.2`。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：`1.3.3`。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 当前版本主要包含：
 
@@ -428,6 +428,7 @@ FFmpeg 写入队列也按内存预算计算，不再固定缓存大量帧。队�
 | ChartRendering | `scrCamera.UpdateCustomFrameRateScreen` | Prefix | 保留谱面限制帧率效果 |
 | ArchiveIo | `ZipUtils.Unzip` | Prefix | 接管常见压缩包解压和旧 ZIP 文件名识别 |
 | ArchiveIo | `ZipUtils.Zip` | Prefix | 导出保留资源目录的标准 ZIP/ADOZIP |
+| LevelLoading | `scnEditor.UpdateImageLoadResult` | Prefix | 合并重复缺图记录，防止谱面加载中断 |
 
 ## 设置
 

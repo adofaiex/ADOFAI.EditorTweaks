@@ -37,7 +37,7 @@ UnityModManager -> ADOFAI.EditorTweaks.Main.Load
 
 ## PatchManager 生命周期
 
-`src/Patching/PatchManager.cs` 显式定义 9 个功能组。每组使用独立的 Harmony ID，按补丁类型逐个应用；任意类型失败时回滚整个组并继续下一组。
+`src/Patching/PatchManager.cs` 显式定义 10 个功能组。每组使用独立的 Harmony ID，按补丁类型逐个应用；任意类型失败时回滚整个组并继续下一组。
 
 补丁状态分为：
 
@@ -60,6 +60,7 @@ UnityModManager -> ADOFAI.EditorTweaks.Main.Load
 - `DecorationSelection`：装饰选择、拖动、轴心和吸附修复。
 - `EditorOverlay`：编辑器内浮窗和输入遮罩。
 - `EditorPreferences`：官方偏好设置即时保存。
+- `LevelLoading`：合并游戏重复登记的缺图错误，避免关卡加载流程中断。
 - `NumericDrag`：数值输入框拖动。
 - `VideoBackgroundSync`：视频背景时间校正。
 

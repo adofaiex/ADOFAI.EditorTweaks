@@ -339,7 +339,7 @@ private void DrawCloudSyncSection()
 
 ```json
 {
-  "cloud_version": "1.3.2",
+  "cloud_version": "1.3.3",
   "settings": {
     "EnableNumericDrag": true,
     "ChartRenderWidth": 1920,

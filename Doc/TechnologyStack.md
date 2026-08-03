@@ -1,6 +1,6 @@
 # 技术栈与运行时依赖
 
-本文面向维护者，记录 ADOFAI Editor Tweaks 1.3.2 实际使用的语言、运行时、第三方组件、游戏接口和构建链。玩家操作请阅读发布包中的 `Resources/README.html`。
+本文面向维护者，记录 ADOFAI Editor Tweaks 1.3.3 实际使用的语言、运行时、第三方组件、游戏接口和构建链。玩家操作请阅读发布包中的 `Resources/README.html`。
 
 ## 技术栈总览
 
@@ -41,7 +41,7 @@ ADOFAI.EditorTweaks.Main.Load
 
 ## Harmony 与功能隔离
 
-`src/Patching/PatchManager.cs` 将补丁划分为 9 个功能组：
+`src/Patching/PatchManager.cs` 将补丁划分为 10 个功能组：
 
 1. Numeric Drag
 2. Camera Relative Decoration Drag
@@ -52,6 +52,7 @@ ADOFAI.EditorTweaks.Main.Load
 7. Editor Overlay Input Guard
 8. Chart Rendering
 9. Archive I/O
+10. Image Load Error Deduplication
 
 每组拥有独立 Harmony ID，并通过 `CreateClassProcessor(type).Patch()` 逐类型应用。组内任意补丁失败时会清除该组已经应用的全部补丁，记录失败类型和完整异常，然后继续加载其他组。
 

@@ -4,7 +4,7 @@
 
 ## PatchManager 隔离策略
 
-Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager 将全部 33 个 Harmony Patch 划分为 9 个功能组，每组使用独立的 Harmony ID：
+Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager 将全部 34 个 Harmony Patch 划分为 10 个功能组，每组使用独立的 Harmony ID：
 
 | 功能组 | Patch 数量 | 依赖 |
 | --- | ---: | --- |
@@ -17,6 +17,7 @@ Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager �
 | Editor Overlay Input Guard | 9 | 无 |
 | Chart Rendering | 8 | Editor Overlay Input Guard |
 | Archive I/O | 2 | 无 |
+| Image Load Error Deduplication | 1 | 无 |
 
 同组任一 Patch 应用失败时会卸载该组已经应用的全部 Patch，并继续加载其他功能组。Chart Rendering 的依赖组不可用时不会尝试应用，以免离线渲染在缺少输入保护的情况下进入半可用状态。设置页显示各组兼容状态，完整异常记录在 Unity Mod Manager 日志中。
 
@@ -89,6 +90,12 @@ Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager �
 | `ArchiveIoPatches.cs` | `ZipUtils.Zip` | Prefix | ArchiveIo 组初始化成功 | 使用标准 ZIP Deflate 导出并保留资源相对目录 | 导出文件存在重复相对路径时会明确失败 |
 
 ArchiveIo 启用时会把常见压缩格式加入编辑器打开谱面和 CLS 导入的文件筛选列表，停用 Mod 时恢复游戏原有列表。压缩导出仍固定生成兼容原版游戏的 ZIP 格式 `.adozip`。
+
+## LevelLoading
+
+| 文件 | 目标方法 | 类型 | 条件 | 作用 | 风险点 |
+| --- | --- | --- | --- | --- | --- |
+| `ImageLoadErrorDeduplicationPatches.cs` | `scnEditor.UpdateImageLoadResult` | Prefix | 加载谱面时，同名缺图已经记录过 | 更新已有记录并跳过原版重复 `Add`，避免谱面加载协程中断 | 访问私有字段 `errorImageResult`、`isUnauthorizedAccess`；游戏改名时该组会回滚 |
 
 ## 非 Harmony 但同样关键的 Hook
 

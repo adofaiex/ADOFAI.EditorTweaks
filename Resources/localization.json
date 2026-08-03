@@ -136,6 +136,11 @@
       "zh": "压缩包压缩与解压"
     },
     {
+      "key": "patchFeatureImageLoadErrorDeduplication",
+      "en": "Duplicate missing-image load protection",
+      "zh": "重复缺图加载保护"
+    },
+    {
       "key": "legacyZipEncoding",
       "en": "Legacy ZIP filename encoding",
       "zh": "旧版 ZIP 文件名编码"

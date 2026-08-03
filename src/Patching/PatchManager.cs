@@ -7,6 +7,7 @@ using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.DecorationSelection;
 using ADOFAI.EditorTweaks.Features.EditorOverlay;
 using ADOFAI.EditorTweaks.Features.EditorPreferences;
+using ADOFAI.EditorTweaks.Features.LevelLoading;
 using ADOFAI.EditorTweaks.Features.NumericDrag;
 using ADOFAI.EditorTweaks.Features.VideoBackgroundSync;
 using HarmonyLib;
@@ -23,7 +24,8 @@ namespace ADOFAI.EditorTweaks.Patching
         EditorPreferences,
         EditorOverlayInputGuard,
         ChartRendering,
-        ArchiveIo
+        ArchiveIo,
+        ImageLoadErrorDeduplication
     }
 
     internal enum PatchGroupState
@@ -145,7 +147,12 @@ namespace ADOFAI.EditorTweaks.Patching
                 PatchFeature.ArchiveIo,
                 "archive-io",
                 "patchFeatureArchiveIo",
-                new[] { typeof(ArchiveIoPatches) })
+                new[] { typeof(ArchiveIoPatches) }),
+            new PatchGroupDefinition(
+                PatchFeature.ImageLoadErrorDeduplication,
+                "image-load-error-deduplication",
+                "patchFeatureImageLoadErrorDeduplication",
+                new[] { typeof(ImageLoadErrorDeduplicationPatches) })
         };
 
         private static readonly Dictionary<PatchFeature, PatchGroupStatus> statuses = new Dictionary<PatchFeature, PatchGroupStatus>();
