@@ -242,7 +242,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 renderDurationSeconds = CalculateTotalDuration();
                 int totalFrames = Math.Max(1, Mathf.CeilToInt((float)(renderDurationSeconds * fps)));
                 progress.SetTotalFrames(totalFrames);
-                audioCapture = new ChartUnityAudioCapture(capturedAudioPath);
+                audioCapture = new ChartUnityAudioCapture(capturedAudioPath, fps);
                 audioCapture.Begin();
                 framePipeline = new ChartRenderFramePipeline(budget);
                 encoder = new FfmpegEncoder(

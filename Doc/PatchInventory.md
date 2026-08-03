@@ -104,6 +104,6 @@ ArchiveIo 启用时会把常见压缩格式加入编辑器打开谱面和 CLS �
 | `ChartFrameCapture.cs` | `AsyncGPUReadback.Request` | 从专用 RenderTexture 异步读回 RGBA/BGRA 帧 | GPU readback 失败会抛异常并终止渲染 |
 | `ChartRenderFramePipeline.cs` | pending queue + buffer pool | 限制 GPU readback pending，复用帧 buffer，向 FFmpeg 写入并支持反压 | 队列满会降低处理速度，但不能改变输出时间轴 |
 | `ChartRenderMemoryBudget.cs` | 分辨率预算 | 按 `width * height * 4` 计算缓存上限、pending 上限和 FFmpeg 队列上限 | 4K/8K 必须优先防止内存峰值失控 |
-| `ChartUnityAudioCapture.cs` | `AudioRenderer.Start/Render/Stop` | 离线捕获 Unity mixer 输出 | 必须在 Dispose 中 Stop，否则可能污染后续音频状态 |
+| `ChartUnityAudioCapture.cs` | `AudioRenderer.Start/Render/Stop` | 离线捕获 Unity mixer 输出；连续没有样本时按帧率等待并自动恢复一次 | 只能写入 Unity 返回的原始样本，不能按视频帧强制补齐或截断音频 |
 | `FfmpegEncoder.cs` | `Process` + stdin pipe | rawvideo 进入 FFmpeg 编码 | writer 线程异常需要回传主流程 |
 | `ADOFAIMod.targets` | MSBuild Target | 下载 FFmpeg、复制资源、部署 Mod、生成 Build 产物和 zip | 不要提交 ffmpeg.exe 或 Build 产物到 git |

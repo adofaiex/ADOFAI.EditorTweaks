@@ -8,11 +8,15 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 {
     internal sealed class ChartUnityAudioCapture : IDisposable
     {
-        private const int NoSampleGraceFrames = 30;
+        private const int RecoveryDelaySeconds = 1;
+        private const int NoSampleGraceSecondsAfterRecovery = 5;
 
         private readonly string path;
         private readonly int sampleRate;
         private readonly int channelCount;
+        private readonly int framesPerSecond;
+        private readonly int recoveryDelayFrames;
+        private readonly int noSampleGraceFramesAfterRecovery;
         private FileStream? stream;
         private NativeArray<float> samples;
         private float[]? managedSamples;
@@ -20,13 +24,17 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         private long dataBytes;
         private int captureFrameCount;
         private int consecutiveZeroSampleFrames;
+        private bool recoveryAttempted;
         private bool started;
 
-        public ChartUnityAudioCapture(string path)
+        public ChartUnityAudioCapture(string path, int framesPerSecond)
         {
             this.path = path;
+            this.framesPerSecond = Math.Max(1, framesPerSecond);
             sampleRate = AudioSettings.outputSampleRate;
             channelCount = GetChannelCount(AudioSettings.speakerMode);
+            recoveryDelayFrames = Math.Max(1, this.framesPerSecond * RecoveryDelaySeconds);
+            noSampleGraceFramesAfterRecovery = Math.Max(1, this.framesPerSecond * NoSampleGraceSecondsAfterRecovery);
         }
 
         public string Path => path;
@@ -46,6 +54,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path) ?? string.Empty);
             stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
             WriteHeader(dataSize: 0);
+            dataBytes = 0;
             if (!AudioRenderer.Start())
             {
                 ChartRenderDiagnostics.Log("AudioRenderer.Start returned false; attempting one recovery.");
@@ -69,8 +78,13 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
             captureFrameCount = 0;
             consecutiveZeroSampleFrames = 0;
+            recoveryAttempted = false;
             started = true;
-            ChartRenderDiagnostics.Log("AudioRenderer capture started. sampleRate=" + sampleRate + " channels=" + channelCount + ".");
+            ChartRenderDiagnostics.Log("AudioRenderer capture started. sampleRate=" + sampleRate
+                + " channels=" + channelCount
+                + " fps=" + framesPerSecond
+                + " recoveryFrames=" + recoveryDelayFrames
+                + " graceFramesAfterRecovery=" + noSampleGraceFramesAfterRecovery + ".");
         }
 
         public void CaptureFrame()
@@ -80,24 +94,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 return;
             }
 
+            captureFrameCount++;
             int sampleCount = AudioRenderer.GetSampleCountForCaptureFrame();
             int floatCount = Math.Max(0, sampleCount * channelCount);
             if (floatCount == 0)
             {
-                captureFrameCount++;
-                consecutiveZeroSampleFrames++;
-                if (consecutiveZeroSampleFrames == 1 || consecutiveZeroSampleFrames % 10 == 0)
-                {
-                    ChartRenderDiagnostics.Log("AudioRenderer returned zero samples. captureFrame=" + captureFrameCount
-                        + " consecutiveZeroFrames=" + consecutiveZeroSampleFrames + ".");
-                }
-
-                if (consecutiveZeroSampleFrames >= NoSampleGraceFrames)
-                {
-                    throw new InvalidOperationException("Unity AudioRenderer returned no samples for "
-                        + consecutiveZeroSampleFrames + " consecutive capture frames.");
-                }
-
+                HandleUnavailableCaptureFrame("returned zero samples");
                 return;
             }
 
@@ -108,12 +110,12 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                     + captureFrameCount + ".");
             }
 
-            captureFrameCount++;
             consecutiveZeroSampleFrames = 0;
             samples.CopyTo(managedSamples!);
-            Buffer.BlockCopy(managedSamples!, 0, sampleBytes!, 0, floatCount * sizeof(float));
-            stream.Write(sampleBytes!, 0, floatCount * sizeof(float));
-            dataBytes += floatCount * sizeof(float);
+            int bytesToWrite = floatCount * sizeof(float);
+            Buffer.BlockCopy(managedSamples!, 0, sampleBytes!, 0, bytesToWrite);
+            stream.Write(sampleBytes!, 0, bytesToWrite);
+            dataBytes += bytesToWrite;
         }
 
         public void Complete()
@@ -169,6 +171,50 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             samples = new NativeArray<float>(floatCount, Allocator.Persistent, NativeArrayOptions.ClearMemory);
             managedSamples = new float[floatCount];
             sampleBytes = new byte[floatCount * sizeof(float)];
+        }
+
+        private void HandleUnavailableCaptureFrame(string reason)
+        {
+            consecutiveZeroSampleFrames++;
+            if (consecutiveZeroSampleFrames == 1 || consecutiveZeroSampleFrames % Math.Max(1, framesPerSecond) == 0)
+            {
+                ChartRenderDiagnostics.Log("AudioRenderer " + reason + ". captureFrame=" + captureFrameCount
+                    + " consecutiveUnavailableFrames=" + consecutiveZeroSampleFrames + ".");
+            }
+
+            if (!recoveryAttempted && consecutiveZeroSampleFrames >= recoveryDelayFrames)
+            {
+                RestartAudioRenderer();
+                recoveryAttempted = true;
+                consecutiveZeroSampleFrames = 0;
+                ChartRenderDiagnostics.Log("AudioRenderer recovery succeeded; capture will continue.");
+                return;
+            }
+
+            if (recoveryAttempted && consecutiveZeroSampleFrames >= noSampleGraceFramesAfterRecovery)
+            {
+                throw new InvalidOperationException("Unity AudioRenderer remained unavailable for "
+                    + NoSampleGraceSecondsAfterRecovery
+                    + " seconds after recovery. The render was stopped to avoid producing a fully silent video.");
+            }
+        }
+
+        private void RestartAudioRenderer()
+        {
+            ChartRenderDiagnostics.Log("AudioRenderer produced no usable samples for "
+                + RecoveryDelaySeconds + " second; attempting recovery.");
+            try
+            {
+                AudioRenderer.Stop();
+            }
+            catch
+            {
+            }
+
+            if (!AudioRenderer.Start())
+            {
+                throw new InvalidOperationException("Unity AudioRenderer could not recover after returning no samples.");
+            }
         }
 
         private void WriteHeader(long dataSize)

@@ -61,11 +61,11 @@ ThirdParty/
 
 ### 发布新版本
 
-例如当前代码已经准备好 `1.3.3`：
+例如当前代码已经准备好 `1.3.4`：
 
 ```powershell
-git tag -a 1.3.3 -m "发布 1.3.3"
-git push origin 1.3.3
+git tag -a 1.3.4 -m "发布 1.3.4"
+git push origin 1.3.4
 ```
 
 推送标签后，Actions 会自动：

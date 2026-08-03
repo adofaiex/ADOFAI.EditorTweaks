@@ -1,6 +1,6 @@
 # 技术栈与运行时依赖
 
-本文面向维护者，记录 ADOFAI Editor Tweaks 1.3.3 实际使用的语言、运行时、第三方组件、游戏接口和构建链。玩家操作请阅读发布包中的 `Resources/README.html`。
+本文面向维护者，记录 ADOFAI Editor Tweaks 1.3.4 实际使用的语言、运行时、第三方组件、游戏接口和构建链。玩家操作请阅读发布包中的 `Resources/README.html`。
 
 ## 技术栈总览
 

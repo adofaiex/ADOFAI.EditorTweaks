@@ -2,7 +2,7 @@
 
 ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModManager Mod。它的定位不是做大型功能包，而是把编辑器里长期影响工作流的细节补齐，并提供一个可以直接导出谱面视频的离线渲染器。
 
-当前版本：`1.3.3`。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：`1.3.4`。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 当前版本主要包含：
 
@@ -332,6 +332,8 @@ FFmpeg 写入队列也按内存预算计算，不再固定缓存大量帧。队�
 - 视频完成后由 FFmpeg mux 成 AAC
 
 这样原曲、打击音、长按音效、`PlaySound`、视频背景相关音频等只要走 Unity mixer，就会以游戏实际播放结果进入 WAV。为了避免 UMM 和菜单点击声进入成品，Patch 了 `scrSfx.PlaySfx(AudioClip, MixerGroup.InterfaceParent, ...)`，渲染期间对 InterfaceParent 组直接返回原 clip，不实际播放。
+
+如果 Unity 连续没有返回音频样本，渲染器会按当前帧率计算容错时间，并在连续 1 秒不可用时重启一次音频捕获。恢复后仍连续 5 秒没有样本才会停止任务，因此 120 FPS 不再使用固定 30 帧、仅 0.25 秒的过短容错。实际音频仍只保存 Unity 原样返回的连续数据，不会按视频帧插入静音或截断采样。
 
 关键 Patch：
 

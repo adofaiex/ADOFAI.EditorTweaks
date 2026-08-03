@@ -440,6 +440,7 @@ FFmpeg 写入队列也按 `width * height * 4` 换算最大缓存帧数。队列
    - 按 speaker mode 推导 channel count。
    - `AudioRenderer.Render(samples)`。
    - 写 float32 PCM 数据。
+   - 连续 1 秒没有样本时自动重启一次 `AudioRenderer`；恢复后仍连续 5 秒不可用才终止，避免生成全程静音视频。
 3. `Complete()`：
    - 回到文件头重写 RIFF/WAVE header。
 4. `Dispose()`：
@@ -450,6 +451,7 @@ FFmpeg 写入队列也按 `width * height * 4` 换算最大缓存帧数。队列
 
 - 不需要手工混合歌曲、打拍音、hold 音效、PlaySound。
 - pitch、音量、mixer、游戏实际播放时序都由 Unity 负责。
+- 音频容错按秒换算为当前输出帧数，120 FPS 不会再因为固定 30 帧仅得到 0.25 秒恢复时间。
 
 Patch `scrSfx.PlaySfx(... InterfaceParent ...)` 的原因：
 
