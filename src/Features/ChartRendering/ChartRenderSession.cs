@@ -32,6 +32,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
         private string outputPath = string.Empty;
         private int outputWidth;
         private int outputHeight;
+        private readonly ChartRenderAudioBuffer audioBuffer = new ChartRenderAudioBuffer();
         private ChartUnityAudioCapture? audioCapture;
         private IChartFrameCapture? frameCapture;
         private FfmpegEncoder? encoder;
@@ -120,6 +121,16 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 result.Success = false;
                 result.ErrorCode = ChartRenderErrorCode.InitializationFailed;
                 result.Message = failure?.Message ?? result.Message;
+                Finish(onComplete, result);
+                yield break;
+            }
+
+            if (!Try(() => audioBuffer.Begin(), out failure))
+            {
+                result.Success = false;
+                result.ErrorCode = ChartRenderErrorCode.InitializationFailed;
+                result.Message = failure?.Message ?? "Failed to configure render audio.";
+                Cleanup(frameCapture, encoder, restoreEditor: true, deleteTemp: true);
                 Finish(onComplete, result);
                 yield break;
             }
@@ -402,6 +413,8 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                     + " deltaAudioMinusVideo=" + Number(audioCapture.CapturedSeconds - videoSeconds) + ".");
             }
 
+            audioCapture?.Dispose();
+            audioBuffer.Restore();
             ChartRenderVisualClock.End();
             RestoreState();
 
@@ -546,6 +559,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
             finished = true;
             DisableRenderAutoPlayback(resetEndFloor: true);
+            audioBuffer.Restore();
             IsActive = false;
             VideoBackgroundSyncPatches.RestoreRenderSettings();
             IsRendering = false;
@@ -896,6 +910,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             framePipeline = null;
             audioCapture?.Dispose();
             audioCapture = null;
+            audioBuffer.Restore();
             ChartRenderCustomFrameRate.End();
             ChartRenderVisualClock.End();
             ChartRenderDiagnostics.End();

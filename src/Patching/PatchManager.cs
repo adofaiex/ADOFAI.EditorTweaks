@@ -140,6 +140,7 @@ namespace ADOFAI.EditorTweaks.Patching
                     typeof(ChartRenderAsyncAnglePatch),
                     typeof(ChartRenderHitEndFloorPatch),
                     typeof(ChartRenderJudgmentPatches),
+                    typeof(ChartRenderAudioBufferCheckPatch),
                     typeof(ChartRenderCustomFrameRateScreenPatch)
                 },
                 PatchFeature.EditorOverlayInputGuard),

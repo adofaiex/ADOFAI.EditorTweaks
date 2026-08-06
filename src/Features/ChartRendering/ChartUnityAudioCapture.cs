@@ -80,9 +80,11 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
             consecutiveZeroSampleFrames = 0;
             recoveryAttempted = false;
             started = true;
+            int dspBufferSize = AudioSettings.GetConfiguration().dspBufferSize;
             ChartRenderDiagnostics.Log("AudioRenderer capture started. sampleRate=" + sampleRate
                 + " channels=" + channelCount
                 + " fps=" + framesPerSecond
+                + " dspBufferSize=" + dspBufferSize
                 + " recoveryFrames=" + recoveryDelayFrames
                 + " graceFramesAfterRecovery=" + noSampleGraceFramesAfterRecovery + ".");
         }
