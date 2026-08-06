@@ -15,6 +15,14 @@
       },
       "hash": "b3aaf6c979fe2794753c6e1c5de30ea7ec8552f5"
     },
+    "com.sinanata.designsystem": {
+      "version": "file:com.sinanata.designsystem",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.modules.unitywebrequest": "1.0.0"
+      }
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 0,

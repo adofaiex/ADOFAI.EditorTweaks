@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.sinanata.designsystem": "https://github.com/sinanata/unity-ui-toolkit-design-system.git?path=/Assets/DesignSystem#v1.5.1",
     "com.passivepicasso.thunderkit": "https://github.com/PassivePicasso/ThunderKit.git",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.addressables": "2.9.0",
