@@ -652,8 +652,8 @@
     },
     {
       "key": "chartRendererMissingFfmpeg",
-      "en": "Missing Tools/ffmpeg.exe in the mod folder.",
-      "zh": "Mod 目录缺少 Tools/ffmpeg.exe。"
+      "en": "Missing ThirdParty/FFmpeg/ffmpeg.exe in the mod folder.",
+      "zh": "Mod 目录缺少 ThirdParty/FFmpeg/ffmpeg.exe。"
     },
     {
       "key": "chartRendererIncompatible",

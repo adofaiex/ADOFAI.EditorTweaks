@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -1135,7 +1136,18 @@ namespace EditorTweaks
             string helpPath = Path.Combine(modEntry.Path, "Resources", "FFmpegReference.html");
             if (File.Exists(helpPath))
             {
-                System.Diagnostics.Process.Start(helpPath);
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = helpPath,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception exception)
+                {
+                    Main.Log("Could not open FFmpegReference.html: " + exception.Message);
+                }
             }
             else
             {

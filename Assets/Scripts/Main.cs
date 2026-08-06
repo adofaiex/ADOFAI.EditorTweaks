@@ -109,7 +109,18 @@ namespace EditorTweaks
             string readmePath = Path.Combine(modEntry.Path, "Resources", "README.html");
             if (File.Exists(readmePath))
             {
-                System.Diagnostics.Process.Start(readmePath);
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = readmePath,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception exception)
+                {
+                    modEntry.Logger.Log("Could not open README.html: " + exception.Message);
+                }
             }
             else
             {

@@ -20,6 +20,9 @@ namespace EditorTweaks.Editor
         private const string PipelinePreference = "EditorTweaks.BuildMod.Pipeline";
         private const string ThunderKitSettingsPath = "Assets/ThunderKitSettings/ThunderKitSettings.asset";
         private const string RuntimeFilesDirectory = "ModRuntime";
+        private const string ModResourcesDirectory = "Resources";
+        private const string ScenesBundleName = "scenes.assets";
+        private const string ResourcesBundleName = "resources.assets";
 
         private string modsPath;
         private Pipeline selectedPipeline;
@@ -163,17 +166,17 @@ namespace EditorTweaks.Editor
 
                 string infoPath = Path.Combine(Application.dataPath, "Info.json");
                 string assemblyPath = FindExactFile(librariesPath, modId + ".dll");
-                string scenesBundlePath = FindExactFile(stagingPath, "scenes.assets");
-                string resourcesBundlePath = FindExactFile(stagingPath, "resources.assets");
-                bool resourcesBundleRequired = HasBundleInputs(selectedPipeline, "resources.assets");
+                string scenesBundlePath = FindExactFile(stagingPath, ScenesBundleName);
+                string resourcesBundlePath = FindExactFile(stagingPath, ResourcesBundleName);
+                bool resourcesBundleRequired = HasBundleInputs(selectedPipeline, ResourcesBundleName);
                 string runtimeFilesPath = Path.Combine(projectRoot, RuntimeFilesDirectory);
 
                 RequireFile(infoPath, "Info.json");
                 RequireFile(assemblyPath, modId + ".dll");
-                RequireFile(scenesBundlePath, "scenes.assets");
+                RequireFile(scenesBundlePath, ScenesBundleName);
                 if (resourcesBundleRequired)
                 {
-                    RequireFile(resourcesBundlePath, "resources.assets");
+                    RequireFile(resourcesBundlePath, ResourcesBundleName);
                 }
                 else if (!string.IsNullOrEmpty(resourcesBundlePath))
                 {
@@ -181,16 +184,28 @@ namespace EditorTweaks.Editor
                 }
 
                 string modOutputPath = Path.Combine(modsPath, modId);
+                string modResourcesPath = Path.Combine(modOutputPath, ModResourcesDirectory);
                 Directory.CreateDirectory(modOutputPath);
 
                 File.Copy(infoPath, Path.Combine(modOutputPath, "Info.json"), true);
                 File.Copy(assemblyPath, Path.Combine(modOutputPath, modId + ".dll"), true);
-                File.Copy(scenesBundlePath, Path.Combine(modOutputPath, "scenes.assets"), true);
+                CopyRuntimeFiles(runtimeFilesPath, modOutputPath);
+
+                Directory.CreateDirectory(modResourcesPath);
+                File.Copy(scenesBundlePath, Path.Combine(modResourcesPath, ScenesBundleName), true);
                 if (!string.IsNullOrEmpty(resourcesBundlePath))
                 {
-                    File.Copy(resourcesBundlePath, Path.Combine(modOutputPath, "resources.assets"), true);
+                    File.Copy(resourcesBundlePath, Path.Combine(modResourcesPath, ResourcesBundleName), true);
                 }
-                CopyRuntimeFiles(runtimeFilesPath, modOutputPath);
+                else
+                {
+                    DeleteIfExists(Path.Combine(modResourcesPath, ResourcesBundleName));
+                }
+
+                DeleteIfExists(Path.Combine(modOutputPath, ScenesBundleName));
+                DeleteIfExists(Path.Combine(modOutputPath, ResourcesBundleName));
+                DeleteIfExists(Path.Combine(modOutputPath, "Tools", "ffmpeg.exe"));
+                DeleteDirectoryIfEmpty(Path.Combine(modOutputPath, "Tools"));
 
                 ValidateOutput(modOutputPath, modId, resourcesBundleRequired);
                 Debug.Log("ADOFAI Mod build succeeded: " + modOutputPath);
@@ -270,15 +285,17 @@ namespace EditorTweaks.Editor
         {
             RequireFile(Path.Combine(outputPath, modId + ".dll"), modId + ".dll");
             RequireFile(Path.Combine(outputPath, "Info.json"), "Info.json");
-            RequireFile(Path.Combine(outputPath, "scenes.assets"), "scenes.assets");
+            RequireFile(Path.Combine(outputPath, ModResourcesDirectory, ScenesBundleName), ScenesBundleName);
             if (requireResourcesBundle)
             {
-                RequireFile(Path.Combine(outputPath, "resources.assets"), "resources.assets");
+                RequireFile(Path.Combine(outputPath, ModResourcesDirectory, ResourcesBundleName), ResourcesBundleName);
             }
-            RequireFile(Path.Combine(outputPath, "Resources", "localization.json"), "Resources/localization.json");
-            RequireFile(Path.Combine(outputPath, "Resources", "README.html"), "Resources/README.html");
-            RequireFile(Path.Combine(outputPath, "Resources", "FFmpegReference.html"), "Resources/FFmpegReference.html");
-            RequireFile(Path.Combine(outputPath, "Tools", "ffmpeg.exe"), "Tools/ffmpeg.exe");
+            RequireFile(Path.Combine(outputPath, ModResourcesDirectory, "localization.json"), "Resources/localization.json");
+            RequireFile(Path.Combine(outputPath, ModResourcesDirectory, "README.html"), "Resources/README.html");
+            RequireFile(Path.Combine(outputPath, ModResourcesDirectory, "FFmpegReference.html"), "Resources/FFmpegReference.html");
+            RequireFile(
+                Path.Combine(outputPath, "ThirdParty", "FFmpeg", "ffmpeg.exe"),
+                "ThirdParty/FFmpeg/ffmpeg.exe");
             RequireFile(Path.Combine(outputPath, "ThirdParty", "7-Zip", "x64", "7z.dll"), "ThirdParty/7-Zip/x64/7z.dll");
             RequireFile(Path.Combine(outputPath, "SharpSevenZip.dll"), "SharpSevenZip.dll");
 
@@ -340,14 +357,27 @@ namespace EditorTweaks.Editor
                 Path.Combine(runtimeRoot, "Resources"),
                 Path.Combine(outputPath, "Resources"));
             CopyDirectoryContents(
-                Path.Combine(runtimeRoot, "Tools"),
-                Path.Combine(outputPath, "Tools"));
-            CopyDirectoryContents(
                 Path.Combine(runtimeRoot, "ThirdParty"),
                 Path.Combine(outputPath, "ThirdParty"));
             CopyDirectoryContents(
                 Path.Combine(runtimeRoot, "Managed"),
                 outputPath);
+        }
+
+        private static void DeleteIfExists(string path)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        private static void DeleteDirectoryIfEmpty(string path)
+        {
+            if (Directory.Exists(path) && !Directory.EnumerateFileSystemEntries(path).Any())
+            {
+                Directory.Delete(path);
+            }
         }
 
         private static void CopyDirectoryContents(string sourcePath, string destinationPath)

@@ -92,13 +92,21 @@ Assets/
 
 Unity 完成 ThunderKit 导入后，在菜单中打开 `Tools > Build Mod`。选择 ThunderKit Pipeline 和输出目录，然后点击 `Build Mod`。默认输出目录是 ADOFAI 安装目录下的 `Mods/<ProjectName>/`。
 
-构建窗口只部署以下文件：
+构建窗口会把程序集、资源包和运行时文件部署到 Mod 目录：
 
 ```text
 <ProjectName>.dll
 Info.json
-scenes.assets
-resources.assets
+Resources/
+├── scenes.assets
+├── resources.assets       （存在 Unity 资源时生成）
+├── localization.json
+├── README.html
+└── FFmpegReference.html
+ThirdParty/
+├── FFmpeg/ffmpeg.exe
+└── 7-Zip/x64/7z.dll
+SharpSevenZip.dll
 ```
 
 它不会复制游戏 DLL，也不会自动启动游戏。

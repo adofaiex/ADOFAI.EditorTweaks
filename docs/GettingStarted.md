@@ -184,13 +184,21 @@ namespace MyCoolMod
 4. 确认输出目录，默认是 `<ADOFAI目录>/Mods/`。
 5. 点击 `Build Mod`。
 
-ThunderKit 会构建程序集和两个资源包；模板窗口随后只复制以下四个文件：
+ThunderKit 会构建程序集和两个资源包；模板窗口会把资源包和运行时资源统一复制到 Mod 的 `Resources/` 目录：
 
 ```text
 <ProjectName>.dll
 Info.json
-scenes.assets
-resources.assets
+Resources/
+├── scenes.assets
+├── resources.assets
+├── localization.json
+├── README.html
+└── FFmpegReference.html
+ThirdParty/
+├── FFmpeg/ffmpeg.exe
+└── 7-Zip/x64/7z.dll
+SharpSevenZip.dll
 ```
 
 构建失败会同时写入 Unity Console 并弹出错误窗口。窗口不会复制 ADOFAI 游戏 DLL，也不会启动游戏。

@@ -10,6 +10,7 @@ namespace EditorTweaks
     {
         private const string ScenesBundleName = "scenes.assets";
         private const string ResourcesBundleName = "resources.assets";
+        private const string ModResourcesDirectory = "Resources";
 
         private static AssetBundle scenesBundle;
         private static AssetBundle resourcesBundle;
@@ -75,7 +76,7 @@ namespace EditorTweaks
 
         private static AssetBundle LoadBundle(string modPath, string bundleName)
         {
-            string bundlePath = Path.Combine(modPath, bundleName);
+            string bundlePath = Path.Combine(modPath, ModResourcesDirectory, bundleName);
             if (!File.Exists(bundlePath))
             {
                 Debug.LogError("AssetBundle not found: " + bundlePath);

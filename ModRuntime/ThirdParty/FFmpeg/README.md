@@ -1,14 +1,14 @@
 # FFmpeg redistribution notes
 
-This project bundles `Tools/ffmpeg.exe` in release packages. The bundled binary
+This project bundles `ThirdParty/FFmpeg/ffmpeg.exe` in release packages. The bundled binary
 is the gyan.dev FFmpeg essentials build and is distributed under GPLv3.
 
 Release checklist:
 
-1. Keep `Tools/ffmpeg.exe` in the release package only together with:
-   - `Tools/FFmpeg-BUILD.txt`
-   - `Tools/FFmpeg-SOURCE.txt`
-   - `Tools/FFmpeg-NOTICE.txt`
+1. Keep `ThirdParty/FFmpeg/ffmpeg.exe` in the release package only together with:
+   - `ThirdParty/FFmpeg/FFmpeg-BUILD.txt`
+   - `ThirdParty/FFmpeg/FFmpeg-SOURCE.txt`
+   - `ThirdParty/FFmpeg/FFmpeg-NOTICE.txt`
    - `ThirdParty/FFmpeg/GPL-3.0.txt`
 2. Publish the Corresponding Source for the exact FFmpeg binary next to the mod
    download. The source offer must cover FFmpeg and the linked GPL/LGPL
