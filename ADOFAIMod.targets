@@ -76,7 +76,8 @@
             <ManagedDependencyFiles Include="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
             <ManagedDependencyFiles Include="$(OutputPath)System.Numerics.Vectors.dll" Condition="Exists('$(OutputPath)System.Numerics.Vectors.dll')" />
             <SevenZipNativeFile Include="$(OutputPath)x64\7z.dll" />
-            <SharpSevenZipLicenseFile Include="$(NuGetPackageRoot)sharpsevenzip\2.0.109\LICENSE" />
+            <!-- NuGetPackageRoot may not end with a separator (for example with recent .NET SDKs). -->
+            <SharpSevenZipLicenseFile Include="$(NuGetPackageRoot)\sharpsevenzip\2.0.109\LICENSE" />
             <FilesToCopy Include="$(ProjectDir)Info.json" />
             <ResourceFiles Include="$(ProjectDir)Resources\**\*" Exclude="$(ProjectDir)Resources\**\*\" />
             <ToolFiles Include="$(ProjectDir)Tools\**\*" Exclude="$(ProjectDir)Tools\**\*\" />
