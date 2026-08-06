@@ -203,6 +203,8 @@ SharpSevenZip.dll
 
 构建失败会同时写入 Unity Console 并弹出错误窗口。窗口不会复制 ADOFAI 游戏 DLL，也不会启动游戏。
 
+每次构建成功后，项目根目录的 `Build/` 下还会生成一份按 `Info.json` 版本号命名的完整 Mod 副本，例如 `Build/EditorTweaks-1.4.0/`。同一个版本再次构建时会更新原目录；修改 `Assets/Info.json` 中的 `Version` 后会生成新的版本目录。
+
 ## 9. 常见错误
 
 ### 游戏路径错误

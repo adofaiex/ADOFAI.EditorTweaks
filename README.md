@@ -111,6 +111,20 @@ SharpSevenZip.dll
 
 它不会复制游戏 DLL，也不会自动启动游戏。
 
+每次构建成功后，还会在项目根目录生成一个按版本号命名的完整 Mod 副本，例如：
+
+```text
+Build/
+└── EditorTweaks-1.4.0/
+    ├── EditorTweaks.dll
+    ├── Info.json
+    ├── Resources/
+    ├── ThirdParty/
+    └── SharpSevenZip.dll
+```
+
+版本号来自 `Assets/Info.json`。同一个版本再次构建时，会更新 `Build/EditorTweaks-1.4.0/`；修改 `Info.json` 的版本号后，则会生成新的版本目录。
+
 ## 打包模板
 
 直接从 Git 仓库安装：

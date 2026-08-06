@@ -20,6 +20,7 @@ namespace EditorTweaks.Editor
         private const string PipelinePreference = "EditorTweaks.BuildMod.Pipeline";
         private const string ThunderKitSettingsPath = "Assets/ThunderKitSettings/ThunderKitSettings.asset";
         private const string RuntimeFilesDirectory = "ModRuntime";
+        private const string BuildOutputDirectory = "Build";
         private const string ModResourcesDirectory = "Resources";
         private const string ScenesBundleName = "scenes.assets";
         private const string ResourcesBundleName = "resources.assets";
@@ -172,6 +173,7 @@ namespace EditorTweaks.Editor
                 string runtimeFilesPath = Path.Combine(projectRoot, RuntimeFilesDirectory);
 
                 RequireFile(infoPath, "Info.json");
+                ModInfo info = ReadModInfo(infoPath, modId);
                 RequireFile(assemblyPath, modId + ".dll");
                 RequireFile(scenesBundlePath, ScenesBundleName);
                 if (resourcesBundleRequired)
@@ -208,10 +210,20 @@ namespace EditorTweaks.Editor
                 DeleteDirectoryIfEmpty(Path.Combine(modOutputPath, "Tools"));
 
                 ValidateOutput(modOutputPath, modId, resourcesBundleRequired);
+                string versionedBuildPath = CreateVersionedBuild(
+                    projectRoot,
+                    modOutputPath,
+                    modId,
+                    info.Version);
                 Debug.Log("ADOFAI Mod build succeeded: " + modOutputPath);
+                Debug.Log("Versioned Mod package created: " + versionedBuildPath);
                 if (!Application.isBatchMode)
                 {
-                    EditorUtility.DisplayDialog("Build Mod", "Build succeeded.\n\nOutput:\n" + modOutputPath, "OK");
+                    EditorUtility.DisplayDialog(
+                        "Build Mod",
+                        "Build succeeded.\n\nGame output:\n" + modOutputPath
+                        + "\n\nVersioned package:\n" + versionedBuildPath,
+                        "OK");
                 }
             }
             catch (Exception exception)
@@ -299,16 +311,52 @@ namespace EditorTweaks.Editor
             RequireFile(Path.Combine(outputPath, "ThirdParty", "7-Zip", "x64", "7z.dll"), "ThirdParty/7-Zip/x64/7z.dll");
             RequireFile(Path.Combine(outputPath, "SharpSevenZip.dll"), "SharpSevenZip.dll");
 
-            string infoText = File.ReadAllText(Path.Combine(outputPath, "Info.json"));
+            ReadModInfo(Path.Combine(outputPath, "Info.json"), modId);
+        }
+
+        private static ModInfo ReadModInfo(string infoPath, string modId)
+        {
+            string infoText = File.ReadAllText(infoPath);
             ModInfo info = JsonUtility.FromJson<ModInfo>(infoText);
             if (info == null
                 || !string.Equals(info.Id, modId, StringComparison.Ordinal)
+                || string.IsNullOrWhiteSpace(info.Version)
+                || info.Version.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
                 || !string.Equals(info.AssemblyName, modId + ".dll", StringComparison.Ordinal)
                 || !string.Equals(info.EntryMethod, "EditorTweaks.Main.Load", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
-                    "Info.json does not match the expected EditorTweaks Mod identity or entry method.");
+                    "Info.json does not match the expected EditorTweaks Mod identity, version, or entry method.");
             }
+
+            return info;
+        }
+
+        private static string CreateVersionedBuild(
+            string projectRoot,
+            string sourcePath,
+            string modId,
+            string version)
+        {
+            string buildRoot = Path.GetFullPath(Path.Combine(projectRoot, BuildOutputDirectory));
+            string packagePath = Path.GetFullPath(Path.Combine(buildRoot, modId + "-" + version));
+            string buildRootWithSeparator = buildRoot.TrimEnd(Path.DirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+
+            if (!packagePath.StartsWith(buildRootWithSeparator, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "The versioned package path is outside the project's Build directory.");
+            }
+
+            Directory.CreateDirectory(buildRoot);
+            if (Directory.Exists(packagePath))
+            {
+                Directory.Delete(packagePath, true);
+            }
+
+            CopyDirectoryContents(sourcePath, packagePath);
+            return packagePath;
         }
 
         private static bool HasBundleInputs(Pipeline pipeline, string bundleName)
@@ -408,6 +456,7 @@ namespace EditorTweaks.Editor
         private sealed class ModInfo
         {
             public string Id;
+            public string Version;
             public string AssemblyName;
             public string EntryMethod;
         }
