@@ -1,0 +1,29 @@
+{
+    "name": "EditorTweaks",
+    "rootNamespace": "EditorTweaks",
+    "references": [
+        "GUID:6055be8ebefd69e48b49212b09b47b2f"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Assembly-CSharp.dll",
+        "Assembly-CSharp-firstpass.dll",
+        "Facepunch.Steamworks.Win64.dll",
+        "DOTween.dll",
+        "DOTweenPro.dll",
+        "RDTools.dll",
+        "0Harmony.dll",
+        "UnityModManager.dll",
+        "Newtonsoft.Json.dll",
+        "SharpSevenZip.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "ADOFAI_GAME_IMPORTED"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

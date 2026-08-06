@@ -1,0 +1,13 @@
+{
+  "Id": "EditorTweaks",
+  "DisplayName": "EditorTweaks",
+  "Description": "ADOFAI Editor Tweaks",
+  "Author": "memsyslizi",
+  "Version": "1.4.0",
+  "ManagerVersion": "0.27.0",
+  "Requirements": [],
+  "AssemblyName": "EditorTweaks.dll",
+  "EntryMethod": "EditorTweaks.Main.Load",
+  "HomePage": "",
+  "Repository": ""
+}
