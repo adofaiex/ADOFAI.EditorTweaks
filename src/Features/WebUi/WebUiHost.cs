@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -10,7 +11,9 @@ using System.Threading.Tasks;
 using ADOFAI.EditorTweaks.Api.Rendering;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.CloudSettings;
+using ADOFAI.SteamIntegration;
 using GDMiniJSON;
+using Steamworks;
 using UnityEngine;
 using ApiChartRenderResult = ADOFAI.EditorTweaks.Api.Rendering.ChartRenderResult;
 
@@ -22,6 +25,8 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
         private const int LastPort = 18180;
         private const int CommandTimeoutMilliseconds = 5000;
         private const float StateBroadcastIntervalSeconds = 0.1f;
+        private const int SteamOverlayProbeAttempts = 6;
+        private const float SteamOverlayProbeIntervalSeconds = 0.2f;
 
         private static WebUiHost? instance;
 
@@ -35,6 +40,7 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
         private string pageUrl = string.Empty;
         private string latestStateJson = "{}";
         private ChartRenderTask? renderTask;
+        private Coroutine? openSettingsPageRoutine;
         private float nextStateBroadcastTime;
         private bool stateDirty = true;
         private int shutdownRequested;
@@ -77,7 +83,10 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
 
             if (WebUiHotkey.IsPressed(Main.Settings.WebUiOpenHotkey))
             {
-                OpenSettingsPage();
+                if (openSettingsPageRoutine == null)
+                {
+                    openSettingsPageRoutine = StartCoroutine(OpenSettingsPageRoutine());
+                }
             }
 
             if (ChartRenderService.IsActive && Input.GetKeyDown(KeyCode.Escape))
@@ -585,25 +594,97 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
             settings.Normalize();
         }
 
-        private void OpenSettingsPage()
+        private IEnumerator OpenSettingsPageRoutine()
         {
-            if (string.IsNullOrWhiteSpace(pageUrl))
+            try
             {
-                Main.Log("[WebUI] The local service is not running; cannot open the settings page.");
-                return;
-            }
+                if (string.IsNullOrWhiteSpace(pageUrl))
+                {
+                    Main.Log("[WebUI] The local service is not running; cannot open the settings page.");
+                    yield break;
+                }
 
+                if (!IsSteamInitialized())
+                {
+                    OpenDefaultBrowser("Steam is not initialized");
+                    yield break;
+                }
+
+                string failureReason = "Steam Overlay is unavailable.";
+                for (int attempt = 0; attempt < SteamOverlayProbeAttempts; attempt++)
+                {
+                    if (TryOpenSteamOverlay(out failureReason))
+                    {
+                        yield break;
+                    }
+
+                    if (attempt + 1 < SteamOverlayProbeAttempts)
+                    {
+                        yield return new WaitForSecondsRealtime(SteamOverlayProbeIntervalSeconds);
+                    }
+                }
+
+                OpenDefaultBrowser(failureReason);
+            }
+            finally
+            {
+                openSettingsPageRoutine = null;
+            }
+        }
+
+        private static bool IsSteamInitialized()
+        {
+            try
+            {
+                return SteamController.initialized;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool TryOpenSteamOverlay(out string failureReason)
+        {
+            try
+            {
+                if (!SteamController.initialized)
+                {
+                    failureReason = "Steam is not initialized";
+                    return false;
+                }
+
+                if (!SteamUtils.IsOverlayEnabled)
+                {
+                    failureReason = "Steam Overlay is unavailable or still loading";
+                    return false;
+                }
+
+                SteamFriends.OpenWebOverlay(pageUrl, true);
+                Main.Log("[WebUI] Opened the settings page in Steam Overlay at " + pageUrl);
+                failureReason = string.Empty;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                failureReason = "Steam Overlay could not be opened: " + exception.Message;
+                return false;
+            }
+        }
+
+        private void OpenDefaultBrowser(string reason)
+        {
             try
             {
                 Process.Start(new ProcessStartInfo(pageUrl)
                 {
                     UseShellExecute = true
                 });
-                Main.Log("[WebUI] Opened the default browser at " + pageUrl);
+                Main.Log("[WebUI] " + reason + "; opened the system default browser at " + pageUrl);
             }
             catch (Exception exception)
             {
-                Main.Log("[WebUI] Could not open a browser: " + exception.Message + ". URL: " + pageUrl);
+                Main.Log("[WebUI] Could not open the system default browser: " + exception.Message + ". URL: " + pageUrl);
             }
         }
 
@@ -612,6 +693,12 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
             if (Interlocked.Exchange(ref shutdownRequested, 1) != 0)
             {
                 return;
+            }
+
+            if (openSettingsPageRoutine != null)
+            {
+                StopCoroutine(openSettingsPageRoutine);
+                openSettingsPageRoutine = null;
             }
 
             if (renderTask != null)
