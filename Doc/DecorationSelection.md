@@ -134,7 +134,7 @@ Prefix 接管官方方法。
 
 - 未选或多选时隐藏 gizmo。
 - 单选时拿到 `scrDecorationManager.GetDecoration(selectedEvent)`。
-- `gizmoTransform.position = decoration.transform.position`。
+- `gizmoTransform.position = decoration.pivotPosVec`，与游戏原版保持一致，避免把图片/视差偏移误当成轴心位置。
 - 根据 `enable && !hide` 设置 active。
 
 ### `scrDecoration.UpdateScreenClamp`
@@ -145,13 +145,15 @@ Postfix 修正屏幕相对装饰的 parallax 数据。
 
 1. 只在编辑器环境生效（`ADOBase.editor != null && ADOBase.isEditingLevel`），不干预游戏播放。
 2. 只对当前选中的装饰修正位置（`selectedDecorations.Contains(sourceLevelEvent)`），不影响其他装饰。
-3. 只在装饰原有 `clampToScreen` 已启用时修正，**不再强制覆写** `clampToScreen = true`，保留游戏对装饰可见性的控制。
+3. 不覆盖游戏原有的 `clampToScreen` 状态，保留游戏对装饰可见性的控制。
 
 CameraAspect 要先：
 
 ```text
 pivot.x *= Screen.height / Screen.width
 ```
+
+其中 `pivot = pivotPosVec + pivotOffsetVec`，必须同时保留装饰轴心位置和图片偏移。
 
 然后：
 
@@ -161,7 +163,7 @@ parallax.screenRelativePos = pivot / 20 + (0.5, 0.5)
 
 ### `scrParallax.SetTrans`
 
-Postfix 在视差 transform 更新后，如果当前单选装饰就是这个 parallax 所属装饰，则刷新轴心十字。
+Postfix 在视差 transform 更新后，如果当前单选装饰就是这个 parallax 所属装饰，则使用已经完成镜头变换的 `decoration.transform.position` 刷新轴心十字。这里不能使用未变换的 `pivotPosVec`，否则十字会在每帧刷新时漂离装饰。
 
 ## 踩坑记录
 

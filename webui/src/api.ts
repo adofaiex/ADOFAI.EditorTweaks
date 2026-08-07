@@ -77,7 +77,7 @@ export function createMockState(): WebUiState {
   const names = ["编辑器修复", "数值拖动", "装饰移动", "谱面渲染", "云同步", "工具"];
   return {
     server: { connected: false, version: "演示状态" },
-    compatibility: { gameVersion: "1.3.2", editorVersion: "1.3.2", modVersion: "1.4.6" },
+    compatibility: { gameVersion: "1.3.2", editorVersion: "1.3.2", modVersion: "1.4.7" },
     patches: names.map((name, index) => ({
       id: `mock-${index}`,
       name,

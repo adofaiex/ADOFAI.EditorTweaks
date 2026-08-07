@@ -65,13 +65,16 @@ namespace ADOFAI.EditorTweaks.Features.DecorationSelection
                     return;
                 }
 
-                Vector2 pivot = __instance.pivotPosVec;
+                // The game keeps the logical pivot and the image offset separately.
+                // UpdateScreenClamp uses their sum as the screen-relative position;
+                // dropping pivotOffsetVec here makes a decoration jump after its
+                // pivot offset is edited and then dragged.
+                Vector2 pivot = __instance.pivotPosVec + __instance.pivotOffsetVec;
                 if (__instance.placementType == DecPlacementType.CameraAspect && Screen.width != 0)
                 {
                     pivot.x *= (float)Screen.height / Screen.width;
                 }
 
-                __instance.parallax.clampToScreen = true;
                 __instance.parallax.screenRelativePos = pivot / 20f + new Vector2(0.5f, 0.5f);
             }
         }
@@ -95,7 +98,7 @@ namespace ADOFAI.EditorTweaks.Features.DecorationSelection
                     return;
                 }
 
-                SetPivotCrossPosition(editor.decPivot, __instance.decoration);
+                SetPivotCrossRenderedPosition(editor.decPivot, __instance.decoration);
             }
         }
 
@@ -111,6 +114,23 @@ namespace ADOFAI.EditorTweaks.Features.DecorationSelection
                 return;
             }
 
+            // Use the same logical pivot coordinate as the game's own
+            // UpdatePivotCrossImage implementation. transform.position also
+            // includes parallax/image offsets and is not the decoration pivot.
+            pivot.gizmoTransform.transform.position = decoration.pivotPosVec;
+        }
+
+        private static void SetPivotCrossRenderedPosition(DecorationPivot pivot, scrDecoration decoration)
+        {
+            if (pivot.gizmoTransform == null)
+            {
+                return;
+            }
+
+            // SetTrans runs after the camera/parallax transform has been applied.
+            // At this point the gizmo must follow the rendered world position;
+            // using pivotPosVec here would reset it to the untransformed editor
+            // coordinate on every frame.
             pivot.gizmoTransform.transform.position = decoration.transform.position;
         }
     }

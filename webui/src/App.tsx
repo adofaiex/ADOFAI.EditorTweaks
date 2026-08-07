@@ -333,7 +333,6 @@ function App() {
               </button>
             ))}
           </nav>
-          <div className="sidebar-footnote">Ctrl+Shift+E 打开本页面</div>
         </aside>
 
         <main className="main-content">
@@ -355,7 +354,7 @@ function App() {
       <footer className="statusbar">
         <span className="status-running"><span className="status-led" />运行中</span>
         <span className="status-divider" />
-        <button onClick={() => setPage("render")} className="status-link"><IconFile /> 日志</button>
+        <button onClick={() => setPage("tools")} className="status-link"><IconSettings /> 工具</button>
         <span className="status-divider" />
         <span className="status-version">EDITOR TWEAKS {state.compatibility.modVersion}</span>
       </footer>
