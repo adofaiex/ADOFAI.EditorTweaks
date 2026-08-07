@@ -8,6 +8,11 @@ webui/node_modules/
 webui/dist/
 webui/.vite/
 
+# Frontend compiler output
+webui/*.tsbuildinfo
+webui/vite.config.js
+webui/vite.config.d.ts
+
 # IDE and editor state
 .vs/
 .vscode/
