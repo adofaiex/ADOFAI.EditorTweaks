@@ -29,10 +29,12 @@ UMM 面板只显示一行快捷键录入。默认值是 `Ctrl+Shift+E`，录入�
 | POST | `/api/render/cancel` | 取消当前渲染任务 |
 | POST | `/api/cloud/upload` | 上传当前设置到 Steam 云 |
 | POST | `/api/cloud/download` | 从 Steam 云下载设置 |
-| POST | `/api/open-manual` | 打开用户手册 |
-| POST | `/api/open-ffmpeg-help` | 打开 FFmpeg 参数参考 |
+| GET | `/docs/manual?token=...` | 在当前 Web 服务中打开用户手册 |
+| GET | `/docs/ffmpeg?token=...` | 在当前 Web 服务中打开 FFmpeg 参数参考 |
 
-`HttpListener` 的后台线程只负责读取请求和写回响应。修改设置、启动渲染、取消渲染和打开本地文件都会进入 Unity 主线程队列，并设置超时，避免 HTTP 线程直接触碰 Unity 对象。
+`HttpListener` 的后台线程只负责读取请求和写回响应。修改设置、启动渲染、取消渲染和云同步操作都会进入 Unity 主线程队列，并设置超时，避免 HTTP 线程直接触碰 Unity 对象。帮助文档由本地服务按固定路径提供，不依赖系统文件关联；文档路径不接受用户传入的文件名。
+
+渲染开始后，所有会影响下一次任务的设置接口都会拒绝修改，页面对应控件也会显示为锁定状态。任务进入成功、失败或取消终态后，SSE 快照会改为明确的终态阶段和提示，页面无需刷新即可恢复可编辑状态。
 
 静态文件路径会先解码，再规范化为 `Resources/WebUI` 下的绝对路径。请求包含路径穿越、未知 API、无效令牌或不存在文件时会被拒绝。
 

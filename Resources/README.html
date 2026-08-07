@@ -80,7 +80,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
 <body>
 <nav class="nav">
   <div class="nav-title">Editor Tweaks</div>
-  <div class="nav-subtitle">v1.4.5 用户手册</div>
+  <div class="nav-subtitle">用户手册</div>
 
   <div class="nav-section">开始使用</div>
   <a href="#overview">功能概览</a>
@@ -113,7 +113,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
 <main class="main">
 <header class="page-header">
   <h1>ADOFAI Editor Tweaks 用户手册</h1>
-  <p>本手册适用于 1.4.5。你可以按照下面的步骤直接使用各项功能，不需要了解任何内部原理。</p>
+  <p>本手册随 Mod 功能一起维护。你可以按照下面的步骤直接使用各项功能，不需要了解任何内部原理。</p>
 </header>
 
 <section class="section" id="overview">
@@ -281,10 +281,10 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
   <div class="card steps">
     <div class="step"><div><strong>打开并检查谱面</strong><p>先正常播放一小段，确认音乐、背景、视频和装饰都能正确显示。</p></div></div>
     <div class="step"><div><strong>选择画面捕获方式</strong><p>普通谱面优先使用摄像机渲染；摄像机模式缺少内容时再改用游戏画面渲染。</p></div></div>
-    <div class="step"><div><strong>设置输出选项</strong><p>选择保存目录、帧率、结束后额外录制时间、是否显示判定文字，以及是否只渲染选中段落。</p></div></div>
+    <div class="step"><div><strong>设置输出选项</strong><p>选择保存目录、帧率、结束后延迟停止秒数、是否显示判定文字，以及是否只渲染选中段落。</p></div></div>
     <div class="step"><div><strong>检查保存空间</strong><p>高分辨率、较长谱面和较高帧率会占用更多临时空间与成品空间。</p></div></div>
     <div class="step"><div><strong>点击“开始渲染”</strong><p>渲染期间不要关闭游戏，在同一个 Web 页面查看完整进度。</p></div></div>
-    <div class="step"><div><strong>等待结果提示</strong><p>完成后会显示成品位置；失败或取消后也会恢复正常播放和输入。</p></div></div>
+    <div class="step"><div><strong>等待结果提示</strong><p>完成、失败或取消后，页面顶部会显示明确结果和成品位置；失败或取消后也会恢复正常播放和输入。</p></div></div>
   </div>
 </section>
 
@@ -297,13 +297,14 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
       <tr><td>画面捕获方式</td><td>默认使用摄像机渲染；特殊谱面再使用游戏画面渲染。</td></tr>
       <tr><td>宽度与高度</td><td>只用于摄像机渲染。常用为 1920×1080；也可选择 2K、4K、竖屏或超宽屏预设。</td></tr>
       <tr><td>帧率</td><td>60 适合大多数谱面；30 文件更小；120 更流畅但耗时和空间明显增加。</td></tr>
-      <tr><td>结束后额外录制</td><td>保留谱面结尾动画和余音，默认值通常无需修改。</td></tr>
+      <tr><td>结束后延迟停止秒数</td><td>保留谱面结尾动画和余音，默认值通常无需修改。</td></tr>
       <tr><td>显示判定文字</td><td>按成品需求决定是否保留 Perfect、Early、Late 等文字。</td></tr>
       <tr><td>视频格式</td><td>MP4 兼容性最好；MKV 或 MOV 可用于特殊工作流程。</td></tr>
       <tr><td>音频格式</td><td>AAC 适合日常分享；FLAC、ALAC 适合需要无损声音的成品。</td></tr>
       <tr><td>性能档位</td><td>“自动均衡”适合大多数电脑；遇到问题可尝试“CPU 兼容”。</td></tr>
       <tr><td>渲染预览</td><td>只影响摄像机渲染时游戏中的显示，不影响成品；游戏画面渲染始终显示正常游戏画面。</td></tr>
     </table>
+    <div class="tip">渲染开始后，所有会影响当前输出的设置都会暂时锁定。任务完成、失败或取消后，设置会自动恢复可编辑。</div>
     <div class="warn">高级设置和专业参数建议保持默认。不了解其用途时，不要粘贴网络上的参数。</div>
   </div>
 </section>
@@ -317,7 +318,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
       <li>确认 Web 渲染页中的范围和设置正确。</li>
       <li>开始渲染。成品会从选区起点开始，并在选区终点结束。</li>
     </ol>
-    <div class="tip">片段渲染不会使用“结束后额外录制”时间。如需保留结尾，请把后面的砖块也加入选区。</div>
+    <div class="tip">片段渲染不会使用“结束后延迟停止秒数”。如需保留结尾，请把后面的砖块也加入选区。</div>
   </div>
 </section>
 
@@ -351,7 +352,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
   <h2>常见问题</h2>
   <div class="card">
     <h3>如何恢复默认设置？</h3>
-    <p>设置页面中的渲染区域提供“一键恢复渲染默认”。其他开关可以逐项恢复为初始状态。</p>
+    <p>设置页面工具模块提供“恢复全部默认”，会同时恢复功能开关、通用设置和渲染设置。</p>
     <h3>为什么游戏画面模式不能设置输出分辨率？</h3>
     <p>该模式会使用当前游戏分辨率。请先在游戏设置中调整好窗口或全屏分辨率，再开始渲染。</p>
     <h3>为什么摄像机模式不包含编辑器界面？</h3>

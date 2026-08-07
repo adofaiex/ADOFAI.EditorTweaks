@@ -1,6 +1,6 @@
 # 技术栈与运行时依赖
 
-本文面向维护者，记录 ADOFAI Editor Tweaks 1.4.5 实际使用的语言、运行时、第三方组件、游戏接口和构建链。玩家操作请阅读发布包中的 `Resources/README.html`。
+本文面向维护者，记录当前代码实际使用的语言、运行时、第三方组件、游戏接口和构建链。玩家操作请阅读发布包中的 `Resources/README.html`。
 
 ## 技术栈总览
 
@@ -189,7 +189,7 @@ Steam 云同步是显式的上传/下载操作。`CloudSettingsManager` 把受�
 dotnet build
 ```
 
-GitHub Actions 在 `1.2.3` 或 `v1.2.3` 形式的标签推送后运行 Windows 构建，先校验标签版本与 `Info.json` 一致，再上传打包产物并创建 GitHub Release。工作流使用 .NET SDK 8.0 驱动构建，但不会改变项目的 `net481` 目标。
+GitHub Actions 在符合三段式版本格式的标签推送后运行 Windows 构建，先校验标签版本与 `Info.json` 一致，再上传打包产物并创建 GitHub Release。工作流使用 .NET SDK 8.0 驱动构建，但不会改变项目的 `net481` 目标。
 
 ## 第三方组件与许可证
 

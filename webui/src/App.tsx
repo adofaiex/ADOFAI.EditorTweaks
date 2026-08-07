@@ -26,7 +26,7 @@ import {
 } from "@arco-design/web-react/icon";
 import React from "react";
 import { createPortal } from "react-dom";
-import { createEventSource, createMockState, isLocalPreview, postJson } from "./api";
+import { createEventSource, createMockState, isLocalPreview, localDocumentUrl, postJson } from "./api";
 import type { PageKey, PatchStatus, RenderState, SettingsState, WebUiState } from "./types";
 
 const pageItems: Array<{ key: PageKey; label: string; description: string; icon: React.ReactNode }> = [
@@ -185,6 +185,11 @@ function App() {
   }, [localPreview]);
 
   const updateSettings = async (changes: Partial<SettingsState>) => {
+    if (state.render.active) {
+      Message.warning("渲染进行中，设置暂时锁定，请等待渲染结束。");
+      return;
+    }
+
     setState((current) => ({ ...current, settings: { ...current.settings, ...changes } }));
     if (demoMode) {
       Message.success("演示状态：设置已更新");
@@ -272,6 +277,18 @@ function App() {
     }
   };
 
+  const openDocument = (path: string) => {
+    if (localPreview) {
+      Message.info("本地预览没有连接 Mod 服务，帮助页面无法打开。");
+      return;
+    }
+
+    const opened = window.open(localDocumentUrl(path), "_blank", "noopener,noreferrer");
+    if (!opened) {
+      Message.error("浏览器阻止了帮助页面，请允许当前页面打开新标签页。");
+    }
+  };
+
   const activePage = pageItems.find((item) => item.key === page) ?? pageItems[0];
   const visibleRender = page === "render";
   const connectionLabel = localPreview
@@ -322,16 +339,16 @@ function App() {
         <main className="main-content">
           {loading ? <div className="loading-state"><Spin size={32} /><span>正在连接 Mod 服务…</span></div> : null}
           {!loading && visibleRender ? (
-            <RenderPage state={state} onSettings={updateSettings} onAction={runAction} onStart={() => renderAction("start")} onCancel={() => renderAction("cancel")} />
+            <RenderPage state={state} onSettings={updateSettings} onOpenDocument={openDocument} onStart={() => renderAction("start")} onCancel={() => renderAction("cancel")} />
           ) : null}
           {!loading && !visibleRender && page === "overview" ? (
-            <Overview state={state} onNavigate={setPage} onSettings={updateSettings} onAction={runAction} />
+            <Overview state={state} onNavigate={setPage} onSettings={updateSettings} onAction={runAction} disabled={state.render.active} />
           ) : null}
-          {!loading && !visibleRender && page === "fixes" ? <FixesPage state={state} onSettings={updateSettings} /> : null}
-          {!loading && !visibleRender && page === "numeric" ? <NumericPage state={state} onSettings={updateSettings} /> : null}
-          {!loading && !visibleRender && page === "decoration" ? <DecorationPage state={state} onSettings={updateSettings} /> : null}
-          {!loading && !visibleRender && page === "cloud" ? <CloudPage state={state} onAction={runAction} /> : null}
-          {!loading && !visibleRender && page === "tools" ? <ToolsPage onAction={runAction} /> : null}
+          {!loading && !visibleRender && page === "fixes" ? <FixesPage state={state} onSettings={updateSettings} disabled={state.render.active} /> : null}
+          {!loading && !visibleRender && page === "numeric" ? <NumericPage state={state} onSettings={updateSettings} disabled={state.render.active} /> : null}
+          {!loading && !visibleRender && page === "decoration" ? <DecorationPage state={state} onSettings={updateSettings} disabled={state.render.active} /> : null}
+          {!loading && !visibleRender && page === "cloud" ? <CloudPage state={state} onAction={runAction} disabled={state.render.active} /> : null}
+          {!loading && !visibleRender && page === "tools" ? <ToolsPage onAction={runAction} onOpenDocument={openDocument} disabled={state.render.active} /> : null}
         </main>
       </div>
 
@@ -346,7 +363,7 @@ function App() {
   );
 }
 
-function Overview({ state, onNavigate, onSettings, onAction }: { state: WebUiState; onNavigate: (page: PageKey) => void; onSettings: (changes: Partial<SettingsState>) => void; onAction: (path: string) => void }) {
+function Overview({ state, onNavigate, onSettings, onAction, disabled }: { state: WebUiState; onNavigate: (page: PageKey) => void; onSettings: (changes: Partial<SettingsState>) => void; onAction: (path: string) => void; disabled: boolean }) {
   const allAvailable = state.patchSummary.active === state.patchSummary.total && !state.patchSummary.registrationError;
   return (
     <>
@@ -368,51 +385,54 @@ function Overview({ state, onNavigate, onSettings, onAction }: { state: WebUiSta
       <section className="section-block angular-panel global-settings">
         <SectionHeading title="全局设置" hint="只影响 Web 设置页和通用编辑行为" />
         <div className="settings-grid">
-          <SettingSelect label="旧版 ZIP 文件名编码" group="LegacyZipEncoding" value={state.settings.LegacyZipEncoding} options={["Auto", "CP949", "GB18030", "ShiftJIS", "CP437"]} onChange={(value) => onSettings({ LegacyZipEncoding: value })} />
-          <SettingNumber label="装饰移动吸附精度" value={state.settings.DecorationMoveSnapStep} min={0} step={0.1} onChange={(value) => onSettings({ DecorationMoveSnapStep: value })} suffix="px" />
-          <SettingNumber label="小数每像素步进" value={state.settings.FloatStepPerPixel} min={0.0001} step={0.01} onChange={(value) => onSettings({ FloatStepPerPixel: value })} suffix="px" />
-          <SettingSwitch label="编辑器偏好自动保存" value={state.settings.PersistEditorPreferences} onChange={(value) => onSettings({ PersistEditorPreferences: value })} />
+          <SettingSelect label="旧版 ZIP 文件名编码" group="LegacyZipEncoding" value={state.settings.LegacyZipEncoding} options={["Auto", "CP949", "GB18030", "ShiftJIS", "CP437"]} onChange={(value) => onSettings({ LegacyZipEncoding: value })} disabled={disabled} />
+          <SettingNumber label="装饰移动吸附精度" value={state.settings.DecorationMoveSnapStep} min={0} step={0.1} onChange={(value) => onSettings({ DecorationMoveSnapStep: value })} suffix="px" disabled={disabled} />
+          <SettingNumber label="小数每像素步进" value={state.settings.FloatStepPerPixel} min={0.0001} step={0.01} onChange={(value) => onSettings({ FloatStepPerPixel: value })} suffix="px" disabled={disabled} />
+          <SettingSwitch label="编辑器偏好自动保存" value={state.settings.PersistEditorPreferences} onChange={(value) => onSettings({ PersistEditorPreferences: value })} disabled={disabled} />
         </div>
       </section>
-      <div className="page-actions"><Button className="secondary-button" icon={<IconUndo />} onClick={() => onAction("/api/settings/reset")}>恢复默认</Button><Button className="primary-button" onClick={() => onNavigate("render")}>打开谱面渲染</Button></div>
+      <div className="page-actions"><Button className="secondary-button" icon={<IconUndo />} disabled={disabled} onClick={() => onAction("/api/settings/reset")}>恢复默认</Button><Button className="primary-button" onClick={() => onNavigate("render")}>打开谱面渲染</Button></div>
     </>
   );
 }
 
-function FixesPage({ state, onSettings }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void }) {
+function FixesPage({ state, onSettings, disabled }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void; disabled: boolean }) {
   return <FeaturePage title="编辑器修复" description="控制编辑器输入、偏好保存和视频背景同步行为。">
-    <SettingSwitch label="修复镜头相对装饰拖动" description="修正屏幕空间和世界空间的拖动换算。" value={state.settings.EnableCameraRelativeDecorationDragFix} onChange={(value) => onSettings({ EnableCameraRelativeDecorationDragFix: value })} />
-    <SettingSwitch label="修复镜头/视差装饰轴心显示" description="让单选装饰的轴心十字跟随实际位置。" value={state.settings.EnableDecorationPivotFix} onChange={(value) => onSettings({ EnableDecorationPivotFix: value })} />
-    <SettingSwitch label="修复中途播放时视频背景延迟" description="降低视频背景和谱面播放时钟的漂移。" value={state.settings.EnableVideoBackgroundSyncFix} onChange={(value) => onSettings({ EnableVideoBackgroundSyncFix: value })} />
-    <SettingSwitch label="持久化官方编辑器偏好设置" description="官方偏好变化后立即写回持久化数据。" value={state.settings.PersistEditorPreferences} onChange={(value) => onSettings({ PersistEditorPreferences: value })} />
+    <SettingSwitch label="修复镜头相对装饰拖动" description="修正屏幕空间和世界空间的拖动换算。" value={state.settings.EnableCameraRelativeDecorationDragFix} onChange={(value) => onSettings({ EnableCameraRelativeDecorationDragFix: value })} disabled={disabled} />
+    <SettingSwitch label="修复镜头/视差装饰轴心显示" description="让单选装饰的轴心十字跟随实际位置。" value={state.settings.EnableDecorationPivotFix} onChange={(value) => onSettings({ EnableDecorationPivotFix: value })} disabled={disabled} />
+    <SettingSwitch label="修复中途播放时视频背景延迟" description="降低视频背景和谱面播放时钟的漂移。" value={state.settings.EnableVideoBackgroundSyncFix} onChange={(value) => onSettings({ EnableVideoBackgroundSyncFix: value })} disabled={disabled} />
+    <SettingSwitch label="持久化官方编辑器偏好设置" description="官方偏好变化后立即写回持久化数据。" value={state.settings.PersistEditorPreferences} onChange={(value) => onSettings({ PersistEditorPreferences: value })} disabled={disabled} />
   </FeaturePage>;
 }
 
-function NumericPage({ state, onSettings }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void }) {
+function NumericPage({ state, onSettings, disabled }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void; disabled: boolean }) {
   return <FeaturePage title="数值拖动" description="增强数字输入框的右键拖动体验和精度控制。">
-    <SettingSwitch label="启用数值输入框拖动调节" description="支持 Int、Float、Tile 和 Vector2 输入框。" value={state.settings.EnableNumericDrag} onChange={(value) => onSettings({ EnableNumericDrag: value })} />
-    <SettingNumber label="小数每像素步进" value={state.settings.FloatStepPerPixel} min={0.0001} step={0.01} onChange={(value) => onSettings({ FloatStepPerPixel: value })} suffix="px" />
-    <SettingNumber label="整数每像素步进" value={state.settings.IntStepPerPixel} min={0.0001} step={1} onChange={(value) => onSettings({ IntStepPerPixel: value })} suffix="px" />
-    <SettingNumber label="小数最大位数" value={state.settings.MaxFloatingPoints} min={0} max={8} step={1} onChange={(value) => onSettings({ MaxFloatingPoints: value })} suffix="位" />
+    <SettingSwitch label="启用数值输入框拖动调节" description="支持 Int、Float、Tile 和 Vector2 输入框。" value={state.settings.EnableNumericDrag} onChange={(value) => onSettings({ EnableNumericDrag: value })} disabled={disabled} />
+    <SettingNumber label="小数每像素步进" value={state.settings.FloatStepPerPixel} min={0.0001} step={0.01} onChange={(value) => onSettings({ FloatStepPerPixel: value })} suffix="px" disabled={disabled} />
+    <SettingNumber label="整数每像素步进" value={state.settings.IntStepPerPixel} min={0.0001} step={1} onChange={(value) => onSettings({ IntStepPerPixel: value })} suffix="px" disabled={disabled} />
+    <SettingNumber label="小数最大位数" value={state.settings.MaxFloatingPoints} min={0} max={8} step={1} onChange={(value) => onSettings({ MaxFloatingPoints: value })} suffix="位" disabled={disabled} />
   </FeaturePage>;
 }
 
-function DecorationPage({ state, onSettings }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void }) {
+function DecorationPage({ state, onSettings, disabled }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void; disabled: boolean }) {
   return <FeaturePage title="装饰移动" description="调整装饰物移动时的吸附和编辑辅助行为。">
-    <SettingNumber label="装饰移动吸附精度" value={state.settings.DecorationMoveSnapStep} min={0} step={0.1} onChange={(value) => onSettings({ DecorationMoveSnapStep: value })} suffix="px" />
+    <SettingNumber label="装饰移动吸附精度" value={state.settings.DecorationMoveSnapStep} min={0} step={0.1} onChange={(value) => onSettings({ DecorationMoveSnapStep: value })} suffix="px" disabled={disabled} />
     <InfoBlock text="0 = 关闭。Camera 和 CameraAspect 装饰会保留修复后的拖动坐标。" />
   </FeaturePage>;
 }
 
-function RenderPage({ state, onSettings, onAction, onStart, onCancel }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void; onAction: (path: string) => void; onStart: () => void; onCancel: () => void }) {
+function RenderPage({ state, onSettings, onOpenDocument, onStart, onCancel }: { state: WebUiState; onSettings: (changes: Partial<SettingsState>) => void; onOpenDocument: (path: string) => void; onStart: () => void; onCancel: () => void }) {
   const progress = state.render.progress;
   const percent = Math.round(Math.max(0, Math.min(1, progress.value)) * 1000) / 10;
+  const settingsLocked = state.render.active;
+  const terminalResult = getRenderResult(state.render);
   const [advancedOpen, setAdvancedOpen] = React.useState(false);
   const [professionalOpen, setProfessionalOpen] = React.useState(false);
   const isGameView = state.settings.ChartRenderCaptureSource.toLowerCase() === "game-view";
   const isCustomEncoder = state.settings.ChartRenderEncoderMode.toLowerCase() === "custom";
   return <>
     <PageHeading title="谱面渲染" description="实时查看渲染阶段、编码状态和队列压力。" />
+    {terminalResult ? <div className={`render-result-banner ${terminalResult.kind}`}><span className="render-result-icon">{terminalResult.kind === "success" ? <IconCheckCircle /> : terminalResult.kind === "failed" ? <IconCloseCircle /> : <IconInfoCircle />}</span><div><strong>{terminalResult.title}</strong><span>{terminalResult.detail}</span>{state.render.outputPath && terminalResult.kind === "success" ? <code title={state.render.outputPath}>{state.render.outputPath}</code> : null}</div></div> : null}
     <section className="render-panel angular-panel">
       <div className="render-head"><div><span className="eyebrow">{state.render.active ? "正在处理" : "渲染状态"}</span><h2>{progress.stage || "等待渲染"}</h2><p>{progress.detail || "从页面开始渲染后，全部进度会在这里实时更新。"}</p></div><div className="render-percent">{percent}<small>%</small></div></div>
       <div className="progress-track"><div className="progress-fill" style={{ width: `${percent}%` }} /></div>
@@ -431,40 +451,41 @@ function RenderPage({ state, onSettings, onAction, onStart, onCancel }: { state:
       </div>
       {state.render.active ? <Button className="danger-button" disabled={state.render.cancelRequested} icon={<IconCloseCircle />} onClick={onCancel}>{state.render.cancelRequested ? "正在取消…" : "取消渲染"}</Button> : <div className="render-action-row"><div className="render-idle"><IconCheckCircle /> {state.render.message || "当前没有正在运行的渲染任务"}</div><Button className="primary-button" icon={<IconPlayArrow />} onClick={onStart}>开始渲染</Button></div>}
     </section>
-    <section className="render-settings angular-panel">
-      <SectionHeading title="渲染设置" hint="修改后保存，下一次渲染使用" />
+    <section className={`render-settings angular-panel ${settingsLocked ? "is-locked" : ""}`}>
+      <SectionHeading title="渲染设置" hint={settingsLocked ? "渲染进行中，设置已锁定" : "修改后保存，下一次渲染使用"} />
+      {settingsLocked ? <div className="render-lock-note"><IconInfoCircle /><span>当前任务已经读取了渲染设置。为避免中途修改影响输出，渲染结束前暂时不能编辑这些选项。</span></div> : null}
       <div className="settings-note">推荐默认：1080p、60 帧，并在可用时优先使用 GPU 硬编码。</div>
       <div className="settings-grid">
-        <SettingText label="导出目录" value={state.settings.ChartRenderExportDirectory} onChange={(value) => onSettings({ ChartRenderExportDirectory: value })} />
-        <SettingSelect label="画面捕获方式" group="ChartRenderCaptureSource" value={state.settings.ChartRenderCaptureSource} options={["camera", "game-view"]} onChange={(value) => onSettings({ ChartRenderCaptureSource: value })} />
+        <SettingText label="导出目录" value={state.settings.ChartRenderExportDirectory} onChange={(value) => onSettings({ ChartRenderExportDirectory: value })} disabled={settingsLocked} />
+        <SettingSelect label="画面捕获方式" group="ChartRenderCaptureSource" value={state.settings.ChartRenderCaptureSource} options={["camera", "game-view"]} onChange={(value) => onSettings({ ChartRenderCaptureSource: value })} disabled={settingsLocked} />
         {isGameView ? <InfoBlock text="游戏画面模式会直接使用当前游戏窗口分辨率输出；渲染结束前请保持窗口尺寸不变。" /> : <>
-          <PresetSetting label="分辨率预设" options={["1080p", "2K", "4K", "9:16", "21:9"]} active={getResolutionPreset(state.settings.ChartRenderWidth, state.settings.ChartRenderHeight)} onSelect={(preset) => onSettings(resolutionPresets[preset])} />
-          <SettingNumber label="视频宽度" value={state.settings.ChartRenderWidth} min={16} max={7680} step={2} onChange={(value) => onSettings({ ChartRenderWidth: value })} suffix="px" />
-          <SettingNumber label="视频高度" value={state.settings.ChartRenderHeight} min={16} max={4320} step={2} onChange={(value) => onSettings({ ChartRenderHeight: value })} suffix="px" />
+          <PresetSetting label="分辨率预设" options={["1080p", "2K", "4K", "9:16", "21:9"]} active={getResolutionPreset(state.settings.ChartRenderWidth, state.settings.ChartRenderHeight)} onSelect={(preset) => onSettings(resolutionPresets[preset])} disabled={settingsLocked} />
+          <SettingNumber label="视频宽度" value={state.settings.ChartRenderWidth} min={16} max={7680} step={2} onChange={(value) => onSettings({ ChartRenderWidth: value })} suffix="px" disabled={settingsLocked} />
+          <SettingNumber label="视频高度" value={state.settings.ChartRenderHeight} min={16} max={4320} step={2} onChange={(value) => onSettings({ ChartRenderHeight: value })} suffix="px" disabled={settingsLocked} />
         </>}
-        <PresetSetting label="帧率预设" options={["30", "60", "120"]} active={String(state.settings.ChartRenderFps)} onSelect={(preset) => onSettings({ ChartRenderFps: Number(preset) })} />
-        <SettingNumber label="帧率" value={state.settings.ChartRenderFps} min={1} max={240} step={1} onChange={(value) => onSettings({ ChartRenderFps: value })} suffix="帧/秒" />
-        <SettingNumber label="结束后延迟停止秒数" value={state.settings.ChartRenderCompletionTailSeconds} min={0} step={0.1} onChange={(value) => onSettings({ ChartRenderCompletionTailSeconds: value })} suffix="" />
-        <SettingSelect label="视频输出格式" group="ChartRenderVideoFormat" value={state.settings.ChartRenderVideoFormat} options={["mp4", "mkv", "mov"]} onChange={(value) => onSettings({ ChartRenderVideoFormat: value })} />
-        <SettingSwitch label="渲染时显示判定文字" description="控制成品视频中是否显示 Perfect、Early、Late 等判定文字。" value={state.settings.ChartRenderShowHitJudgments} onChange={(value) => onSettings({ ChartRenderShowHitJudgments: value })} />
-        <SettingSwitch label="仅渲染选中段落" description="开启后需要在编辑器中框选至少两个连续砖块。" value={state.settings.ChartRenderUseSelectedRange} onChange={(value) => onSettings({ ChartRenderUseSelectedRange: value })} />
+        <PresetSetting label="帧率预设" options={["30", "60", "120"]} active={String(state.settings.ChartRenderFps)} onSelect={(preset) => onSettings({ ChartRenderFps: Number(preset) })} disabled={settingsLocked} />
+        <SettingNumber label="帧率" value={state.settings.ChartRenderFps} min={1} max={240} step={1} onChange={(value) => onSettings({ ChartRenderFps: value })} suffix="帧/秒" disabled={settingsLocked} />
+        <SettingNumber label="结束后延迟停止" value={state.settings.ChartRenderCompletionTailSeconds} min={0} step={0.1} onChange={(value) => onSettings({ ChartRenderCompletionTailSeconds: value })} suffix="秒" disabled={settingsLocked} />
+        <SettingSelect label="视频输出格式" group="ChartRenderVideoFormat" value={state.settings.ChartRenderVideoFormat} options={["mp4", "mkv", "mov"]} onChange={(value) => onSettings({ ChartRenderVideoFormat: value })} disabled={settingsLocked} />
+        <SettingSwitch label="渲染时显示判定文字" description="控制成品视频中是否显示 Perfect、Early、Late 等判定文字。" value={state.settings.ChartRenderShowHitJudgments} onChange={(value) => onSettings({ ChartRenderShowHitJudgments: value })} disabled={settingsLocked} />
+        <SettingSwitch label="仅渲染选中段落" description="开启后需要在编辑器中框选至少两个连续砖块。" value={state.settings.ChartRenderUseSelectedRange} onChange={(value) => onSettings({ ChartRenderUseSelectedRange: value })} disabled={settingsLocked} />
       </div>
-      <DisclosureButton label={advancedOpen ? "隐藏高级设置" : "显示高级设置"} open={advancedOpen} onClick={() => setAdvancedOpen((open) => !open)} />
+      <DisclosureButton label={advancedOpen ? "隐藏高级设置" : "显示高级设置"} open={advancedOpen} onClick={() => setAdvancedOpen((open) => !open)} disabled={false} />
       {advancedOpen ? <div className="settings-section">
         <div className="settings-note warning-note">高级设置只适合排查问题或有特殊导出需求时使用。错误的编码参数可能导致渲染失败或输出无法播放。</div>
         <div className="settings-grid">
-          <SettingText label="工作区目录" value={state.settings.ChartRenderWorkspaceDirectory} onChange={(value) => onSettings({ ChartRenderWorkspaceDirectory: value })} />
-          <SettingSelect label="编码档位" group="ChartRenderEncoderMode" value={state.settings.ChartRenderEncoderMode} options={["auto-balanced", "fastest", "balanced", "quality", "cpu-compatibility", "custom"]} onChange={(value) => onSettings({ ChartRenderEncoderMode: value })} />
-          <SettingNumber label="画质参数" value={state.settings.ChartRenderCrf} min={0} max={51} step={1} onChange={(value) => onSettings({ ChartRenderCrf: value })} suffix="" />
-          <SettingNumber label="视频码率（Mbps）" value={state.settings.ChartRenderBitrateMbps} min={0} max={300} step={1} onChange={(value) => onSettings({ ChartRenderBitrateMbps: value })} suffix="" />
-          {isCustomEncoder ? <SettingText label="编码方式" value={state.settings.ChartRenderPreset} onChange={(value) => onSettings({ ChartRenderPreset: value })} /> : null}
-          <SettingSelect label="回读格式" group="ChartRenderCaptureFormat" value={state.settings.ChartRenderCaptureFormat} options={["rgba", "bgra"]} onChange={(value) => onSettings({ ChartRenderCaptureFormat: value })} />
-          <SettingSelect label="音频格式" group="ChartRenderAudioFormat" value={state.settings.ChartRenderAudioFormat} options={["aac", "flac", "alac"]} onChange={(value) => onSettings({ ChartRenderAudioFormat: value })} />
-          <SettingSelect label="渲染预览" group="ChartRenderPreviewMode" value={state.settings.ChartRenderPreviewMode} options={["full", "dim", "minimal"]} onChange={(value) => onSettings({ ChartRenderPreviewMode: value })} />
-          <SettingNumber label="音频同步偏移（毫秒）" value={state.settings.ChartRenderAudioSyncOffsetMs} min={-5000} max={5000} step={1} onChange={(value) => onSettings({ ChartRenderAudioSyncOffsetMs: value })} suffix="" />
+          <SettingText label="工作区目录" value={state.settings.ChartRenderWorkspaceDirectory} onChange={(value) => onSettings({ ChartRenderWorkspaceDirectory: value })} disabled={settingsLocked} />
+          <SettingSelect label="编码档位" group="ChartRenderEncoderMode" value={state.settings.ChartRenderEncoderMode} options={["auto-balanced", "fastest", "balanced", "quality", "cpu-compatibility", "custom"]} onChange={(value) => onSettings({ ChartRenderEncoderMode: value })} disabled={settingsLocked} />
+          <SettingNumber label="画质参数" value={state.settings.ChartRenderCrf} min={0} max={51} step={1} onChange={(value) => onSettings({ ChartRenderCrf: value })} suffix="" disabled={settingsLocked} />
+          <SettingNumber label="视频码率" value={state.settings.ChartRenderBitrateMbps} min={0} max={300} step={1} onChange={(value) => onSettings({ ChartRenderBitrateMbps: value })} suffix="Mbps" disabled={settingsLocked} />
+          {isCustomEncoder ? <SettingText label="编码方式" value={state.settings.ChartRenderPreset} onChange={(value) => onSettings({ ChartRenderPreset: value })} disabled={settingsLocked} /> : null}
+          <SettingSelect label="回读格式" group="ChartRenderCaptureFormat" value={state.settings.ChartRenderCaptureFormat} options={["rgba", "bgra"]} onChange={(value) => onSettings({ ChartRenderCaptureFormat: value })} disabled={settingsLocked} />
+          <SettingSelect label="音频格式" group="ChartRenderAudioFormat" value={state.settings.ChartRenderAudioFormat} options={["aac", "flac", "alac"]} onChange={(value) => onSettings({ ChartRenderAudioFormat: value })} disabled={settingsLocked} />
+          <SettingSelect label="渲染预览" group="ChartRenderPreviewMode" value={state.settings.ChartRenderPreviewMode} options={["full", "dim", "minimal"]} onChange={(value) => onSettings({ ChartRenderPreviewMode: value })} disabled={settingsLocked} />
+          <SettingNumber label="音频同步偏移" value={state.settings.ChartRenderAudioSyncOffsetMs} min={-5000} max={5000} step={1} onChange={(value) => onSettings({ ChartRenderAudioSyncOffsetMs: value })} suffix="毫秒" disabled={settingsLocked} />
         </div>
-        <DisclosureButton label={professionalOpen ? "隐藏专业 FFmpeg 设置" : "显示专业 FFmpeg 设置"} open={professionalOpen} onClick={() => setProfessionalOpen((open) => !open)} />
-        {professionalOpen ? <div className="professional-settings"><div className="settings-note">输入完整的自定义 FFmpeg 合成参数字符串。留空则使用自动生成参数。</div><SettingText label="自定义 FFmpeg 合成参数" value={state.settings.ChartRenderCustomMuxArgs} onChange={(value) => onSettings({ ChartRenderCustomMuxArgs: value })} /><Button className="secondary-button" onClick={() => onAction("/api/open-ffmpeg-help")}>打开 FFmpeg 参数参考帮助</Button></div> : null}
+        <DisclosureButton label={professionalOpen ? "隐藏专业 FFmpeg 设置" : "显示专业 FFmpeg 设置"} open={professionalOpen} onClick={() => setProfessionalOpen((open) => !open)} disabled={false} />
+        {professionalOpen ? <div className="professional-settings"><div className="settings-note">输入完整的自定义 FFmpeg 合成参数字符串。留空则使用自动生成参数。</div><SettingText label="自定义 FFmpeg 合成参数" value={state.settings.ChartRenderCustomMuxArgs} onChange={(value) => onSettings({ ChartRenderCustomMuxArgs: value })} disabled={settingsLocked} /><Button className="secondary-button" onClick={() => onOpenDocument("/docs/ffmpeg")}>打开 FFmpeg 参数参考帮助</Button></div> : null}
       </div> : null}
     </section>
   </>;
@@ -483,26 +504,34 @@ function getResolutionPreset(width: number, height: number): string {
   return entry?.[0] ?? "";
 }
 
-function PresetSetting({ label, options, active, onSelect }: { label: string; options: string[]; active: string; onSelect: (value: string) => void }) {
-  return <div className="setting-row preset-setting"><div><strong>{label}</strong></div><div className="preset-options">{options.map((option) => <button className={`preset-button ${active === option ? "is-active" : ""}`} key={option} type="button" onClick={() => onSelect(option)}>{option}</button>)}</div></div>;
+function getRenderResult(render: RenderState): { kind: "success" | "failed" | "canceled"; title: string; detail: string } | null {
+  if (render.active) return null;
+  if (render.state === "Completed") return { kind: "success", title: "渲染已完成", detail: "视频已成功导出。" };
+  if (render.state === "Failed") return { kind: "failed", title: "渲染失败", detail: render.message || render.progress.detail || "渲染任务失败，请查看日志。" };
+  if (render.state === "Canceled") return { kind: "canceled", title: "渲染已取消", detail: render.message || "渲染任务已取消。" };
+  return null;
 }
 
-function DisclosureButton({ label, open, onClick }: { label: string; open: boolean; onClick: () => void }) {
-  return <button className={`disclosure-button ${open ? "is-open" : ""}`} type="button" onClick={onClick}><span>{label}</span><IconDown /></button>;
+function PresetSetting({ label, options, active, onSelect, disabled }: { label: string; options: string[]; active: string; onSelect: (value: string) => void; disabled?: boolean }) {
+  return <div className="setting-row preset-setting"><div><strong>{label}</strong></div><div className="preset-options">{options.map((option) => <button className={`preset-button ${active === option ? "is-active" : ""}`} key={option} type="button" disabled={disabled} onClick={() => onSelect(option)}>{option}</button>)}</div></div>;
 }
 
-function CloudPage({ state, onAction }: { state: WebUiState; onAction: (path: string) => void }) {
+function DisclosureButton({ label, open, onClick, disabled }: { label: string; open: boolean; onClick: () => void; disabled?: boolean }) {
+  return <button className={`disclosure-button ${open ? "is-open" : ""}`} type="button" disabled={disabled} onClick={onClick}><span>{label}</span><IconDown /></button>;
+}
+
+function CloudPage({ state, onAction, disabled }: { state: WebUiState; onAction: (path: string) => void; disabled: boolean }) {
   return <FeaturePage title="云同步" description="显式上传或下载设置，不会在启动和退出时自动覆盖本地配置.">
     <div className="cloud-status"><IconCloud /><div><strong>{state.cloud.available ? "Steam 云同步可用" : "Steam 云同步不可用"}</strong><span>{state.cloud.hasFile ? "检测到云端设置文件" : "尚未检测到云端设置文件"}</span></div></div>
-    <div className="button-row"><Button className="secondary-button" icon={<IconDownload />} disabled={!state.cloud.available} onClick={() => onAction("/api/cloud/download")}>从云端下载</Button><Button className="primary-button" icon={<IconUpload />} disabled={!state.cloud.available} onClick={() => onAction("/api/cloud/upload")}>上传到云端</Button></div>
+    <div className="button-row"><Button className="secondary-button" icon={<IconDownload />} disabled={disabled || !state.cloud.available} onClick={() => onAction("/api/cloud/download")}>从云端下载</Button><Button className="primary-button" icon={<IconUpload />} disabled={disabled || !state.cloud.available} onClick={() => onAction("/api/cloud/upload")}>上传到云端</Button></div>
   </FeaturePage>;
 }
 
-function ToolsPage({ onAction }: { onAction: (path: string) => void }) {
+function ToolsPage({ onAction, onOpenDocument, disabled }: { onAction: (path: string) => void; onOpenDocument: (path: string) => void; disabled: boolean }) {
   return <FeaturePage title="工具" description="帮助、诊断和设置维护入口.">
-    <div className="tool-row"><IconFile /><div><strong>打开使用手册</strong><span>查看 Mod 功能、快捷键和常见问题。</span></div><Button className="secondary-button" onClick={() => onAction("/api/open-manual")}>打开</Button></div>
-    <div className="tool-row"><IconImage /><div><strong>打开 FFmpeg 参数参考</strong><span>查看视频、音频和合成参数说明。</span></div><Button className="secondary-button" onClick={() => onAction("/api/open-ffmpeg-help")}>打开</Button></div>
-    <div className="tool-row"><IconUndo /><div><strong>恢复全部默认设置</strong><span>清除自定义配置并恢复 Mod 默认值。</span></div><Button className="danger-outline" onClick={() => onAction("/api/settings/reset")}>恢复默认</Button></div>
+    <div className="tool-row"><IconFile /><div><strong>打开使用手册</strong><span>在当前 Web 设置服务中打开，不依赖系统文件关联。</span></div><Button className="secondary-button" onClick={() => onOpenDocument("/docs/manual")}>打开</Button></div>
+    <div className="tool-row"><IconImage /><div><strong>打开 FFmpeg 参数参考</strong><span>在当前 Web 设置服务中打开视频、音频和合成参数说明。</span></div><Button className="secondary-button" onClick={() => onOpenDocument("/docs/ffmpeg")}>打开</Button></div>
+    <div className="tool-row"><IconUndo /><div><strong>恢复全部默认设置</strong><span>清除自定义配置并恢复 Mod 默认值。</span></div><Button className="danger-outline" disabled={disabled} onClick={() => onAction("/api/settings/reset")}>恢复默认</Button></div>
   </FeaturePage>;
 }
 
@@ -524,11 +553,11 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   return <div className="section-heading"><h2>{title}</h2>{hint ? <span>{hint}</span> : null}</div>;
 }
 
-function SettingSwitch({ label, description, value, onChange }: { label: string; description?: string; value: boolean; onChange: (value: boolean) => void }) {
-  return <div className="setting-row"><div><strong>{label}</strong>{description ? <span>{description}</span> : null}</div><Switch checked={value} onChange={onChange} /></div>;
+function SettingSwitch({ label, description, value, onChange, disabled }: { label: string; description?: string; value: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
+  return <div className="setting-row"><div><strong>{label}</strong>{description ? <span>{description}</span> : null}</div><Switch checked={value} disabled={disabled} onChange={onChange} /></div>;
 }
 
-function SettingNumber({ label, value, min, max, step, suffix, onChange }: { label: string; value: number; min: number; max?: number; step: number; suffix: string; onChange: (value: number) => void }) {
+function SettingNumber({ label, value, min, max, step, suffix, onChange, disabled }: { label: string; value: number; min: number; max?: number; step: number; suffix: string; onChange: (value: number) => void; disabled?: boolean }) {
   const [draft, setDraft] = React.useState(String(value));
 
   React.useEffect(() => {
@@ -536,6 +565,11 @@ function SettingNumber({ label, value, min, max, step, suffix, onChange }: { lab
   }, [value]);
 
   const commit = () => {
+    if (disabled) {
+      setDraft(String(value));
+      return;
+    }
+
     if (draft.trim() === "") {
       setDraft(String(value));
       return;
@@ -549,10 +583,10 @@ function SettingNumber({ label, value, min, max, step, suffix, onChange }: { lab
     }
   };
 
-  return <div className="setting-row"><div><strong>{label}</strong></div><div className="number-control"><input className="number-input" type="number" value={draft} min={min} max={max} step={step} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><span>{suffix}</span></div></div>;
+  return <div className="setting-row"><div><strong>{label}</strong></div><div className="number-control"><input className="number-input" type="number" value={draft} min={min} max={max} step={step} disabled={disabled} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /><span>{suffix}</span></div></div>;
 }
 
-function SettingText({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function SettingText({ label, value, onChange, disabled }: { label: string; value: string; onChange: (value: string) => void; disabled?: boolean }) {
   const [draft, setDraft] = React.useState(value);
 
   React.useEffect(() => {
@@ -560,17 +594,22 @@ function SettingText({ label, value, onChange }: { label: string; value: string;
   }, [value]);
 
   const commit = () => {
+    if (disabled) {
+      setDraft(value);
+      return;
+    }
+
     if (draft !== value) onChange(draft);
   };
 
-  return <div className="setting-row"><div><strong>{label}</strong></div><input className="text-input" value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /></div>;
+  return <div className="setting-row"><div><strong>{label}</strong></div><input className="text-input" value={draft} disabled={disabled} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} /></div>;
 }
 
-function SettingSelect({ label, group, value, options, onChange }: { label: string; group?: string; value: string; options: string[]; onChange: (value: string) => void }) {
-  return <div className="setting-row"><div><strong>{label}</strong></div><CustomSelect group={group} value={value} options={options} onChange={onChange} /> </div>;
+function SettingSelect({ label, group, value, options, onChange, disabled }: { label: string; group?: string; value: string; options: string[]; onChange: (value: string) => void; disabled?: boolean }) {
+  return <div className="setting-row"><div><strong>{label}</strong></div><CustomSelect group={group} value={value} options={options} onChange={onChange} disabled={disabled} /> </div>;
 }
 
-function CustomSelect({ group, value, options, onChange }: { group?: string; value: string; options: string[]; onChange: (value: string) => void }) {
+function CustomSelect({ group, value, options, onChange, disabled }: { group?: string; value: string; options: string[]; onChange: (value: string) => void; disabled?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const [menuStyle, setMenuStyle] = React.useState<React.CSSProperties>({});
   const controlRef = React.useRef<HTMLButtonElement>(null);
@@ -605,7 +644,7 @@ function CustomSelect({ group, value, options, onChange }: { group?: string; val
     document.body,
   ) : null;
 
-  return <div className="select-field"><button ref={controlRef} className={`select-control ${open ? "is-open" : ""}`} type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)}><span className="select-value">{labelFor(group ?? "", value)}</span><IconDown className="select-chevron" /></button>{menu}</div>;
+  return <div className="select-field"><button ref={controlRef} className={`select-control ${open ? "is-open" : ""}`} type="button" disabled={disabled} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)}><span className="select-value">{labelFor(group ?? "", value)}</span><IconDown className="select-chevron" /></button>{menu}</div>;
 }
 
 function InfoBlock({ text }: { text: string }) { return <div className="info-block"><IconInfoCircle /><span>{text}</span></div>; }

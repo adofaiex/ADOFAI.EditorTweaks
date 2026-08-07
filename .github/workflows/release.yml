@@ -31,7 +31,9 @@ jobs:
       - name: Checkout version tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref_name }}
+          # A historical branch can have the same name as a release tag.
+          # Resolve releases explicitly to refs/tags so validation always builds the tag.
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
 
       - name: Restore shared build references

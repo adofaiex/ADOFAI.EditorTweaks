@@ -158,6 +158,18 @@ button { cursor: pointer; }
 .tool-row span { color: var(--muted); font-size: 11px; }
 
 .render-panel { padding: 28px; }
+.render-result-banner { margin: 0 0 18px; padding: 15px 18px; display: flex; align-items: flex-start; gap: 12px; border: 1px solid var(--border-bright); background: rgba(8, 55, 79, 0.82); }
+.render-result-banner.success { border-color: rgba(63, 224, 180, 0.72); background: rgba(10, 69, 65, 0.42); }
+.render-result-banner.failed { border-color: rgba(255, 113, 132, 0.78); background: rgba(93, 26, 48, 0.45); }
+.render-result-banner.canceled { border-color: rgba(240, 191, 105, 0.75); background: rgba(88, 61, 27, 0.35); }
+.render-result-icon { flex: 0 0 auto; color: var(--accent); font-size: 22px; line-height: 1; }
+.render-result-banner.success .render-result-icon { color: var(--success); }
+.render-result-banner.failed .render-result-icon { color: var(--danger); }
+.render-result-banner.canceled .render-result-icon { color: var(--warning); }
+.render-result-banner > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.render-result-banner strong { color: var(--text); font-size: 14px; }
+.render-result-banner span { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.render-result-banner code { max-width: 100%; overflow: hidden; color: var(--muted); font: 11px/1.5 "Cascadia Mono", Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .render-head { display: flex; justify-content: space-between; gap: 20px; }
 .eyebrow { display: block; color: var(--accent); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 8px; }
 .render-head h2 { margin: 0; color: var(--text); font-size: 23px; }
@@ -181,6 +193,9 @@ button { cursor: pointer; }
 .render-action-row { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .render-action-row .render-idle { margin-top: 0; justify-content: flex-start; }
 .render-settings { margin-top: 24px; padding: 24px 28px; }
+.render-settings.is-locked { border-color: rgba(132, 161, 187, 0.42); }
+.render-lock-note { margin: 0 0 8px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; color: var(--warning); border: 1px solid rgba(240, 191, 105, 0.35); background: rgba(88, 61, 27, 0.22); font-size: 12px; line-height: 1.5; }
+.render-lock-note svg { flex: 0 0 auto; font-size: 17px; }
 .render-settings > .setting-row { min-height: 64px; }
 .render-idle { display: flex; justify-content: center; align-items: center; gap: 8px; color: var(--success); font-size: 13px; margin-top: 18px; }
 .loading-state { min-height: 420px; display: flex; align-items: center; justify-content: center; gap: 14px; color: var(--muted); }
@@ -195,6 +210,9 @@ button { cursor: pointer; }
 .arco-switch-checked { background: var(--accent-soft); }
 .arco-slider-track { background: var(--accent); }
 .arco-btn { font-size: 12px; }
+button:disabled, input:disabled { cursor: not-allowed; opacity: 0.48; }
+.preset-button:disabled, .select-control:disabled { color: var(--dim); background: rgba(2, 20, 37, 0.46); border-color: rgba(36, 86, 123, 0.55); }
+.preset-button:disabled.is-active { color: var(--muted); background: rgba(29, 120, 155, 0.35); border-color: rgba(61, 187, 226, 0.5); }
 
 @media (max-width: 1150px) {
   .workspace { grid-template-columns: 220px minmax(0, 1fr); }

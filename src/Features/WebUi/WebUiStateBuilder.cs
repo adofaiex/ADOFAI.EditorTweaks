@@ -139,6 +139,39 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
         {
             ChartRenderProgress progress = task?.Progress ?? ChartRenderProgress.Empty();
             ChartRenderResult? result = task?.Result;
+            string resultMessage = result?.Message ?? string.Empty;
+            string message = resultMessage;
+            float value = progress.Value;
+            string stage = progress.Stage;
+            string detail = progress.Detail;
+            if (task == null)
+            {
+                stage = "等待渲染";
+                detail = "从页面开始渲染后，全部进度会在这里实时更新。";
+            }
+            else if (task.IsTerminal)
+            {
+                switch (task.State)
+                {
+                    case ChartRenderTaskState.Completed:
+                        stage = "渲染完成";
+                        detail = "视频已成功导出。";
+                        message = "渲染完成，视频已导出。";
+                        value = 1f;
+                        break;
+                    case ChartRenderTaskState.Failed:
+                        stage = "渲染失败";
+                        detail = string.IsNullOrWhiteSpace(resultMessage) ? "渲染任务失败。" : resultMessage;
+                        message = detail;
+                        break;
+                    case ChartRenderTaskState.Canceled:
+                        stage = "渲染已取消";
+                        detail = string.IsNullOrWhiteSpace(resultMessage) ? "渲染任务已取消。" : resultMessage;
+                        message = "渲染已取消。";
+                        break;
+                }
+            }
+
             return new Dictionary<string, object>
             {
                 ["active"] = task != null && !task.IsTerminal,
@@ -147,18 +180,18 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
                 ["cancelRequested"] = task != null && task.IsCancellationRequested,
                 ["captureSource"] = task?.CaptureSource.ToString() ?? string.Empty,
                 ["outputPath"] = task?.OutputPath ?? string.Empty,
-                ["message"] = result?.Message ?? string.Empty,
+                ["message"] = message,
                 ["progress"] = new Dictionary<string, object>
                 {
-                    ["value"] = progress.Value,
+                    ["value"] = value,
                     ["writtenFrames"] = progress.WrittenFrames,
                     ["totalFrames"] = progress.TotalFrames,
                     ["duplicateFrames"] = progress.DuplicateFrames,
                     ["duplicateRatio"] = progress.DuplicateRatio,
                     ["processingFramesPerSecond"] = progress.ProcessingFramesPerSecond,
                     ["estimatedRemaining"] = progress.EstimatedRemaining.ToString(),
-                    ["stage"] = progress.Stage,
-                    ["detail"] = progress.Detail,
+                    ["stage"] = stage,
+                    ["detail"] = detail,
                     ["encoderName"] = progress.EncoderName,
                     ["memoryBudget"] = progress.MemoryBudget,
                     ["queueBudget"] = progress.QueueBudget

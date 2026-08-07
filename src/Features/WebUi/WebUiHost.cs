@@ -225,6 +225,30 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
                     return;
                 }
 
+                if (path.Equals("/docs/manual", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!IsAuthorized(context))
+                    {
+                        WriteJson(context, 401, Error("Invalid WebUI token."));
+                        return;
+                    }
+
+                    ServeDocumentFile(context, Path.Combine(Main.Mod!.Path, "Resources", "README.html"));
+                    return;
+                }
+
+                if (path.Equals("/docs/ffmpeg", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!IsAuthorized(context))
+                    {
+                        WriteJson(context, 401, Error("Invalid WebUI token."));
+                        return;
+                    }
+
+                    ServeDocumentFile(context, Path.Combine(Main.Mod!.Path, "Resources", "FFmpegReference.html"));
+                    return;
+                }
+
                 ServeStaticFile(context, path);
             }
             catch (Exception exception)
@@ -255,6 +279,11 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
                 case "/api/settings":
                     ExecuteOnMain(() =>
                     {
+                        if (ChartRenderService.IsActive)
+                        {
+                            return new CommandResult(409, Error("渲染进行中，设置暂时锁定，请等待渲染结束。"));
+                        }
+
                         ApplySettings(body.TryGetValue("changes", out object changes) ? changes as Dictionary<string, object> : null);
                         SaveSettings();
                         return StateResult();
@@ -263,6 +292,11 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
                 case "/api/settings/reset":
                     ExecuteOnMain(() =>
                     {
+                        if (ChartRenderService.IsActive)
+                        {
+                            return new CommandResult(409, Error("渲染进行中，设置暂时锁定，请等待渲染结束。"));
+                        }
+
                         Main.Settings.ResetAllDefaults(Main.Mod!);
                         SaveSettings();
                         return StateResult();
@@ -278,20 +312,14 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
                     ExecuteOnMain(UploadCloud, context);
                     return;
                 case "/api/cloud/download":
-                    ExecuteOnMain(DownloadCloud, context);
-                    return;
-                case "/api/open-manual":
                     ExecuteOnMain(() =>
                     {
-                        Main.OpenReadme(Main.Mod!);
-                        return StateResult();
-                    }, context);
-                    return;
-                case "/api/open-ffmpeg-help":
-                    ExecuteOnMain(() =>
-                    {
-                        OpenLocalFile(Path.Combine(Main.Mod!.Path, "Resources", "FFmpegReference.html"));
-                        return StateResult();
+                        if (ChartRenderService.IsActive)
+                        {
+                            return new CommandResult(409, Error("渲染进行中，设置暂时锁定，请等待渲染结束。"));
+                        }
+
+                        return DownloadCloud();
                     }, context);
                     return;
                 default:
@@ -382,6 +410,29 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
             context.Response.StatusCode = 200;
             context.Response.ContentType = GetContentType(filePath);
             context.Response.ContentLength64 = data.Length;
+            context.Response.OutputStream.Write(data, 0, data.Length);
+            context.Response.Close();
+        }
+
+        private static void ServeDocumentFile(HttpListenerContext context, string filePath)
+        {
+            if (!context.Request.HttpMethod.Equals("GET", StringComparison.OrdinalIgnoreCase))
+            {
+                WriteJson(context, 405, Error("Only GET is supported."));
+                return;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                WriteJson(context, 404, Error("Documentation file not found."));
+                return;
+            }
+
+            byte[] data = File.ReadAllBytes(filePath);
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "text/html; charset=utf-8";
+            context.Response.ContentLength64 = data.Length;
+            context.Response.Headers["Cache-Control"] = "no-store";
             context.Response.OutputStream.Write(data, 0, data.Length);
             context.Response.Close();
         }
@@ -824,24 +875,6 @@ namespace ADOFAI.EditorTweaks.Features.WebUi
                 case ".woff": return "font/woff";
                 case ".woff2": return "font/woff2";
                 default: return "application/octet-stream";
-            }
-        }
-
-        private static void OpenLocalFile(string path)
-        {
-            if (!File.Exists(path))
-            {
-                Main.Log("[WebUI] Local help file was not found: " + path);
-                return;
-            }
-
-            try
-            {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            catch (Exception exception)
-            {
-                Main.Log("[WebUI] Could not open local file: " + exception.Message + ". Path: " + path);
             }
         }
 

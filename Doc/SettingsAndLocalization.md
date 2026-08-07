@@ -62,10 +62,17 @@
 | `ChartRenderAudioSyncOffsetMs` | 0 | 高级兜底音频同步偏移。正数让音频提前，负数让音频延后。 |
 | `ChartRenderShowHitJudgments` | true | 导出时是否显示判定文字。 |
 | `ChartRenderUseSelectedRange` | false | 是否只渲染编辑器当前框选的连续砖块段落。 |
-| `ChartRenderAdvancedSettingsExpanded` | false | UMM 高级渲染设置是否展开。 |
-| `ChartRenderProfessionalSettingsExpanded` | false | 专业设置是否展开。 |
 | `ChartRenderCustomMuxArgs` | 空 | 自定义合成参数；普通用户保持为空。 |
-| `HasShownReadme` | false | 是否已经自动打开过本地用户手册。 |
+
+### 旧配置兼容字段
+
+以下字段仍保留在配置对象中，以便旧设置文件和云配置可以继续读取，但不再参与界面或运行逻辑：
+
+| 字段 | 说明 |
+| --- | --- |
+| `ChartRenderAdvancedSettingsExpanded` | 旧版渲染设置展开状态。 |
+| `ChartRenderProfessionalSettingsExpanded` | 旧版专业设置展开状态。 |
+| `HasShownReadme` | 旧版首次自动打开手册的记录。当前版本不会自动打开手册。 |
 
 ## UMM 设置 UI
 
@@ -122,18 +129,9 @@
 - 默认折叠并显示风险提示。
 - 自定义合成参数为空时使用内置参数。
 
-## 输入框临时状态
+## Web 页面输入与保存
 
-设置类里保存了多个 `xxxText` 字段，例如：
-
-- `renderWidthText`
-- `renderHeightText`
-- `renderFpsText`
-- `renderCrfText`
-- `renderPresetText`
-- `renderTailSecondsText`
-
-原因是 IMGUI 每帧都会重绘。如果直接把数值格式化回输入框，用户清空或输入半截数字时会被打断。当前实现只在 parse 成功时更新真实设置，输入框文本本身允许临时无效。
+Web 页面中的文本和数字输入框保留本地编辑中的临时内容，在失焦或按下 Enter 后提交。提交成功会显示保存提示；服务端会再次校验范围、格式和默认值。渲染进行时，所有会影响任务输出的输入框、下拉菜单、开关和恢复默认操作都会锁定，避免修改已开始任务使用的配置。
 
 ## Normalize
 

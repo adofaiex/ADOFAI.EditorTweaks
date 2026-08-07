@@ -339,7 +339,7 @@ private void DrawCloudSyncSection()
 
 ```json
 {
-  "cloud_version": "1.4.5",
+  "cloud_version": "<mod-version>",
   "settings": {
     "EnableNumericDrag": true,
     "ChartRenderWidth": 1920,
@@ -348,7 +348,7 @@ private void DrawCloudSyncSection()
 }
 ```
 
-- `cloud_version` — Mod 版本号字符串，用于将来做格式兼容判断
+- `cloud_version` — 上传设置时记录的 Mod 版本字符串，用于日志和排查；当前读取逻辑不会因为版本不同而拒绝设置。
 - `settings` — 一个平铺的字典，key 对应字段名，value 为基本类型（bool / int / float / string）
 
 ### 哪些字段应该同步
@@ -359,13 +359,14 @@ private void DrawCloudSyncSection()
 
 这些 UI 状态的取舍在 `ToCloudDict()` 里体现——不要把它们放进字典即可。
 
-### 版本迁移策略
+### 格式迁移策略
 
-当设置结构发生变化（新增字段、字段改名、类型改变）：
+当前云文件采用“缺少字段就使用默认值”的兼容读取方式：
 
-1. 保留 `cloud_version` 字段
-2. 读取时检查版本号，按旧格式兼容解析
-3. 下次用户手动上传时，自动以新格式覆盖旧数据
+1. `cloud_version` 只记录上传来源，不作为严格的产品版本锁。
+2. 新增设置时，在读取端提供默认值，旧云文件仍然可以下载。
+3. 字段改名或类型改变时，先兼容读取旧字段，再在下一次上传时写入新字段。
+4. 如果未来需要不兼容迁移，应新增独立的格式编号，不要把某个发布版本号硬编码到文档或读取逻辑中。
 
 示例：
 
@@ -376,7 +377,7 @@ public static bool TryReadFromCloud(MySettings settings)
 
     string version = GetString(root, "cloud_version");
 
-    if (version == "1.0.0")
+    if (version == "legacy-format")
     {
         // 旧格式：field 名称不同
         settings.Volume = GetFloat(dict, "masterVolume", 1f);  // 旧 key

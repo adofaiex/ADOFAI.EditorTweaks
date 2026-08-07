@@ -61,12 +61,14 @@ ThirdParty/
 
 ### 发布新版本
 
-例如当前代码已经准备好 `1.4.5`：
+例如当前代码已经准备好一个与 `Info.json` 一致的发布版本：
 
 ```powershell
-git tag -a 1.4.5 -m "发布 1.4.5"
-git push origin 1.4.5
+git tag -a <version> -m "发布 <version>"
+git push origin <version>
 ```
+
+工作流会明确检出 `refs/tags/<version>`。这样即使仓库中存在同名旧分支，也不会误把旧分支当成发行代码。
 
 推送标签后，Actions 会自动：
 
@@ -78,20 +80,7 @@ git push origin 1.4.5
 
 ### 补构建历史版本
 
-进入 `Actions → Build and publish release → Run workflow`，在 `tag` 中依次输入已有标签，例如：
-
-```text
-v1.0.0
-1.1.0
-1.2.0
-1.2.1
-1.2.2
-1.2.3
-1.2.4
-1.2.5
-1.2.6
-1.2.7
-```
+进入 `Actions → Build and publish release → Run workflow`，在 `tag` 中输入需要补构建的已有标签。标签必须指向仓库中已经存在的发布提交。
 
 每个标签单独运行一次。
 

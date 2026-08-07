@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.WebUi;
@@ -28,13 +26,6 @@ namespace ADOFAI.EditorTweaks
             modEntry.OnToggle = OnToggle;
             modEntry.OnGUI = Settings.OnGUI;
             modEntry.OnSaveGUI = Settings.OnSaveGUI;
-
-            if (!Settings.HasShownReadme)
-            {
-                Settings.HasShownReadme = true;
-                Settings.Save(modEntry);
-                OpenReadme(modEntry);
-            }
 
             modEntry.Logger.Log("ADOFAI.EditorTweaks loaded.");
             return true;
@@ -73,28 +64,5 @@ namespace ADOFAI.EditorTweaks
             Mod?.Logger.Log(message);
         }
 
-        public static void OpenReadme(UnityModManager.ModEntry modEntry)
-        {
-            string readmePath = Path.Combine(modEntry.Path, "Resources", "README.html");
-            if (File.Exists(readmePath))
-            {
-                try
-                {
-                    Process.Start(new ProcessStartInfo
-                    {
-                        FileName = readmePath,
-                        UseShellExecute = true
-                    });
-                }
-                catch (Exception exception)
-                {
-                    modEntry.Logger.Log("Could not open README automatically: " + exception.Message + ". Path: " + readmePath);
-                }
-            }
-            else
-            {
-                modEntry.Logger.Log("README.html not found at: " + readmePath);
-            }
-        }
     }
 }
