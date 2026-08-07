@@ -12,7 +12,8 @@
 | Mod 加载 | UnityModManager 0.27.0+ | 加载入口、启停回调、设置持久化、设置面板和日志。 |
 | 方法补丁 | Harmony 2（`0Harmony.dll`） | 在不替换游戏程序集的前提下接入编辑器和播放流程。 |
 | 游戏程序集 | `Assembly-CSharp.dll`、`Assembly-CSharp-firstpass.dll` | 访问 ADOFAI 的编辑器、控制器、谱面、视频和压缩包入口。 |
-| UI | Unity IMGUI、TextMeshPro、Unity UI | UMM 设置面板、编辑器浮窗以及对游戏输入层的保护。 |
+| UI | React、Vite、TypeScript、Arco Design、Unity IMGUI | 外部 Web 设置页、UMM 快捷键录入以及渲染期间输入保护。 |
+| 本地通信 | `HttpListener`、HTTP、SSE | 本机 Web UI 与 Unity 主线程之间的设置、操作和状态同步。 |
 | 视频输出 | FFmpeg 8.1.2 essentials build | 将原始画面和 WAV 合成为 MP4、MKV 或 MOV。 |
 | 压缩包 | SharpSevenZip 2.0.109 + x64 `7z.dll` | 读取常见压缩格式并创建兼容原版的 ZIP/ADOZIP。 |
 | 云存储 | 游戏 Steam 集成、Facepunch.Steamworks | 手动上传和下载 Mod 设置。 |
@@ -37,7 +38,7 @@ ADOFAI.EditorTweaks.Main.Load
 4. 注册 `OnToggle`、`OnGUI` 和 `OnSaveGUI`。
 5. 首次启用时打开本地用户手册。
 
-启用 Mod 时，`PatchManager.ApplyAll(modId)` 同步应用各功能组。停用时先销毁浮窗，再调用 `PatchManager.UnpatchAll()`。补丁生命周期只在启用状态变化时更新，不使用后台线程。
+启用 Mod 时，`PatchManager.ApplyAll(modId)` 同步应用各功能组并启动 `WebUiHost`。停用时先停止本地 Web 服务和渲染任务，再调用 `PatchManager.UnpatchAll()`。HTTP 线程不直接修改 Unity 状态。
 
 ## Harmony 与功能隔离
 
@@ -49,14 +50,14 @@ ADOFAI.EditorTweaks.Main.Load
 4. Decoration Pivot
 5. Video Background Sync
 6. Editor Preferences
-7. Editor Overlay Input Guard
+7. Render Input Guard
 8. Chart Rendering
 9. Archive I/O
 10. Image Load Error Deduplication
 
 每组拥有独立 Harmony ID，并通过 `CreateClassProcessor(type).Patch()` 逐类型应用。组内任意补丁失败时会清除该组已经应用的全部补丁，记录失败类型和完整异常，然后继续加载其他组。
 
-`Chart Rendering` 依赖 `Editor Overlay Input Guard`。输入保护不可用时不会创建编辑器浮窗，渲染组也会标记为依赖阻止，避免进入无法安全拦截输入的渲染状态。
+`Chart Rendering` 依赖 `Render Input Guard`。输入保护不可用时，渲染组会标记为依赖阻止，避免进入无法安全拦截输入的渲染状态。
 
 启动时会扫描当前程序集中的 `[HarmonyPatch]` 类型，确认每个类型恰好注册到一个功能组。遗漏和重复注册都会进入错误日志，不允许新补丁静默失效。
 
@@ -66,14 +67,14 @@ ADOFAI.EditorTweaks.Main.Load
 
 | 能力 | 使用位置 |
 | --- | --- |
-| `MonoBehaviour`、协程、`WaitForEndOfFrame` | 浮窗宿主和离线渲染主流程。 |
+| `MonoBehaviour`、协程、`WaitForEndOfFrame` | Web 服务宿主和离线渲染主流程。 |
 | `Camera.targetTexture`、`RenderTexture` | 摄像机渲染后端。 |
 | `ScreenCapture.CaptureScreenshotIntoRenderTexture` | 游戏画面渲染后端，捕获帧末最终画面。 |
 | `AsyncGPUReadback` | 异步把画面纹理读取到编码缓冲区。 |
 | `AudioRenderer` | 在定帧渲染期间捕获游戏混音并写入浮点 WAV。 |
 | `Time.captureFramerate` | 固定游戏视觉时间步长。 |
-| Unity IMGUI | UMM 设置和编辑器内浮窗。 |
-| Unity Input / UI 模块 | 渲染窗口和浮窗的输入穿透保护。 |
+| Unity IMGUI | UMM 快捷键录入。 |
+| Unity Input / UI 模块 | 渲染期间的输入保护。 |
 | `VideoPlayer` | 带视频背景谱面的启动同步。 |
 
 项目同时引用 DOTween、RDTools、TextMeshPro、Unity UI、Unity Collections 和游戏使用的其他 Unity 模块，以匹配官方类型签名并访问现有对象。
@@ -95,7 +96,7 @@ ChartRenderSession
 └── FfmpegEncoder                     视频编码和音画合成
 ```
 
-`ChartRenderService` 位于会话之上，负责全局单任务互斥、主线程协程、公共任务状态和内置进度 UI。内置浮窗也调用相同的 `ChartRenderApi`，避免产生第二套启动与清理逻辑。
+`ChartRenderService` 位于会话之上，负责全局单任务互斥、主线程协程和公共任务状态。Web 设置页调用相同的 `ChartRenderApi`，避免产生第二套启动与清理逻辑。
 
 ### 摄像机后端
 
@@ -162,7 +163,7 @@ SharpSevenZip 固定为 2.0.109。托管程序集放在 Mod 根目录，原生�
 
 ## 设置、本地化和云同步
 
-`Settings` 继承 `UnityModManager.ModSettings`。设置 UI 直接修改字段，保存前由 `NormalizeChartRenderSettings()` 规范化范围和枚举值。渲染会话开始时复制本次任务所需的设置，渲染途中修改只影响下一次任务。
+`Settings` 继承 `UnityModManager.ModSettings`。Web 页面修改字段，保存前由 `Normalize()` 规范化范围和枚举值。渲染会话开始时复制本次任务所需的设置，渲染途中修改只影响下一次任务。
 
 本地化数据位于 `Resources/localization.json`。`Localization` 根据 Unity `SystemLanguage` 选择中文或英文；缺少当前语言时回退英文，键不存在时返回键名，避免文本缺失阻止 Mod 加载。
 

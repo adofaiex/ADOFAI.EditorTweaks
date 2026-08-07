@@ -11,7 +11,7 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
 - 从中途播放时的视频背景同步修复。
 - 官方编辑器偏好设置即时保存。
 - 常见谱面压缩包读取、旧 ZIP 多语言文件名识别和兼容原版的 ADOZIP 导出。
-- 编辑器内快捷设置浮窗。
+- 独立的本地 Web 设置页，支持实时状态和渲染进度。
 - 自定义谱面、官谱、`scnGame` 场景下的离线定帧视频渲染。
 - 摄像机纯净画面与游戏最终画面两种渲染来源。
 - 面向其他 Mod 的强类型谱面渲染任务 API。
@@ -37,7 +37,7 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
 │   ├── PatchInventory.md
 │   ├── ChartRendering.md
 │   ├── DecorationSelection.md
-│   ├── EditorOverlay.md
+│   ├── WebUi.md
 │   ├── EditorPreferences.md
 │   ├── NumericDrag.md
 │   ├── SettingsAndLocalization.md
@@ -59,7 +59,8 @@ ADOFAI Editor Tweaks 是一个用于 **A Dance of Fire and Ice** 的 UnityModMan
         ├── ChartRendering/
         ├── CloudSettings/
         ├── DecorationSelection/
-        ├── EditorOverlay/
+        ├── RenderInputGuard/
+        ├── WebUi/
         ├── EditorPreferences/
         ├── NumericDrag/
         └── VideoBackgroundSync/
@@ -79,11 +80,11 @@ UnityModManager 加载 `ADOFAI.EditorTweaks.Main.Load`。
 
 - `PatchManager.ApplyAll(modEntry.Info.Id)` 按功能组独立应用 Patch。
 - 任一组失败时只回滚该组，其他功能继续启用。
-- 只有输入保护组可用时，`EditorTweaksOverlayWindow.Ensure()` 才创建浮窗宿主。
+- `WebUiHost.Ensure()` 启动只监听 `127.0.0.1` 的本地 HTTP 服务，不会自动打开浏览器。
 
 禁用 Mod 时：
 
-- `EditorTweaksOverlayWindow.Destroy()` 销毁浮窗宿主并清理鼠标捕获状态。
+- `WebUiHost.Destroy()` 停止 HTTP/SSE 服务、取消渲染任务并清理连接。
 - `PatchManager.UnpatchAll()` 清理所有分组 Harmony ID。
 
 ## 功能总览
@@ -163,40 +164,13 @@ songposition_minusi - countdownOffset + vidOffset
 
 详见 [Doc/EditorPreferences.md](Doc/EditorPreferences.md)。
 
-### 编辑器内快捷设置浮窗
+### Web 设置页与快捷键
 
-浮窗是一个 IMGUI `MonoBehaviour`，由 `EditorTweaksOverlayWindow` 创建并常驻。显示条件：
+Mod 启用后会在本机启动 HTTP 服务，但不会自动弹出浏览器。UMM 设置面板只保留“打开 Web 设置页面快捷键”一项，默认是 `Ctrl+Shift+E`，点击“录入快捷键”后按下新的组合键即可保存。
 
-- 正在编辑谱面。
-- 当前场景有可渲染关卡。
-- 正在渲染。
+Web 页面内包含全部设置、兼容性状态、云同步入口和谱面渲染进度。页面通过 HTTP 修改设置，通过 SSE 接收设置变化、渲染进度和最终结果。服务只绑定 `127.0.0.1`，每次启动生成随机访问令牌。
 
-浮窗提供：
-
-- 装饰移动吸附精度。
-- 小数拖动步进。
-- 整数拖动步进。
-- 小数最大位数。
-- 当前渲染规格展示。
-- 判定文字显示开关。
-- 仅渲染选中段落开关。
-- 渲染按钮和渲染进度模态窗口。
-
-为了避免点击浮窗时误点到编辑器或游戏背景，Mod 增加了输入遮罩 Patch。普通浮窗只拦鼠标活动；渲染进度窗按模态窗口处理，会拦编辑器输入、Unity UI 输入、玩家按键和暂停，但不会阻止 `scrController.Update` 继续执行，因为渲染本身依赖控制器更新推进。
-
-关键 Patch：
-
-- `scnEditor.Update`：Prefix 在浮窗/渲染窗口需要拦截时跳过编辑器输入更新。
-- `scnEditor.ZoomCamera`：Prefix 防止鼠标滚轮穿透导致缩放。
-- `scrController.Update`：Prefix 只在普通浮窗鼠标操作时拦截，渲染时不拦控制器更新。
-- `scrController.TogglePauseGame`：Prefix 渲染时阻止用户按键暂停。
-- `scrPlayerManager.AnyValidInputWasTriggered`：Prefix 渲染时阻止玩家输入。
-- `scrPlayer.ValidInputWasTriggered`：Prefix 渲染时返回 false。
-- `scrPlayer.ValidInputWasReleased`：Prefix 渲染时返回 false。
-- `scrPlayer.CountValidKeysPressed`：Prefix 渲染时返回 0。
-- `StandaloneInputModule.Process`：Prefix 阻止 Unity UI 背景响应鼠标。
-
-详见 [Doc/EditorOverlay.md](Doc/EditorOverlay.md)。
+渲染期间页面会切换为完整进度视图；编辑器输入、玩家输入和 Unity UI 输入会被输入保护 Patch 屏蔽，但 `scrController.Update` 仍继续运行，以保证渲染时钟正常推进。按 `Esc` 或点击页面中的取消按钮都调用同一个渲染任务取消入口。详见 [Doc/WebUi.md](Doc/WebUi.md)。
 
 ### 压缩包处理
 
@@ -212,11 +186,11 @@ ZIP 文件名解析由 Mod 负责：优先采用 UTF-8 标志或有效 Unicode P
 
 这是当前 Mod 最大的功能。它直接从 Unity 游戏画面导出视频，不录制 Windows 桌面。默认摄像机模式只导出干净的谱面画面；兼容模式也可以导出包含游戏和编辑器 UI 的最终游戏画面。
 
-其他 Mod 可以引用 `ADOFAI.EditorTweaks.dll`，通过 `ADOFAI.EditorTweaks.Api.Rendering.ChartRenderApi` 创建独立请求、启动或附着渲染、读取进度、正常完成和取消任务。内置浮窗本身也使用同一入口。公共接口不暴露 Unity 捕获器、Harmony、Settings 或 FFmpeg 实例，详见 [Doc/Api/ChartRendering.md](Doc/Api/ChartRendering.md)。
+其他 Mod 可以引用 `ADOFAI.EditorTweaks.dll`，通过 `ADOFAI.EditorTweaks.Api.Rendering.ChartRenderApi` 创建独立请求、启动或附着渲染、读取进度、正常完成和取消任务。Web 设置页也使用同一入口。公共接口不暴露 Unity 捕获器、Harmony、Settings 或 FFmpeg 实例，详见 [Doc/Api/ChartRendering.md](Doc/Api/ChartRendering.md)。
 
 ### 支持场景
 
-渲染入口在浮窗里。可渲染条件由 `ChartRenderSession.IsPlayableLevelLoaded()` 判断：
+渲染入口在 Web 设置页的“谱面渲染”模块中。可渲染条件由 `ChartRenderSession.IsPlayableLevelLoaded()` 判断：
 
 - 编辑器中加载的自定义谱面。
 - `scnGame` 自定义关卡场景。
@@ -253,7 +227,7 @@ ZIP 文件名解析由 Mod 负责：优先采用 UTF-8 标志或有效 Unicode P
 
 这是因为该模式读取的是已经按当前 backbuffer 分辨率完成合成的最终帧；把 1080p 最终帧写入 4K 纹理只能得到插值放大，不能增加几何、UI 或后处理的真实采样。需要原生高分辨率时使用摄像机模式，或先把游戏实际分辨率设到目标大小。两条管线的完整技术栈和分辨率限制见 [Doc/ChartRendering.md](Doc/ChartRendering.md#画面捕获)。
 
-为避免把 Mod UI 录入成品，游戏画面模式运行时会隐藏 EditorTweaks 浮窗和进度遮罩；按 `Esc` 可以取消。渲染预览设置只影响摄像机模式。
+为避免把 Mod UI 录入成品，渲染进度只显示在外部 Web 设置页；按 `Esc` 可以取消。渲染预览设置只影响摄像机模式。
 
 ### 选中段落渲染
 
@@ -411,15 +385,15 @@ FFmpeg 写入队列也按内存预算计算，不再固定缓存大量帧。队�
 | VideoBackgroundSync | `scrVfxPlus.Reset` | Postfix | 清理视频同步状态 |
 | VideoBackgroundSync | `scrVfxPlus.Update` | Postfix | 追踪并校正视频背景时间 |
 | EditorPreferences | `EditorPreferencesEntry.NotifyChange` | Postfix | 立即保存官方偏好 |
-| EditorOverlay | `scnEditor.Update` | Prefix | 浮窗/渲染窗拦截编辑器输入 |
-| EditorOverlay | `scnEditor.ZoomCamera` | Prefix | 防止滚轮穿透缩放 |
-| EditorOverlay | `scrController.Update` | Prefix | 普通浮窗鼠标操作时防穿透 |
-| EditorOverlay | `scrController.TogglePauseGame` | Prefix | 渲染时阻止暂停 |
-| EditorOverlay | `scrPlayerManager.AnyValidInputWasTriggered` | Prefix | 渲染时屏蔽玩家输入 |
-| EditorOverlay | `scrPlayer.ValidInputWasTriggered` | Prefix | 渲染时屏蔽按下 |
-| EditorOverlay | `scrPlayer.ValidInputWasReleased` | Prefix | 渲染时屏蔽松开 |
-| EditorOverlay | `scrPlayer.CountValidKeysPressed` | Prefix | 渲染时按键数为 0 |
-| EditorOverlay | `StandaloneInputModule.Process` | Prefix | 阻止 Unity UI 背景点击 |
+| RenderInputGuard | `scnEditor.Update` | Prefix | 渲染时拦截编辑器输入 |
+| RenderInputGuard | `scnEditor.ZoomCamera` | Prefix | 渲染时阻止滚轮缩放 |
+| RenderInputGuard | `scrController.Update` | Prefix | 保持控制器更新，不阻止渲染时钟 |
+| RenderInputGuard | `scrController.TogglePauseGame` | Prefix | 渲染时阻止暂停 |
+| RenderInputGuard | `scrPlayerManager.AnyValidInputWasTriggered` | Prefix | 渲染时屏蔽玩家输入 |
+| RenderInputGuard | `scrPlayer.ValidInputWasTriggered` | Prefix | 渲染时屏蔽按下 |
+| RenderInputGuard | `scrPlayer.ValidInputWasReleased` | Prefix | 渲染时屏蔽松开 |
+| RenderInputGuard | `scrPlayer.CountValidKeysPressed` | Prefix | 渲染时按键数为 0 |
+| RenderInputGuard | `StandaloneInputModule.Process` | Prefix | 渲染时阻止 Unity UI 背景点击 |
 | ChartRendering | `scrConductor.set_songposition_minusi` | Prefix | 强制离线视觉时钟 |
 | ChartRendering | `scrConductor.get_songposition_minusi` | Postfix | 读取时返回离线视觉时间 |
 | ChartRendering | `scrConductor.Update` | Postfix | 自动补打到当前帧 |
@@ -498,6 +472,7 @@ dotnet build
 
 - 验证 `GameExePath`。
 - 如果 `ThirdParty/FFmpeg/ffmpeg.exe` 不存在，则运行 `scripts/EnsureFfmpeg.ps1` 下载 FFmpeg。
+- 调用 `webui/npm run build` 构建 React 页面，并只把 `webui/dist` 复制到 `out/Resources/WebUI`。
 - 清空并重建 `out/`。
 - 复制 DLL、托管依赖、`Info.json`、`Resources`、`ThirdParty` 和许可证到 `out/`。
 - 生成 `Build/<ModId>-<Version>/`。
@@ -516,7 +491,7 @@ dotnet build
 - 新功能优先放在 `src/Features/<FeatureName>/`。
 - Harmony Patch 尽量小而明确，Patch 表必须同步更新。
 - 用户可见文本放进 `Resources/localization.json`。
-- 新增设置要同步更新 `Settings.cs`、UMM UI、浮窗 UI 和文档。
+- 新增设置要同步更新 `Settings.cs`、Web UI、HTTP 状态接口和文档。
 - 新增用户可见功能要同步更新 `CHANGELOG.md`。
 - 修改构建或发行流程要同步更新 `Doc/BuildAndRelease.md`。
 - 修改渲染时必须同时考虑：视觉时钟、自动打击、音频捕获、FFmpeg、输入遮罩、取消恢复和诊断日志。
@@ -533,9 +508,9 @@ dotnet build
 
 建议在游戏中检查：
 
-- UMM 设置面板文本、本地化和重置按钮正常。
-- 编辑器内浮窗可拖动、可折叠，点击不穿透。
-- 渲染进度窗出现时，背景不能点击、滚轮不能缩放、键盘不能暂停或触发游戏输入。
+- UMM 面板中的快捷键录入、本地化和保存正常。
+- `Ctrl+Shift+E` 能打开本地 Web 设置页，页面刷新后设置保持。
+- Web 渲染进度页出现时，背景不能点击、滚轮不能缩放、键盘不能暂停或触发游戏输入。
 - 点击取消后，编辑器能自动回到编辑模式。
 - 数值输入框可右键拖动，拖动时实时刷新。
 - Camera / CameraAspect 装饰拖动符合屏幕空间直觉。
@@ -543,7 +518,7 @@ dotnet build
 - 从中途播放带视频背景的谱面，视频背景不明显延迟。
 - 自定义谱面、官谱、`scnGame` 场景都能开始渲染。
 - 摄像机模式成品不包含编辑器 UI、UMM UI、进度窗或菜单音效。
-- 游戏画面模式包含最终游戏和编辑器 UI，但不包含 EditorTweaks 浮窗；输出跟随游戏分辨率且方向正确。
+- 游戏画面模式包含最终游戏和编辑器 UI；输出跟随游戏分辨率且方向正确。
 - 成品分辨率、帧率、尾巴秒数符合设置。
 - 音频和画面对齐，结尾不被切掉。
 - `render.log` 里没有 `PLAYER_FAILED`、异常 `FLOOR_JUMP` 或 FFmpeg 错误。

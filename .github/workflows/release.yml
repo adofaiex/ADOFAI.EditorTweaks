@@ -70,6 +70,13 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+
       - name: Build release package
         shell: pwsh
         run: |

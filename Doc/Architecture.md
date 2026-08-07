@@ -27,12 +27,12 @@ UnityModManager -> ADOFAI.EditorTweaks.Main.Load
 启用 Mod 时：
 
 - `PatchManager.ApplyAll(modEntry.Info.Id)` 按功能组同步应用补丁。
-- 只有 `EditorOverlayInputGuard` 可用时才调用 `EditorTweaksOverlayWindow.Ensure()`。
+- 调用 `WebUiHost.Ensure()` 启动仅监听 `127.0.0.1` 的本地 HTTP/SSE 服务。
 - 单个功能组失败不会阻止其他组启用。
 
 禁用 Mod 时：
 
-- `EditorTweaksOverlayWindow.Destroy()`
+- `WebUiHost.Destroy()` 停止 HTTP 服务并取消正在进行的渲染任务。
 - `PatchManager.UnpatchAll()` 清理所有已启用功能组。
 
 ## PatchManager 生命周期
@@ -46,7 +46,7 @@ UnityModManager -> ADOFAI.EditorTweaks.Main.Load
 - `Blocked`：依赖组不可用，因此未尝试应用。
 - `Inactive`：Mod 未启用或已经停用。
 
-`ChartRendering` 依赖 `EditorOverlayInputGuard`。`ArchiveIo` 在 Harmony Prepare 阶段验证压缩组件，失败时回滚压缩包组并保留游戏原有压缩方法。
+`ChartRendering` 依赖 `RenderInputGuard`。`ArchiveIo` 在 Harmony Prepare 阶段验证压缩组件，失败时回滚压缩包组并保留游戏原有压缩方法。
 
 启动扫描会验证全部 `[HarmonyPatch]` 类型恰好属于一个组。完整清单和分组见 [PatchInventory.md](PatchInventory.md)。
 
@@ -58,7 +58,8 @@ UnityModManager -> ADOFAI.EditorTweaks.Main.Load
 - `ArchiveIo`：常见压缩包解压、ADOZIP 导出、旧 ZIP 文件名识别和路径安全校验。
 - `CloudSettings`：Steam 云设置的手动上传和下载。
 - `DecorationSelection`：装饰选择、拖动、轴心和吸附修复。
-- `EditorOverlay`：编辑器内浮窗和输入遮罩。
+- `RenderInputGuard`：渲染期间保护编辑器、玩家和 Unity UI 输入。
+- `WebUi`：本地 HTTP 服务、SSE 事件、主线程命令队列和浏览器启动。
 - `EditorPreferences`：官方偏好设置即时保存。
 - `LevelLoading`：合并游戏重复登记的缺图错误，避免关卡加载流程中断。
 - `NumericDrag`：数值输入框拖动。
@@ -68,7 +69,7 @@ UnityModManager -> ADOFAI.EditorTweaks.Main.Load
 
 - `Api/Rendering`：稳定的公共请求、任务、进度、结果和枚举；不暴露 Unity 或编码内部类型。
 - `Patching/PatchManager.cs`：补丁分组、依赖、兼容状态和整组回滚。
-- `Settings.cs`：UMM 设置对象、设置 UI、默认值、渲染参数范围校验。
+- `Settings.cs`：设置字段、默认值、保存、云同步兼容和渲染参数范围校验。
 - `Localization.cs`：JSON 本地化加载和语言选择。
 - `Resources/localization.json`：用户可见文本。
 - `ADOFAIMod.targets`：构建后复制、FFmpeg 下载、部署到游戏目录、生成 Build 产物和 zip。
@@ -83,7 +84,7 @@ Mod 的状态主要来自三个地方：
 - `Main.Settings`：用户配置。
 - Harmony Patch 的静态状态：例如视频同步状态、渲染诊断状态。
 - `PatchManager.Statuses`：当前启用周期中每个功能组的兼容状态。
-- 运行期对象：例如 `EditorTweaksOverlayWindow` 和一次性的 `ChartRenderSession`。
+- 运行期对象：例如 `WebUiHost`、一次性的 `ChartRenderSession` 和 SSE 客户端。
 
 渲染器有一个全局静态标记：
 
@@ -97,7 +98,7 @@ ChartRenderSession.IsRendering
 - `ChartRenderAutoPlayer` 判断是否自动补打。
 - `ChartRenderAudioPatches` 判断是否屏蔽界面音。
 - `ChartRenderJudgmentPatches` 判断是否隐藏判定文字。
-- `EditorOverlayInputBlockPatches` 判断是否启用模态输入遮罩。
+- `RenderInputGuardPatches` 判断是否在渲染期间屏蔽输入。
 
 维护时要注意：`IsRendering` 的生命周期必须覆盖从播放启动到最终清理的整个过程，且失败、取消、FFmpeg 后台线程错误都要能走到 `Finish()` 或 `Cleanup()`。
 
@@ -109,18 +110,18 @@ ChartRenderSession.IsRendering
 
 两个后端共用 `ChartRenderFramePipeline`、音频捕获和编码流程。详细生命周期见 [ChartRendering.md](ChartRendering.md)。
 
-`ChartRenderService` 是唯一任务所有者和协程宿主。内置浮窗与其他 Mod 都通过 `ChartRenderApi` 创建请求；Service 把公共请求复制为内部配置，再创建 `ChartRenderSession`。公共 API 因此不依赖浮窗是否显示，也不会把调用方的单次设置写回玩家配置。接口参考见 [Api/ChartRendering.md](Api/ChartRendering.md)。
+`ChartRenderService` 是唯一任务所有者和协程宿主。Web 设置页与其他 Mod 都通过 `ChartRenderApi` 创建请求；Service 把公共请求复制为内部配置，再创建 `ChartRenderSession`。公共 API 不依赖 Web 页面是否打开，也不会把调用方的单次设置写回玩家配置。接口参考见 [Api/ChartRendering.md](Api/ChartRendering.md)。
 
 ## 设置与本地化
 
-设置对象继承 `UnityModManager.ModSettings`。UMM UI 直接写 `Main.Settings` 字段，并在重要设置变化时调用 `Save(modEntry)`。
+设置对象继承 `UnityModManager.ModSettings`。UMM UI 只负责录入打开 Web 页的快捷键；完整设置由 Web 页面通过主线程命令队列修改，并调用 `Save(modEntry)`。
 
 渲染设置分为：
 
 - 基础设置：玩家常用，默认显示。
 - 高级设置：排查和特殊导出用，默认隐藏。
 
-`Settings.NormalizeChartRenderSettings()` 会在保存前规范化：
+`Settings.Normalize()` 会在保存前规范化：
 
 - 宽高限制在安全范围并变成偶数。
 - FPS 限制在 1 到 240。

@@ -387,7 +387,7 @@ namespace ADOFAI.EditorTweaks.Api.Rendering
 
         public bool Cancel()
         {
-            if (IsTerminal)
+            if (IsTerminal || IsCancellationRequested)
             {
                 return false;
             }

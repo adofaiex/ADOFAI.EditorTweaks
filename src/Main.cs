@@ -1,7 +1,9 @@
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
-using ADOFAI.EditorTweaks.Features.EditorOverlay;
+using ADOFAI.EditorTweaks.Features.WebUi;
 using ADOFAI.EditorTweaks.Patching;
 using UnityModManagerNet;
 
@@ -53,19 +55,12 @@ namespace ADOFAI.EditorTweaks
                     ChartRenderService.Destroy();
                 }
 
-                if (PatchManager.IsAvailable(PatchFeature.EditorOverlayInputGuard))
-                {
-                    EditorTweaksOverlayWindow.Ensure();
-                }
-                else
-                {
-                    EditorTweaksOverlayWindow.Destroy();
-                }
+                WebUiHost.Ensure();
             }
             else
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks disabled.");
-                EditorTweaksOverlayWindow.Destroy();
+                WebUiHost.Destroy();
                 ChartRenderService.Destroy();
                 PatchManager.UnpatchAll();
             }
@@ -83,7 +78,18 @@ namespace ADOFAI.EditorTweaks
             string readmePath = Path.Combine(modEntry.Path, "Resources", "README.html");
             if (File.Exists(readmePath))
             {
-                System.Diagnostics.Process.Start(readmePath);
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = readmePath,
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception exception)
+                {
+                    modEntry.Logger.Log("Could not open README automatically: " + exception.Message + ". Path: " + readmePath);
+                }
             }
             else
             {

@@ -51,6 +51,23 @@
         <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\EnsureFfmpeg.ps1&quot; -FfmpegDirectory &quot;$(ProjectDir)ThirdParty\FFmpeg&quot;" />
     </Target>
 
+    <!-- 构建并内置 Web 设置页；发布包只复制 dist，不复制源码和 node_modules / Build and embed the Web settings page. -->
+    <Target Name="BuildWebUi" BeforeTargets="CopyToOut" Condition="'$(BuildWebUi)' != 'false'">
+        <Error Text="找不到 webui/package.json，无法构建 Web 设置页。/ webui/package.json was not found."
+               Condition="!Exists('$(ProjectDir)webui\package.json')" />
+        <Exec Command="node --version"
+              WorkingDirectory="$(ProjectDir)webui"
+              IgnoreExitCode="false" />
+        <Exec Command="npm --version"
+              WorkingDirectory="$(ProjectDir)webui"
+              IgnoreExitCode="false" />
+        <Exec Command="npm ci --no-audit --no-fund"
+              WorkingDirectory="$(ProjectDir)webui"
+              Condition="!Exists('$(ProjectDir)webui\node_modules')" />
+        <Exec Command="npm run build"
+              WorkingDirectory="$(ProjectDir)webui" />
+    </Target>
+
     <!-- 可选递增 Info.json 版本号 / Optionally bump Info.json version -->
     <Target Name="BumpInfoJsonVersion" BeforeTargets="CopyToOut" Condition="'$(OS)' == 'Windows_NT' AND '$(BumpModVersion)' == 'true'">
         <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\BumpModVersion.ps1&quot; -InfoPath &quot;$(ProjectDir)Info.json&quot; -Kind &quot;$(ModVersionBumpKind)&quot;" />
@@ -64,6 +81,7 @@
         <RemoveDir Directories="$(OutDir)" Condition="Exists('$(OutDir)')" />
         <MakeDir Directories="$(OutDir)" />
         <MakeDir Directories="$(OutDir)Resources" />
+        <MakeDir Directories="$(OutDir)Resources\WebUI" />
         <MakeDir Directories="$(OutDir)ThirdParty" />
         <MakeDir Directories="$(OutDir)ThirdParty\7-Zip\x64" />
         <MakeDir Directories="$(OutDir)ThirdParty\FFmpeg" />
@@ -80,6 +98,7 @@
             <SharpSevenZipLicenseFile Include="$(NuGetPackageRoot)\sharpsevenzip\2.0.109\LICENSE" />
             <FilesToCopy Include="$(ProjectDir)Info.json" />
             <ResourceFiles Include="$(ProjectDir)Resources\**\*" Exclude="$(ProjectDir)Resources\**\*\" />
+            <WebUiFiles Include="$(ProjectDir)webui\dist\**\*" Exclude="$(ProjectDir)webui\dist\**\*\" />
             <ThirdPartyFiles Include="$(ProjectDir)ThirdParty\**\*" Exclude="$(ProjectDir)ThirdParty\**\*\" />
         </ItemGroup>
         <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
@@ -87,6 +106,7 @@
         <Copy SourceFiles="@(SevenZipNativeFile)" DestinationFolder="$(OutDir)ThirdParty\7-Zip\x64" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(SharpSevenZipLicenseFile)" DestinationFiles="$(OutDir)ThirdParty\SharpSevenZip\LICENSE.txt" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ResourceFiles)" DestinationFolder="$(OutDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="@(WebUiFiles)" DestinationFolder="$(OutDir)Resources\WebUI\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ThirdPartyFiles)" DestinationFolder="$(OutDir)ThirdParty\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Message Text="Files copied to out folder: $(OutDir)" Importance="high" />
     </Target>

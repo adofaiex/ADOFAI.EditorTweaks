@@ -5,10 +5,10 @@ using System.Reflection;
 using ADOFAI.EditorTweaks.Features.ArchiveIo;
 using ADOFAI.EditorTweaks.Features.ChartRendering;
 using ADOFAI.EditorTweaks.Features.DecorationSelection;
-using ADOFAI.EditorTweaks.Features.EditorOverlay;
 using ADOFAI.EditorTweaks.Features.EditorPreferences;
 using ADOFAI.EditorTweaks.Features.LevelLoading;
 using ADOFAI.EditorTweaks.Features.NumericDrag;
+using ADOFAI.EditorTweaks.Features.RenderInputGuard;
 using ADOFAI.EditorTweaks.Features.VideoBackgroundSync;
 using HarmonyLib;
 
@@ -22,7 +22,7 @@ namespace ADOFAI.EditorTweaks.Patching
         DecorationPivot,
         VideoBackgroundSync,
         EditorPreferences,
-        EditorOverlayInputGuard,
+        RenderInputGuard,
         ChartRendering,
         ArchiveIo,
         ImageLoadErrorDeduplication
@@ -123,10 +123,10 @@ namespace ADOFAI.EditorTweaks.Patching
                 "patchFeatureEditorPreferences",
                 new[] { typeof(EditorPreferencesPersistencePatches) }),
             new PatchGroupDefinition(
-                PatchFeature.EditorOverlayInputGuard,
-                "editor-overlay-input",
-                "patchFeatureEditorOverlayInputGuard",
-                new[] { typeof(EditorOverlayInputBlockPatches) }),
+                PatchFeature.RenderInputGuard,
+                "render-input-guard",
+                "patchFeatureRenderInputGuard",
+                new[] { typeof(RenderInputGuardPatches) }),
             new PatchGroupDefinition(
                 PatchFeature.ChartRendering,
                 "chart-rendering",
@@ -143,7 +143,7 @@ namespace ADOFAI.EditorTweaks.Patching
                     typeof(ChartRenderAudioBufferCheckPatch),
                     typeof(ChartRenderCustomFrameRateScreenPatch)
                 },
-                PatchFeature.EditorOverlayInputGuard),
+                PatchFeature.RenderInputGuard),
             new PatchGroupDefinition(
                 PatchFeature.ArchiveIo,
                 "archive-io",

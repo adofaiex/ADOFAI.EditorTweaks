@@ -1,16 +1,17 @@
 using HarmonyLib;
 using UnityEngine.EventSystems;
+using ADOFAI.EditorTweaks.Features.ChartRendering;
 
-namespace ADOFAI.EditorTweaks.Features.EditorOverlay
+namespace ADOFAI.EditorTweaks.Features.RenderInputGuard
 {
-    internal static class EditorOverlayInputBlockPatches
+    internal static class RenderInputGuardPatches
     {
         [HarmonyPatch(typeof(scnEditor), "Update")]
         internal static class EditorUpdatePatch
         {
             private static bool Prefix()
             {
-                return !EditorTweaksOverlayWindow.ShouldBlockEditorInput();
+                return !ChartRenderService.IsActive;
             }
         }
 
@@ -19,7 +20,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix()
             {
-                return !EditorTweaksOverlayWindow.ShouldBlockEditorInput();
+                return !ChartRenderService.IsActive;
             }
         }
 
@@ -28,7 +29,8 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix()
             {
-                return !EditorTweaksOverlayWindow.ShouldBlockMouseInput();
+                // Keep the controller's timeline update alive; only input-producing methods below are guarded.
+                return true;
             }
         }
 
@@ -37,7 +39,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix(ref bool __result, scrController __instance)
             {
-                if (!EditorTweaksOverlayWindow.ShouldBlockGameplayInput())
+                if (!ChartRenderService.IsActive)
                 {
                     return true;
                 }
@@ -52,7 +54,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix(ref bool __result)
             {
-                if (!EditorTweaksOverlayWindow.ShouldBlockGameplayInput())
+                if (!ChartRenderService.IsActive)
                 {
                     return true;
                 }
@@ -67,7 +69,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix(ref bool __result)
             {
-                if (!EditorTweaksOverlayWindow.ShouldBlockGameplayInput())
+                if (!ChartRenderService.IsActive)
                 {
                     return true;
                 }
@@ -82,7 +84,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix(ref bool __result)
             {
-                if (!EditorTweaksOverlayWindow.ShouldBlockGameplayInput())
+                if (!ChartRenderService.IsActive)
                 {
                     return true;
                 }
@@ -97,7 +99,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix(ref int __result)
             {
-                if (!EditorTweaksOverlayWindow.ShouldBlockGameplayInput())
+                if (!ChartRenderService.IsActive)
                 {
                     return true;
                 }
@@ -112,7 +114,7 @@ namespace ADOFAI.EditorTweaks.Features.EditorOverlay
         {
             private static bool Prefix()
             {
-                return !EditorTweaksOverlayWindow.ShouldBlockUnityUiInput();
+                return !ChartRenderService.IsActive;
             }
         }
     }

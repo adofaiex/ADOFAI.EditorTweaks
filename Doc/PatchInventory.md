@@ -55,19 +55,19 @@ Mod 启用时不会再对程序集执行一次性的 `PatchAll`。PatchManager �
 | --- | --- | --- | --- | --- | --- |
 | `EditorPreferencesPersistencePatches.cs` | `EditorPreferencesEntry.NotifyChange` | Postfix | `PersistEditorPreferences` | 调用 `Persistence.generalPrefs.Save()` | 保存失败只写日志，不能打断官方 UI |
 
-## EditorOverlay
+## RenderInputGuard
 
 | 文件 | 目标方法 | 类型 | 条件 | 作用 | 风险点 |
 | --- | --- | --- | --- | --- | --- |
-| `EditorOverlayInputBlockPatches.cs` | `scnEditor.Update` | Prefix | 普通浮窗鼠标捕获，或渲染模态窗口活跃 | 阻止编辑器响应点击、滚轮、键盘 | 渲染时可以跳过编辑器 Update，但不能跳过 controller Update |
-| `EditorOverlayInputBlockPatches.cs` | `scnEditor.ZoomCamera` | Prefix | 同上 | 防止滚轮穿透导致缩放 | 即使某些路径绕过 Update 直接调用 ZoomCamera，也能拦住 |
-| `EditorOverlayInputBlockPatches.cs` | `scrController.Update` | Prefix | 普通浮窗鼠标捕获 | 阻止悬浮窗点击穿透到游戏控制器 | 渲染模态时不能拦，否则视频推进可能停止 |
-| `EditorOverlayInputBlockPatches.cs` | `scrController.TogglePauseGame` | Prefix | 渲染模态窗口活跃 | 阻止用户按键暂停游戏 | 返回当前 paused 状态，保持调用方语义 |
-| `EditorOverlayInputBlockPatches.cs` | `scrPlayerManager.AnyValidInputWasTriggered` | Prefix | 渲染模态窗口活跃 | 阻止 Press To Start、结算退出等玩家输入 | 自动打击不走这个路径 |
-| `EditorOverlayInputBlockPatches.cs` | `scrPlayer.ValidInputWasTriggered` | Prefix | 渲染模态窗口活跃 | 阻止键盘/鼠标输入触发命中 | 自动打击直接调用 `Hit(isAuto: true)` |
-| `EditorOverlayInputBlockPatches.cs` | `scrPlayer.ValidInputWasReleased` | Prefix | 渲染模态窗口活跃 | 阻止用户松键影响 hold | 自动打击路径不会依赖用户松键 |
-| `EditorOverlayInputBlockPatches.cs` | `scrPlayer.CountValidKeysPressed` | Prefix | 渲染模态窗口活跃 | 返回 0，阻止输入计数 | 防止 multipress、hold 等逻辑被人工输入污染 |
-| `EditorOverlayInputBlockPatches.cs` | `StandaloneInputModule.Process` | Prefix | 普通浮窗鼠标捕获，或渲染模态窗口活跃 | 阻止 Unity UI 背景点击 | IMGUI 浮窗本身不依赖 StandaloneInputModule |
+| `RenderInputGuardPatches.cs` | `scnEditor.Update` | Prefix | 渲染任务活跃 | 阻止编辑器响应点击、滚轮、键盘 | 不影响控制器更新 |
+| `RenderInputGuardPatches.cs` | `scnEditor.ZoomCamera` | Prefix | 渲染任务活跃 | 防止滚轮穿透导致缩放 | 即使某些路径绕过 Update 直接调用 ZoomCamera，也能拦住 |
+| `RenderInputGuardPatches.cs` | `scrController.Update` | Prefix | 始终放行 | 保持控制器与离线视觉时钟更新 | 渲染期间不能拦截 |
+| `RenderInputGuardPatches.cs` | `scrController.TogglePauseGame` | Prefix | 渲染任务活跃 | 阻止用户按键暂停游戏 | 返回当前 paused 状态，保持调用方语义 |
+| `RenderInputGuardPatches.cs` | `scrPlayerManager.AnyValidInputWasTriggered` | Prefix | 渲染任务活跃 | 阻止 Press To Start、结算退出等玩家输入 | 自动打击不走这个路径 |
+| `RenderInputGuardPatches.cs` | `scrPlayer.ValidInputWasTriggered` | Prefix | 渲染任务活跃 | 阻止键盘/鼠标输入触发命中 | 自动打击直接调用 `Hit(isAuto: true)` |
+| `RenderInputGuardPatches.cs` | `scrPlayer.ValidInputWasReleased` | Prefix | 渲染任务活跃 | 阻止用户松键影响 hold | 自动打击路径不会依赖用户松键 |
+| `RenderInputGuardPatches.cs` | `scrPlayer.CountValidKeysPressed` | Prefix | 渲染任务活跃 | 返回 0，阻止输入计数 | 防止 multipress、hold 等逻辑被人工输入污染 |
+| `RenderInputGuardPatches.cs` | `StandaloneInputModule.Process` | Prefix | 渲染任务活跃 | 阻止 Unity UI 背景点击 | Web 页面位于外部浏览器 |
 
 ## ChartRendering
 

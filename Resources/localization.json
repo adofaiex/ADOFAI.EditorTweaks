@@ -38,7 +38,7 @@
     {
       "key": "overlaySection",
       "en": "Overlay",
-      "zh": "浮窗"
+      "zh": "Web 设置页"
     },
     {
       "key": "patchCompatibilitySection",
@@ -121,9 +121,9 @@
       "zh": "编辑器偏好持久化"
     },
     {
-      "key": "patchFeatureEditorOverlayInputGuard",
-      "en": "Editor overlay input guard",
-      "zh": "编辑器浮窗输入保护"
+      "key": "patchFeatureRenderInputGuard",
+      "en": "Render input guard",
+      "zh": "渲染输入保护"
     },
     {
       "key": "patchFeatureChartRendering",
@@ -183,7 +183,7 @@
     {
       "key": "showEditorOverlay",
       "en": "Show editor quick settings overlay",
-      "zh": "在编辑器内显示快捷设置浮窗"
+      "zh": "打开 Web 设置页（旧字段兼容）"
     },
     {
       "key": "decorationMoveSnapStep",
@@ -388,7 +388,7 @@
     {
       "key": "chartRenderCaptureSourceHint",
       "en": "Camera is the clean, high-resolution default. Game View captures the final image including UI and extra cameras, and outputs at the current game resolution. It hides the EditorTweaks overlay; press Esc to cancel.",
-      "zh": "摄像机是干净且支持独立高分辨率的默认模式。游戏画面模式会捕获包含 UI 和额外摄像机的最终画面，并按当前游戏分辨率输出；它会隐藏 EditorTweaks 浮窗，按 Esc 可取消。"
+      "zh": "摄像机是干净且支持独立高分辨率的默认模式。游戏画面模式会捕获包含 UI 和额外摄像机的最终画面，并按当前游戏分辨率输出；按 Esc 可取消。"
     },
     {
       "key": "chartRenderCaptureSourceCamera",

@@ -4,6 +4,9 @@ obj/
 out/
 dist/
 Build/
+webui/node_modules/
+webui/dist/
+webui/.vite/
 
 # IDE and editor state
 .vs/

@@ -13,7 +13,9 @@
 | `EnableDecorationPivotFix` | true | 启用装饰轴心显示修复。 |
 | `EnableVideoBackgroundSyncFix` | true | 启用视频背景同步修复。 |
 | `PersistEditorPreferences` | true | 官方编辑器偏好变化后立即保存。 |
-| `ShowEditorOverlay` | true | 显示编辑器内快捷浮窗。 |
+| `WebUiOpenHotkey` | `Ctrl+Shift+E` | 打开本地 Web 设置页的快捷键。 |
+
+`ShowEditorOverlay` 仍保留为旧配置兼容字段，但不再参与 UI 和运行逻辑。
 
 ### 压缩包设置
 
@@ -21,13 +23,13 @@
 | --- | --- | --- |
 | `LegacyZipEncoding` | `Auto` | 旧 ZIP 文件名编码。可选 `Auto`、`CP949`、`GB18030`、`ShiftJIS`、`CP437`，只影响下一次压缩包操作。 |
 
-### 浮窗状态
+### 旧浮窗兼容字段
 
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
-| `EditorOverlayCollapsed` | false | 浮窗是否折叠。 |
-| `EditorOverlayX` | -1 | 浮窗 X 坐标，负数表示使用默认位置。 |
-| `EditorOverlayY` | -1 | 浮窗 Y 坐标，负数表示使用默认位置。 |
+| `EditorOverlayCollapsed` | false | 旧浮窗折叠状态，只读取不再使用。 |
+| `EditorOverlayX` | -1 | 旧浮窗 X 坐标，只读取不再使用。 |
+| `EditorOverlayY` | -1 | 旧浮窗 Y 坐标，只读取不再使用。 |
 
 ### 编辑器数值
 
@@ -67,16 +69,14 @@
 
 ## UMM 设置 UI
 
-`Settings.OnGUI()` 使用 IMGUI 绘制设置面板。
+`Settings.OnGUI()` 只使用 IMGUI 绘制 Web 页面快捷键录入行。完整设置位于外部 Web 页面。
 
 设计原则：
 
-- 面向玩家的基础设置默认显示。
-- CRF、码率、编码档位、workspace、回读格式、预览模式这类不直观的设置放到高级设置里。
-- 每个渲染设置都有单独重置按钮。
-- 有一键恢复渲染默认。
-- 修改渲染设置后立即保存，下一次渲染生效。
-- “功能兼容状态”从 `PatchManager.Statuses` 读取，不覆盖用户保存的功能开关。
+- UMM 只负责快捷键录入和保存。
+- 基础设置、渲染设置和兼容状态由 Web 页面展示。
+- Web 页面修改后立即进入 Unity 主线程队列并保存。
+- 渲染进度和取消按钮位于同一个 Web 页面。
 
 压缩包设置：
 
@@ -137,7 +137,7 @@
 
 ## Normalize
 
-`NormalizeChartRenderSettings()` 负责保存前校验：
+`Normalize()` 负责保存前校验：
 
 - 宽度范围：16 到 7680。
 - 高度范围：16 到 4320。
@@ -215,13 +215,12 @@
 ## 新增设置流程
 
 1. 在 `Settings` 添加字段和默认值。
-2. 在 `OnGUI()` 中画 UI。
-3. 如果是渲染设置，加入 old/new 比较和保存逻辑。
-4. 必要时加入 Normalize。
+2. 在 `WebUiStateBuilder` 和前端类型中加入字段。
+3. 在 `WebUiHost.ApplySettings` 中加入白名单转换和校验。
+4. 必要时加入 `Settings.Normalize()`。
 5. 在 `Resources/localization.json` 添加中英文文本。
-6. 如果浮窗也需要展示，同步 `EditorTweaksOverlayWindow`。
-7. 如果加入 Steam 云同步，更新 `CloudSettingsManager` 的序列化和反序列化映射。
-8. 更新 `Resources/README.html`、README 和对应 Doc。
+6. 如果加入 Steam 云同步，更新 `CloudSettingsManager` 的序列化和反序列化映射。
+7. 更新 `Resources/README.html`、README 和对应 Doc。
 
 ## 踩坑记录
 
@@ -231,6 +230,6 @@
 - BGRA readback 只是实验项，默认保持 RGBA 更稳。
 - 音频同步偏移只应该作为兜底校准使用。比如音频慢 10 帧且导出 60fps，可先试 `167ms`。
 - 摄像机模式使用保存的宽高；游戏画面模式在会话开始时读取并固定当前游戏分辨率。
-- 游戏画面模式不使用渲染预览模式，浮窗切换画面来源后要立即保存设置。
+- 游戏画面模式不使用渲染预览模式，Web 页面切换画面来源后要立即保存设置。
 - `LegacyZipEncoding` 只控制无可靠 Unicode 名称的旧 ZIP，不应影响其他压缩格式。
 - 本地化文件缺失时不能让 Mod 加载失败，只写日志并回退 key。

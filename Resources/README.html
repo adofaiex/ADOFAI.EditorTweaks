@@ -91,7 +91,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
   <a href="#numeric-drag">数值右键拖动</a>
   <a href="#decoration">装饰编辑</a>
   <a href="#video-background">视频背景同步</a>
-  <a href="#overlay">快捷设置浮窗</a>
+  <a href="#webui">Web 设置页与快捷键</a>
 
   <div class="nav-section">压缩包</div>
   <a href="#archive-open">打开与导入</a>
@@ -136,7 +136,8 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
       <li>确认游戏已经安装并能正常启动。</li>
       <li>把发布包完整安装到游戏的 Mods 目录，不要只复制其中一个文件。</li>
       <li>启动游戏，在 Mod 管理窗口中启用 ADOFAI Editor Tweaks。</li>
-      <li>进入编辑器后，右侧出现快捷设置浮窗即表示启用成功。</li>
+      <li>进入编辑器后，在 UMM 设置中确认 Web 页面快捷键，默认是 <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd>。</li>
+      <li>按下快捷键即可打开本机 Web 设置页；Mod 不会自动弹出浏览器。</li>
     </ol>
   </div>
   <div class="card">
@@ -172,7 +173,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
       <li>按住鼠标右键，向右拖动增大数值，向左拖动减小数值。</li>
       <li>松开右键完成修改。</li>
     </ol>
-    <p>你可以在快捷浮窗或设置页面中调整小数步进、整数步进和最多保留的小数位数。</p>
+    <p>你可以在 Web 设置页的“数值拖动”模块中调整小数步进、整数步进和最多保留的小数位数。</p>
     <div class="tip">拖动幅度不合适时，先降低“小数拖动步进”或“整数拖动步进”，再继续操作。</div>
   </div>
 </section>
@@ -202,15 +203,15 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
   </div>
 </section>
 
-<section class="section" id="overlay">
-  <h2>快捷设置浮窗</h2>
+<section class="section" id="webui">
+  <h2>Web 设置页与快捷键</h2>
   <div class="card">
     <ul>
-      <li>拖动标题栏可以移动浮窗。</li>
-      <li>点击折叠按钮可以只保留标题栏。</li>
-      <li>浮窗中的数值会与设置页面保持一致。</li>
-      <li>加载可播放的谱面后，可以从浮窗开始渲染。</li>
-      <li>如果不需要浮窗，可在设置页面关闭“显示编辑器快捷浮窗”。</li>
+      <li>UMM 面板只保留 Web 页面快捷键录入，默认是 <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd>。</li>
+      <li>点击“录入快捷键”后按下新的组合键，保存 UMM 设置即可。</li>
+      <li>Web 设置页包含全部 Mod 设置、兼容性状态、云同步和谱面渲染进度。</li>
+      <li>页面只连接本机地址，Mod 不会向局域网开放设置服务。</li>
+      <li>渲染期间请在同一个 Web 页面查看进度；也可以按 <kbd>Esc</kbd> 紧急取消。</li>
     </ul>
   </div>
 </section>
@@ -272,7 +273,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
     </div>
   </div>
   <div class="warn">使用游戏画面渲染时，请在开始前调整好游戏窗口大小。渲染期间不要改变分辨率、缩放窗口、最小化窗口或切换显示模式，否则本次渲染会停止。</div>
-  <div class="tip">游戏画面渲染开始后，Editor Tweaks 的浮窗和进度窗口会自动隐藏，不会出现在成品里。需要取消时按 <kbd>Esc</kbd>。</div>
+  <div class="tip">渲染进度只显示在 Web 设置页中，不会被录入成品。需要取消时按 <kbd>Esc</kbd>。</div>
 </section>
 
 <section class="section" id="render-steps">
@@ -282,8 +283,8 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
     <div class="step"><div><strong>选择画面捕获方式</strong><p>普通谱面优先使用摄像机渲染；摄像机模式缺少内容时再改用游戏画面渲染。</p></div></div>
     <div class="step"><div><strong>设置输出选项</strong><p>选择保存目录、帧率、结束后额外录制时间、是否显示判定文字，以及是否只渲染选中段落。</p></div></div>
     <div class="step"><div><strong>检查保存空间</strong><p>高分辨率、较长谱面和较高帧率会占用更多临时空间与成品空间。</p></div></div>
-    <div class="step"><div><strong>点击“开始渲染”</strong><p>渲染期间不要关闭游戏。摄像机模式会显示进度，游戏画面模式会隐藏 Mod 浮窗。</p></div></div>
-    <div class="step"><div><strong>等待结果提示</strong><p>完成后会显示成品位置；失败或取消后也会恢复正常播放和浮窗状态。</p></div></div>
+    <div class="step"><div><strong>点击“开始渲染”</strong><p>渲染期间不要关闭游戏，在同一个 Web 页面查看完整进度。</p></div></div>
+    <div class="step"><div><strong>等待结果提示</strong><p>完成后会显示成品位置；失败或取消后也会恢复正常播放和输入。</p></div></div>
   </div>
 </section>
 
@@ -313,7 +314,7 @@ kbd { padding: 2px 7px; background: var(--surface-alt); border: 1px solid #d2d2d
     <ol>
       <li>在编辑器中连续框选至少两个砖块。</li>
       <li>打开“仅渲染选中段落”。</li>
-      <li>确认浮窗显示的范围正确。</li>
+      <li>确认 Web 渲染页中的范围和设置正确。</li>
       <li>开始渲染。成品会从选区起点开始，并在选区终点结束。</li>
     </ol>
     <div class="tip">片段渲染不会使用“结束后额外录制”时间。如需保留结尾，请把后面的砖块也加入选区。</div>

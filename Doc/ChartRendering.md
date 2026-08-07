@@ -5,7 +5,7 @@
 - 不录桌面。
 - 默认摄像机模式输出不带屏幕空间 UI 的纯净谱面画面。
 - 兼容模式输出 Unity 最终游戏画面，包括额外摄像机、游戏 UI 和编辑器 UI。
-- 两种模式都不会把 EditorTweaks 自己的浮窗或进度窗口录入成品。
+- 两种模式都不会把 Web 设置页或渲染进度录入成品。
 - 支持编辑器自定义谱面、`scnGame` 自定义关卡、官谱和旧官谱场景。
 - 成品帧率由设置决定，机器慢只影响等待时间，不影响视频时间轴。
 - 音频直接来自 Unity mixer 离线渲染，尽量贴近游戏实际播放结果。
@@ -45,7 +45,7 @@ ChartRenderApi.Start(request)
     -> ChartRenderSession
 ```
 
-编辑器浮窗也只负责从当前用户设置创建请求，不再直接持有 `ChartRenderSession`。公共接口和调用示例见 [Api/ChartRendering.md](Api/ChartRendering.md)。
+Web 设置页只负责从当前用户设置创建请求，不直接持有 `ChartRenderSession`。公共接口和调用示例见 [Api/ChartRendering.md](Api/ChartRendering.md)。
 
 渲染是否可用由 PatchManager 状态、`ChartRenderSession.IsPlayableLevelLoaded()` 和 `HasRenderableAudio()` 共同判断。
 
@@ -369,7 +369,7 @@ ScreenCapture.CaptureScreenshotIntoRenderTexture(captureTarget)
 
 源纹理和成品尺寸固定为开始渲染时的 `Screen.width x Screen.height`，不读取摄像机模式保存的输出宽高，也不创建缩放或留边用的中间纹理。为了兼容 `yuv420p`，极少数奇数宽高窗口会由 FFmpeg 在右侧或底部补最多一个黑色像素。
 
-这个模式会捕获额外摄像机、游戏 UI、编辑器 UI、IMGUI 和屏幕空间 Canvas。EditorTweaks 自己的主浮窗和进度遮罩会在整个捕获期间隐藏，`Esc` 用于取消；输入保护仍保持生效，按键不会传给暂停或游玩逻辑。摄像机预览的 `Overlaycam + quad` 不会启用，避免递归画面。
+这个模式会捕获额外摄像机、游戏 UI、编辑器 UI、IMGUI 和屏幕空间 Canvas。Web 设置页位于外部浏览器，不会出现在游戏画面里；`Esc` 用于取消，输入保护仍保持生效，按键不会传给暂停或游玩逻辑。摄像机预览的 `Overlaycam + quad` 不会启用，避免递归画面。
 
 渲染期间如果 `Screen.width` 或 `Screen.height` 改变，会立即终止本次任务并走既有清理和播放状态恢复流程，不会在存在 pending GPU readback 时重建纹理。`render.log` 会记录捕获模式、游戏分辨率、回读格式、垂直翻转策略和屏幕捕获异常。
 

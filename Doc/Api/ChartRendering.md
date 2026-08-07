@@ -1,6 +1,6 @@
 # 谱面渲染公共 API
 
-ADOFAI Editor Tweaks 从 API v1 开始提供强类型谱面渲染任务接口。任何 UnityModManager Mod 都可以引用发布包中的 `ADOFAI.EditorTweaks.dll` 并调用，不需要访问浮窗、`Settings`、Harmony 或内部渲染类。
+ADOFAI Editor Tweaks 从 API v1 开始提供强类型谱面渲染任务接口。任何 UnityModManager Mod 都可以引用发布包中的 `ADOFAI.EditorTweaks.dll` 并调用，不需要访问 Web 页面、`Settings`、Harmony 或内部渲染类。
 
 公共命名空间：
 
@@ -28,7 +28,7 @@ API v1 内只增加成员，不修改已有签名、枚举数值或语义。Mod 
 ```csharp
 ChartRenderRequest request = ChartRenderApi.CreateRequestFromCurrentSettings();
 request.PlaybackMode = ChartRenderPlaybackMode.RendererControlled;
-request.ShowBuiltInProgressUi = true;
+request.ShowBuiltInProgressUi = false; // 保留 API 兼容；进度由 Web 设置页显示。
 
 ChartRenderStartResult start = ChartRenderApi.Start(request);
 if (!start.Success || start.Task == null)
@@ -77,7 +77,7 @@ task.Completed += (_, result) =>
 | `CompletionTailSeconds` | 自然结束或主动完成后继续捕获的秒数。 |
 | `AudioSyncOffsetMilliseconds` | -5000 到 5000。 |
 | `ShowHitJudgments` | 是否把判定文字录入成品。 |
-| `ShowBuiltInProgressUi` | 是否显示 EditorTweaks 的进度和取消界面。 |
+| `ShowBuiltInProgressUi` | 兼容旧调用方的保留字段；当前 Mod 不再绘制内置进度界面，进度和取消操作由 Web 设置页提供。 |
 | `CustomEncoderPreset` / `CustomMuxArguments` | 专业兼容设置。 |
 
 游戏画面模式始终输出任务初始化时的 `Screen.width × Screen.height`。请求中的 `Width`、`Height` 不参与该模式的捕获；实际值通过 `ChartRenderTask.OutputWidth` 和 `OutputHeight` 获取。
@@ -102,7 +102,7 @@ request.Range = ChartRenderRangeRequest.CurrentPlaybackToEnd();
 
 ### RendererControlled
 
-保持内置浮窗行为。渲染器重新开始指定范围，启用固定视觉时钟和内部自动打击。
+保持默认 Web 渲染行为。渲染器重新开始指定范围，启用固定视觉时钟和内部自动打击。
 
 ### RestartWithoutAutoPlay
 

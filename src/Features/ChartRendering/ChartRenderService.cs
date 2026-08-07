@@ -101,7 +101,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
                 CompletionTailSeconds = source.ChartRenderCompletionTailSeconds,
                 AudioSyncOffsetMilliseconds = source.ChartRenderAudioSyncOffsetMs,
                 ShowHitJudgments = source.ChartRenderShowHitJudgments,
-                ShowBuiltInProgressUi = true
+                ShowBuiltInProgressUi = false
             };
         }
 

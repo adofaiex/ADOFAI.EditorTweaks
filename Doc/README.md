@@ -19,7 +19,7 @@
 - [Api/ChartRendering.md](Api/ChartRendering.md)：供其他 Mod 调用的强类型渲染任务 API、生命周期、错误码和示例。
 - [PatchInventory.md#archiveio](PatchInventory.md#archiveio)：常见压缩包接管、旧 ZIP 文件名识别和失败隔离。
 - [DecorationSelection.md](DecorationSelection.md)：Camera / CameraAspect 装饰拖动、轴心、吸附。
-- [EditorOverlay.md](EditorOverlay.md)：编辑器浮窗、渲染进度窗、输入遮罩。
+- [WebUi.md](WebUi.md)：本地 HTTP/SSE 设置页、快捷键、渲染进度和输入保护。
 - [EditorPreferences.md](EditorPreferences.md)：官方编辑器偏好即时保存。
 - [NumericDrag.md](NumericDrag.md)：数值输入框右键拖动。
 - [VideoBackgroundSync.md](VideoBackgroundSync.md)：视频背景中途播放同步修复。

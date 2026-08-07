@@ -137,9 +137,7 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
                 ["EnableDecorationPivotFix"] = s.EnableDecorationPivotFix,
                 ["EnableVideoBackgroundSyncFix"] = s.EnableVideoBackgroundSyncFix,
                 ["PersistEditorPreferences"] = s.PersistEditorPreferences,
-                ["ShowEditorOverlay"] = s.ShowEditorOverlay,
-                ["EditorOverlayX"] = s.EditorOverlayX,
-                ["EditorOverlayY"] = s.EditorOverlayY,
+                ["WebUiOpenHotkey"] = s.WebUiOpenHotkey ?? "Ctrl+Shift+E",
                 ["DecorationMoveSnapStep"] = s.DecorationMoveSnapStep,
                 ["FloatStepPerPixel"] = s.FloatStepPerPixel,
                 ["IntStepPerPixel"] = s.IntStepPerPixel,
@@ -173,6 +171,13 @@ namespace ADOFAI.EditorTweaks.Features.CloudSettings
             s.EnableDecorationPivotFix = GetBoolValue(d, "EnableDecorationPivotFix", true);
             s.EnableVideoBackgroundSyncFix = GetBoolValue(d, "EnableVideoBackgroundSyncFix", true);
             s.PersistEditorPreferences = GetBoolValue(d, "PersistEditorPreferences", true);
+            s.WebUiOpenHotkey = GetStringValue(d, "WebUiOpenHotkey");
+            if (string.IsNullOrWhiteSpace(s.WebUiOpenHotkey))
+            {
+                s.WebUiOpenHotkey = "Ctrl+Shift+E";
+            }
+
+            // Read legacy overlay values for old cloud files, but never use them for the new UI.
             s.ShowEditorOverlay = GetBoolValue(d, "ShowEditorOverlay", true);
             s.EditorOverlayX = GetFloatValue(d, "EditorOverlayX", -1f);
             s.EditorOverlayY = GetFloatValue(d, "EditorOverlayY", -1f);
