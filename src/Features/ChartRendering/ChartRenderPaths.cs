@@ -10,7 +10,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public static string GetFfmpegPath()
         {
-            return Main.Mod == null ? string.Empty : Path.Combine(Main.Mod.Path, "Tools", "ffmpeg.exe");
+            return Main.Mod == null ? string.Empty : Path.Combine(Main.Mod.Path, "ThirdParty", "FFmpeg", "ffmpeg.exe");
         }
 
         public static string GetWorkspaceDirectory(Settings settings)

@@ -497,9 +497,9 @@ dotnet build
 `ADOFAIMod.targets` 会：
 
 - 验证 `GameExePath`。
-- 如果 `tools/ffmpeg.exe` 不存在，则运行 `scripts/EnsureFfmpeg.ps1` 下载 FFmpeg。
+- 如果 `ThirdParty/FFmpeg/ffmpeg.exe` 不存在，则运行 `scripts/EnsureFfmpeg.ps1` 下载 FFmpeg。
 - 清空并重建 `out/`。
-- 复制 DLL、托管依赖、`Info.json`、`Resources`、`Tools`、`ThirdParty` 和许可证到 `out/`。
+- 复制 DLL、托管依赖、`Info.json`、`Resources`、`ThirdParty` 和许可证到 `out/`。
 - 生成 `Build/<ModId>-<Version>/`。
 - 生成 `Build/<ModId>-<Version>.zip`。
 - 部署到游戏目录 `Mods/ADOFAI.EditorTweaks/`。
@@ -507,7 +507,7 @@ dotnet build
 
 正式发行脚本会自动递增 `Info.json` 版本号。普通开发构建不会改版本号。
 
-`tools/ffmpeg.exe` 不应提交到 git。
+`ThirdParty/FFmpeg/ffmpeg.exe` 不应提交到 git。
 
 详见 [Doc/BuildAndRelease.md](Doc/BuildAndRelease.md)。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 

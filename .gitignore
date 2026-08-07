@@ -44,7 +44,5 @@ Thumbs.db
 Desktop.ini
 
 
-tools/ffmpeg.exe
-Tools/ffmpeg.exe
-tools/FFmpeg-*.txt
-Tools/FFmpeg-*.txt
+ThirdParty/FFmpeg/ffmpeg.exe
+ThirdParty/FFmpeg/FFmpeg-*.txt

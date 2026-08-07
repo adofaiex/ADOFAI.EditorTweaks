@@ -178,7 +178,7 @@ Steam 云同步是显式的上传/下载操作。`CloudSettingsManager` 把受�
 2. 确保 FFmpeg 可执行文件和再分发说明存在。
 3. 可选更新 `Info.json` 版本。
 4. 编译 Mod DLL。
-5. 清空并重建 `out/`，复制托管依赖、Resources、Tools、ThirdParty 和许可证。
+5. 清空并重建 `out/`，复制托管依赖、Resources、ThirdParty 和许可证。
 6. 生成 `Build/<ModId>-<Version>/` 与同名 ZIP。
 7. 部署到游戏 `Mods` 目录；只有显式开启时才启动游戏。
 
@@ -197,6 +197,6 @@ GitHub Actions 在 `1.2.3` 或 `v1.2.3` 形式的标签推送后运行 Windows �
 | Harmony | 由游戏的 UnityModManager 环境提供 | 跟随对应运行环境。 |
 | SharpSevenZip 2.0.109 | 独立托管 DLL | `ThirdParty/SharpSevenZip/LICENSE.txt`。 |
 | 7-Zip x64 `7z.dll` | 独立原生 DLL | `ThirdParty/7-Zip/License.txt`。 |
-| FFmpeg 8.1.2 | 独立可执行文件 | `ThirdParty/FFmpeg/GPL-3.0.txt`、`Tools/FFmpeg-*.txt`。 |
+| FFmpeg 8.1.2 | 独立可执行文件 | `ThirdParty/FFmpeg/GPL-3.0.txt`、`ThirdParty/FFmpeg/FFmpeg-*.txt`。 |
 
 发布前必须确认这些文件都进入最终包，且 FFmpeg 对应源码资料与实际二进制版本一致。

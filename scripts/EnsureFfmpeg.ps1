@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$ToolsDirectory
+    [string]$FfmpegDirectory
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,10 +14,10 @@ $sourceArchiveUrl = "https://github.com/FFmpeg/FFmpeg/archive/$sourceCommit.zip"
 $buildPageUrl = "https://www.gyan.dev/ffmpeg/builds/"
 $licenseUrl = "https://www.gnu.org/licenses/gpl-3.0.html"
 
-$ffmpegPath = Join-Path $ToolsDirectory "ffmpeg.exe"
+$ffmpegPath = Join-Path $FfmpegDirectory "ffmpeg.exe"
 
 function Write-FfmpegDistributionFiles {
-    New-Item -ItemType Directory -Force -Path $ToolsDirectory | Out-Null
+    New-Item -ItemType Directory -Force -Path $FfmpegDirectory | Out-Null
 
     $versionOutput = "ffmpeg.exe was not available when this file was generated."
     if (Test-Path -LiteralPath $ffmpegPath) {
@@ -29,16 +29,16 @@ function Write-FfmpegDistributionFiles {
         }
     }
 
-    $buildInfoPath = Join-Path $ToolsDirectory "FFmpeg-BUILD.txt"
-    $sourceInfoPath = Join-Path $ToolsDirectory "FFmpeg-SOURCE.txt"
-    $noticePath = Join-Path $ToolsDirectory "FFmpeg-NOTICE.txt"
+    $buildInfoPath = Join-Path $FfmpegDirectory "FFmpeg-BUILD.txt"
+    $sourceInfoPath = Join-Path $FfmpegDirectory "FFmpeg-SOURCE.txt"
+    $noticePath = Join-Path $FfmpegDirectory "FFmpeg-NOTICE.txt"
 
     Set-Content -LiteralPath $buildInfoPath -Encoding UTF8 -Value @"
 FFmpeg binary distributed with ADOFAI.EditorTweaks
 =================================================
 
 Bundled file:
-  Tools/ffmpeg.exe
+  ThirdParty/FFmpeg/ffmpeg.exe
 
 Upstream binary package:
   $ffmpegPackageName.zip
@@ -67,7 +67,7 @@ FFmpeg Corresponding Source Information
 
 This release includes an unmodified FFmpeg executable distributed under the
 GNU General Public License version 3 (GPLv3). When you publish a release that
-contains Tools/ffmpeg.exe, you must also provide the machine-readable
+contains ThirdParty/FFmpeg/ffmpeg.exe, you must also provide the machine-readable
 Corresponding Source for that FFmpeg executable.
 
 The FFmpeg source revision identified by the upstream build page is:
@@ -87,7 +87,7 @@ Important:
 
 Recommended release practice:
   1. Keep this file, FFmpeg-BUILD.txt, FFmpeg-NOTICE.txt, and the GPLv3 text
-     in the same release package as Tools/ffmpeg.exe.
+     in the same release package as ThirdParty/FFmpeg/ffmpeg.exe.
   2. Attach a source archive for the bundled FFmpeg binary to the same public
      release page, or provide a clear no-charge source download next to the
      object-code download.
@@ -100,7 +100,7 @@ Third-party notice: FFmpeg
 ==========================
 
 ADOFAI.EditorTweaks distributes FFmpeg as a separate executable:
-  Tools/ffmpeg.exe
+  ThirdParty/FFmpeg/ffmpeg.exe
 
 FFmpeg is copyright (c) the FFmpeg developers and other contributors.
 The bundled Windows build is distributed under the GNU General Public License
@@ -128,7 +128,7 @@ if (Test-Path -LiteralPath $ffmpegPath) {
 }
 
 try {
-    New-Item -ItemType Directory -Force -Path $ToolsDirectory | Out-Null
+    New-Item -ItemType Directory -Force -Path $FfmpegDirectory | Out-Null
     New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
     
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12

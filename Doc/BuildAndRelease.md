@@ -35,20 +35,20 @@ Resources/
 ├── README.html
 ├── FFmpegReference.html
 └── localization.json
-Tools/
-├── ffmpeg.exe
-├── FFmpeg-BUILD.txt
-├── FFmpeg-SOURCE.txt
-└── FFmpeg-NOTICE.txt
 ThirdParty/
 ├── 7-Zip/
 │   ├── License.txt
 │   └── x64/7z.dll
-├── FFmpeg/GPL-3.0.txt
+├── FFmpeg/
+│   ├── ffmpeg.exe
+│   ├── FFmpeg-BUILD.txt
+│   ├── FFmpeg-SOURCE.txt
+│   ├── FFmpeg-NOTICE.txt
+│   └── GPL-3.0.txt
 └── SharpSevenZip/LICENSE.txt
 ```
 
-`lib/`、源代码、工作区、渲染临时文件和历史 Build 目录不得混入发布包。`SharpSevenZip.dll` 必须位于 Mod 根目录；`7z.dll` 必须保持在 `ThirdParty/7-Zip/x64/`，运行时按该相对位置加载。
+`lib/`、源代码、工作区、渲染临时文件和历史 Build 目录不得混入发布包。`SharpSevenZip.dll` 必须位于 Mod 根目录；FFmpeg 和 `7z.dll` 统一放在 `ThirdParty/` 下，其中 `7z.dll` 必须保持在 `ThirdParty/7-Zip/x64/`，运行时按这些相对位置加载。
 
 ## GitHub Actions 自动构建
 

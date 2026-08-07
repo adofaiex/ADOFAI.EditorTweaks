@@ -48,7 +48,7 @@
 
     <!-- 确保 FFmpeg 和分发说明文件存在 / Ensure FFmpeg and redistribution notices exist -->
     <Target Name="EnsureFfmpegTool" BeforeTargets="CopyToOut" Condition="'$(OS)' == 'Windows_NT'">
-        <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\EnsureFfmpeg.ps1&quot; -ToolsDirectory &quot;$(ProjectDir)tools&quot;" />
+        <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\EnsureFfmpeg.ps1&quot; -FfmpegDirectory &quot;$(ProjectDir)ThirdParty\FFmpeg&quot;" />
     </Target>
 
     <!-- 可选递增 Info.json 版本号 / Optionally bump Info.json version -->
@@ -64,9 +64,9 @@
         <RemoveDir Directories="$(OutDir)" Condition="Exists('$(OutDir)')" />
         <MakeDir Directories="$(OutDir)" />
         <MakeDir Directories="$(OutDir)Resources" />
-        <MakeDir Directories="$(OutDir)Tools" />
         <MakeDir Directories="$(OutDir)ThirdParty" />
         <MakeDir Directories="$(OutDir)ThirdParty\7-Zip\x64" />
+        <MakeDir Directories="$(OutDir)ThirdParty\FFmpeg" />
         <MakeDir Directories="$(OutDir)ThirdParty\SharpSevenZip" />
         <ItemGroup>
             <FilesToCopy Include="$(OutputPath)$(AssemblyName).dll" />
@@ -80,7 +80,6 @@
             <SharpSevenZipLicenseFile Include="$(NuGetPackageRoot)\sharpsevenzip\2.0.109\LICENSE" />
             <FilesToCopy Include="$(ProjectDir)Info.json" />
             <ResourceFiles Include="$(ProjectDir)Resources\**\*" Exclude="$(ProjectDir)Resources\**\*\" />
-            <ToolFiles Include="$(ProjectDir)Tools\**\*" Exclude="$(ProjectDir)Tools\**\*\" />
             <ThirdPartyFiles Include="$(ProjectDir)ThirdParty\**\*" Exclude="$(ProjectDir)ThirdParty\**\*\" />
         </ItemGroup>
         <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
@@ -88,7 +87,6 @@
         <Copy SourceFiles="@(SevenZipNativeFile)" DestinationFolder="$(OutDir)ThirdParty\7-Zip\x64" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(SharpSevenZipLicenseFile)" DestinationFiles="$(OutDir)ThirdParty\SharpSevenZip\LICENSE.txt" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ResourceFiles)" DestinationFolder="$(OutDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(ToolFiles)" DestinationFolder="$(OutDir)Tools\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ThirdPartyFiles)" DestinationFolder="$(OutDir)ThirdParty\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Message Text="Files copied to out folder: $(OutDir)" Importance="high" />
     </Target>
@@ -113,17 +111,15 @@
 
         <MakeDir Directories="$(ModsDir)" />
         <MakeDir Directories="$(ModsDir)Resources" />
-        <MakeDir Directories="$(ModsDir)Tools" />
         <MakeDir Directories="$(ModsDir)ThirdParty" />
+        <RemoveDir Directories="$(ModsDir)Tools" Condition="Exists('$(ModsDir)Tools')" />
         <ItemGroup>
             <ModFiles Include="$(ProjectDir)out\*.*" Exclude="$(ProjectDir)out\Resources\**\*" />
             <ModResourceFiles Include="$(ProjectDir)out\Resources\**\*" Exclude="$(ProjectDir)out\Resources\**\*\" />
-            <ModToolFiles Include="$(ProjectDir)out\Tools\**\*" Exclude="$(ProjectDir)out\Tools\**\*\" />
             <ModThirdPartyFiles Include="$(ProjectDir)out\ThirdParty\**\*" Exclude="$(ProjectDir)out\ThirdParty\**\*\" />
         </ItemGroup>
         <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(ModsDir)" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ModResourceFiles)" DestinationFolder="$(ModsDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(ModToolFiles)" DestinationFolder="$(ModsDir)Tools\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(ModThirdPartyFiles)" DestinationFolder="$(ModsDir)ThirdParty\%(RecursiveDir)" SkipUnchangedFiles="true" />
         <Message Text="Mod deployed to game directory: $(ModsDir)" Importance="high" />
 
