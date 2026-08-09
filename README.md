@@ -444,7 +444,7 @@ Web 页面中的高级渲染设置默认隐藏：
 项目目标框架是 `net481`，通过游戏 managed assemblies 编译。当前项目文件里的默认游戏路径是：
 
 ```text
-C:\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice.exe
+D:\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice.exe
 ```
 
 开发构建：
@@ -474,7 +474,7 @@ dotnet build
 - 如果 `ThirdParty/FFmpeg/ffmpeg.exe` 不存在，则运行 `scripts/EnsureFfmpeg.ps1` 下载 FFmpeg。
 - 调用 `webui/npm run build` 构建 React 页面，并只把 `webui/dist` 复制到 `out/Resources/WebUI`。
 - 清空并重建 `out/`。
-- 复制 DLL、托管依赖、`Info.json`、`Resources`、`ThirdParty` 和许可证到 `out/`。
+- 复制 Mod 程序集、运行时依赖、`Info.json`、`Resources`、`ThirdParty` 和许可证到 `out/`；游戏 DLL 只从本机安装目录读取，不会复制到项目中。
 - 生成 `Build/<ModId>-<Version>/`。
 - 生成 `Build/<ModId>-<Version>.zip`。
 - 部署到游戏目录 `Mods/ADOFAI.EditorTweaks/`。

@@ -175,7 +175,7 @@ Steam 云同步是显式的上传/下载操作。`CloudSettingsManager` 把受�
 
 `ADOFAIMod.targets` 的主要阶段：
 
-1. 验证游戏路径并把所需官方程序集同步到 `lib/`。
+1. 验证游戏路径并直接引用游戏 `Managed` 目录中的官方程序集，不复制到项目目录。
 2. 确保 FFmpeg 可执行文件和再分发说明存在。
 3. 可选更新 `Info.json` 版本。
 4. 编译 Mod DLL。

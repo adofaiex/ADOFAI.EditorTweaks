@@ -153,10 +153,10 @@ build-release.bat Patch
 
 `ADOFAIMod.targets` 做：
 
-1. `ValidateGameExePath`：游戏 exe 不存在则构建失败。
+1. `ValidateManagedAssemblies`：游戏 exe 或所需 Managed 程序集不存在则构建失败。
 2. `EnsureFfmpegTool`：Windows 下如果 `ThirdParty/FFmpeg/ffmpeg.exe` 缺失，调用 `scripts/EnsureFfmpeg.ps1` 下载。
 3. `BumpInfoJsonVersion`：仅在 `BumpModVersion=true` 时递增版本号。
-4. `CopyToOut`：清空并重建 `out/`，复制 DLL、`Info.json`、`Resources`、`ThirdParty`。
+4. `CopyToOut`：清空并重建 `out/`，复制 Mod 程序集、运行时依赖、`Info.json`、`Resources`、`ThirdParty`。
 5. `PackageMod`：生成 `Build/<ModId>-<Version>/` 和 `Build/<ModId>-<Version>.zip`。
 6. `DeployAndLaunch`：部署到游戏的 `Mods/ADOFAI.EditorTweaks/`。
 7. `AutoLaunchGame=true` 时才启动游戏。

@@ -1,6 +1,6 @@
 <Project>
 
-    <!-- 根据 GameExePath 计算游戏依赖源目录，项目统一从 lib 引用 / Calculate source dependencies from GameExePath; build from lib -->
+    <!-- 根据 GameExePath 计算游戏依赖目录，直接从本机游戏安装读取 / Resolve dependencies from the local game installation -->
     <PropertyGroup>
         <GameDir>$([System.IO.Path]::GetDirectoryName($(GameExePath)))</GameDir>
         <GameFileName>$([System.IO.Path]::GetFileNameWithoutExtension($(GameExePath)))</GameFileName>
@@ -8,42 +8,22 @@
         <PathSeparator Condition="'$(IsWindows)' == 'true'">\</PathSeparator>
         <PathSeparator Condition="'$(IsUnix)' == 'true'">/</PathSeparator>
         <SourceManagedAssembliesDir>$(GameDir)$(PathSeparator)$(GameFileName)_Data$(PathSeparator)Managed</SourceManagedAssembliesDir>
-        <ManagedAssembliesDir Condition="'$(ManagedAssembliesDir)' == ''">$(MSBuildProjectDirectory)$(PathSeparator)lib</ManagedAssembliesDir>
+        <ManagedAssembliesDir Condition="'$(ManagedAssembliesDir)' == ''">$(SourceManagedAssembliesDir)</ManagedAssembliesDir>
         <CreateModPackage Condition="'$(CreateModPackage)' == ''">true</CreateModPackage>
         <BumpModVersion Condition="'$(BumpModVersion)' == ''">false</BumpModVersion>
         <ModVersionBumpKind Condition="'$(ModVersionBumpKind)' == ''">Minor</ModVersionBumpKind>
     </PropertyGroup>
 
-    <!-- 验证游戏路径或本地 lib / Validate game path or checked-in lib -->
-    <Target Name="ValidateGameExePath" BeforeTargets="Build">
-        <Error Text="游戏可执行文件不存在：$(GameExePath)。请检查路径是否正确。/ Game executable does not exist: $(GameExePath). Please check if the path is correct."
-               Condition="'$(GameExePath)' != '' AND !Exists('$(GameExePath)') AND !Exists('$(ManagedAssembliesDir)')" />
-    </Target>
-
-    <!-- 每次构建前从本机游戏 Managed 目录同步 DLL 到项目 lib / Sync game DLLs into lib before every build -->
-    <Target Name="SyncManagedAssemblies" BeforeTargets="ResolveAssemblyReferences">
-        <Error Text="找不到游戏 Managed 目录，且项目 lib 目录不存在：$(SourceManagedAssembliesDir)。请设置正确的 GameExePath，或恢复 lib 依赖文件。/ Neither the game Managed directory nor the project lib directory exists."
-               Condition="!Exists('$(SourceManagedAssembliesDir)') AND !Exists('$(ManagedAssembliesDir)')" />
-
-        <MakeDir Directories="$(ManagedAssembliesDir)" Condition="Exists('$(SourceManagedAssembliesDir)')" />
-        <MakeDir Directories="$(ManagedAssembliesDir)\UnityModManager" Condition="Exists('$(SourceManagedAssembliesDir)\UnityModManager')" />
-
-        <ItemGroup Condition="Exists('$(SourceManagedAssembliesDir)')">
-            <GameManagedDlls Include="$(SourceManagedAssembliesDir)\*.dll" />
-            <GameModManagerDlls Include="$(SourceManagedAssembliesDir)\UnityModManager\*.dll" />
-        </ItemGroup>
-
-        <Copy SourceFiles="@(GameManagedDlls)"
-              DestinationFolder="$(ManagedAssembliesDir)"
-              SkipUnchangedFiles="true"
-              Condition="'@(GameManagedDlls)' != ''" />
-        <Copy SourceFiles="@(GameModManagerDlls)"
-              DestinationFolder="$(ManagedAssembliesDir)\UnityModManager"
-              SkipUnchangedFiles="true"
-              Condition="'@(GameModManagerDlls)' != ''" />
-
-        <Error Text="项目 lib 缺少 Assembly-CSharp.dll。请先在安装了游戏的机器上执行一次 dotnet build，让构建自动同步依赖。/ lib is missing Assembly-CSharp.dll. Run dotnet build once on a machine with the game installed."
+    <!-- 构建前验证本机游戏依赖；不再复制 DLL 到项目目录 / Validate local game dependencies without copying DLLs -->
+    <Target Name="ValidateManagedAssemblies" BeforeTargets="ResolveAssemblyReferences">
+        <Error Text="游戏可执行文件不存在：$(GameExePath)。请设置正确的 GameExePath。/ Game executable does not exist: $(GameExePath). Set GameExePath to the installed game executable."
+               Condition="'$(GameExePath)' == '' OR !Exists('$(GameExePath)')" />
+        <Error Text="找不到游戏 Managed 目录：$(ManagedAssembliesDir)。请检查 GameExePath 或使用 /p:ManagedAssembliesDir 指定目录。/ Game Managed directory was not found. Check GameExePath or set ManagedAssembliesDir."
+               Condition="!Exists('$(ManagedAssembliesDir)')" />
+        <Error Text="游戏 Managed 目录缺少 Assembly-CSharp.dll：$(ManagedAssembliesDir)。/ Assembly-CSharp.dll is missing from the game Managed directory."
                Condition="!Exists('$(ManagedAssembliesDir)\Assembly-CSharp.dll')" />
+        <Error Text="游戏 Managed 目录缺少 UnityModManager\0Harmony.dll：$(ManagedAssembliesDir)。/ UnityModManager\0Harmony.dll is missing from the game Managed directory."
+               Condition="!Exists('$(ManagedAssembliesDir)\UnityModManager\0Harmony.dll')" />
     </Target>
 
     <!-- 确保 FFmpeg 和分发说明文件存在 / Ensure FFmpeg and redistribution notices exist -->

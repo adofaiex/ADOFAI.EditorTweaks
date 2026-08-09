@@ -4,6 +4,7 @@ obj/
 out/
 dist/
 Build/
+lib/
 webui/node_modules/
 webui/dist/
 webui/.vite/
