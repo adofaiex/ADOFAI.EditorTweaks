@@ -100,7 +100,10 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                 if (name == "Assembly-CSharp") Task_ACS(packages, assembly); else Task(packages, assembly);
 
                 if (packages.Count == 0)
-                { continue; }
+                {
+                    Main.Log("  Patch Skip... (0)");
+                    continue; 
+                }
 
                 foreach (PatchPackage pp in packages)
                 {
@@ -128,7 +131,7 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                                 {
                                     harmony.Patch(mi, transpiler: patchMethod);
                                     aCached.Add(mi);
-                                    Main.Log("Patched: " + method);
+                                    Main.Log("  Patched: " + method);
                                     counter++;
                                     patched++;
                                 }
@@ -139,7 +142,7 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                         }
                     }
                 }
-                Main.Log("Patched Count: " + patched + " / " + total);
+                Main.Log("  Patched Count: " + patched + " / " + total);
             }
 
             DateTime end = DateTime.Now;
