@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Xml.Linq;
+using System.Xml.Serialization;
 using UnityEngine;
 
 namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
@@ -89,7 +91,8 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                     name == "ADOFAI.EditorTweaks"
                 ) { continue; }
 
-                int mc = 0;
+                int total = 0;
+                int patched = 0;
                 Main.Log("Patch Assembly Name: " + name);
                 Main.Log("Patch Assembly Location: " + assembly.Location);
 
@@ -98,20 +101,43 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                 foreach (PatchPackage pp in packages)
                 {
                     Type type = assembly.GetType(pp.type);
+                    total += pp.methods.Count;
                     foreach (string method in pp.methods)
                     {
-                        MethodInfo mi = type.GetMethod(method, AccessTools.all);
-                        if (mi != null)
+                        MethodInfo[] methods = type.GetMethods(AccessTools.all);
+                        foreach (MethodInfo mi in methods)
                         {
-                            aCached.Add(mi);
-                            harmony.Patch(mi, transpiler: patchMethod);
-                            Main.Log("Patched: " + method);
-                            counter++;
-                            mc++;
+                            // // fuck it
+                            // if (
+                            //     mi.HasMethodBody() || 
+                            //     (mi.Attributes & (MethodAttributes.Abstract | MethodAttributes.PinvokeImpl)) != 0 || 
+                            //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.InternalCall) != 0 ||
+                            //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.Native) != 0 ||
+                            //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.OPTIL) != 0 ||
+                            //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.Runtime) != 0 ||
+                            //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.ManagedMask) != 0
+                            // )
+                            // {
+                            //     continue;
+                            // }
+                            if (mi.Name == method)
+                            {
+                                try
+                                {
+                                    harmony.Patch(mi, transpiler: patchMethod);
+                                    aCached.Add(mi);
+                                    Main.Log("Patched: " + method);
+                                    counter++;
+                                    patched++;
+                                }
+                                catch
+                                { 
+                                }
+                            }
                         }
                     }
                 }
-                Main.Log("Patched Count: " + mc);
+                Main.Log("Patched Count: " + patched + " / " + total);
             }
 
             DateTime end = DateTime.Now;
