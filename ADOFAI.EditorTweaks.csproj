@@ -10,6 +10,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <DefaultItemExcludes>$(DefaultItemExcludes);src_unity\**</DefaultItemExcludes>
+	  <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -61,6 +62,27 @@
     </Reference>
     <Reference Include="mscorlib">
       <HintPath>$(ManagedAssembliesDir)\mscorlib.dll</HintPath>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>$(ManagedAssembliesDir)\System.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Core">
+      <HintPath>$(ManagedAssembliesDir)\System.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data">
+      <HintPath>$(ManagedAssembliesDir)\System.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing">
+      <HintPath>$(ManagedAssembliesDir)\System.Drawing.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics">
+      <HintPath>$(ManagedAssembliesDir)\System.Numerics.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml">
+      <HintPath>$(ManagedAssembliesDir)\System.Xml.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Xml.Linq">
+      <HintPath>$(ManagedAssembliesDir)\System.Xml.Linq.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>$(ManagedAssembliesDir)\UnityEngine.dll</HintPath>

@@ -65,19 +65,25 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                         {
                             continue;
                         }
-                        MethodInfo temp = harmony.Patch(method, transpiler: hm);
-                        if (gbState)
+                        try
                         {
-                            harmony.Unpatch(method, HarmonyPatchType.Transpiler, harmony.Id); // maybe faster?
-                            // harmony.Unpatch(method, hm);
+                            // 想不到吧 这玩意回莫名报错 所以必须套上try
+                            MethodInfo temp = harmony.Patch(method, transpiler: hm);
+                            if (gbState)
+                            {
+                                harmony.Unpatch(method, HarmonyPatchType.Transpiler, harmony.Id); // maybe faster?
+                                // harmony.Unpatch(method, hm);
+                            }
+                            else
+                            {
+                                aCached.Add(method);
+                            }
                         }
-                        else
-                        {
-                            aCached.Add(method);
-                        }
+                        catch
+                        { /* skip */ }
                     }
                 }
-            }
+            }   
         }
         public static void Uninit()
         {
