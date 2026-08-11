@@ -4,7 +4,6 @@ using System.Reflection.Emit;
 using System.Reflection;
 using UnityEngine;
 using System;
-using System.Linq;
 
 namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
 {
@@ -12,6 +11,7 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
     {
         public static void Init()
         {
+            int counter = 0;
             HarmonyMethod hm = new(typeof(ChartRenderTimeScalePatch).GetMethod(nameof(Transpiler), AccessTools.all));
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
             if (aAll != null && aAll.Length == assemblies.Length)
@@ -23,15 +23,19 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                 }
                 if (eq)
                 {
+                    Main.Log("Goto fast patch");
                     // fast path
                     foreach (MethodInfo method in aCached)
                     {
                         harmony.Patch(method, transpiler: hm);
+                        counter++;
                     }
+                    Main.Log("Patch unscaledTime, Count: " + counter);
                     return;
                 }
             }
 
+            Main.Log("Goto slow patch");
             aAll = assemblies;
             aCached.Clear();
             foreach (Assembly assembly in assemblies)
@@ -76,6 +80,7 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                             }
                             else
                             {
+                                counter++;
                                 aCached.Add(method);
                             }
                         }
@@ -83,7 +88,9 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                         { /* skip */ }
                     }
                 }
-            }   
+            }
+            Main.Log("Patch unscaledTime, Count: " + counter);
+            Main.Log("Cached MethodInfo, Count: " + aCached.Count);
         }
         public static void Uninit()
         {
