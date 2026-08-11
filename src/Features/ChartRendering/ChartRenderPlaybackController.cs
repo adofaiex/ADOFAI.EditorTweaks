@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using ADOFAI.EditorTweaks.Api.Rendering;
+using ADOFAI.EditorTweaks.src.Features.ChartRendering;
 using UnityEngine;
 
 namespace ADOFAI.EditorTweaks.Features.ChartRendering
@@ -24,6 +25,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public void StartPlayback(ChartRenderRange renderRange, ChartRenderPlaybackMode playbackMode)
         {
+            ChartRenderTimeScalePatch.Init();
             savedState = RenderState.Capture();
             Time.captureFramerate = Math.Max(1, settings.ChartRenderFps);
             QualitySettings.vSyncCount = 0;
