@@ -98,6 +98,10 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
 
                 List<PatchPackage> packages = new();
                 if (name == "Assembly-CSharp") Task_ACS(packages, assembly); else Task(packages, assembly);
+
+                if (packages.Count == 0)
+                { continue; }
+
                 foreach (PatchPackage pp in packages)
                 {
                     Type type = assembly.GetType(pp.type);
@@ -117,9 +121,7 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                             //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.Runtime) != 0 ||
                             //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.ManagedMask) != 0
                             // )
-                            // {
-                            //     continue;
-                            // }
+                            // { continue; }
                             if (mi.Name == method)
                             {
                                 try
