@@ -1,46 +1,74 @@
-﻿using HarmonyLib;
+﻿// 开发: ModsTag
+// ↑ 屎山代码的问题找他:) 和酥酥无关
+
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Xml.Linq;
-using System.Xml.Serialization;
 using UnityEngine;
 
 namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
 {
+    /// <summary>
+    /// 遍历大部分的<see cref="Assembly"/> 并且替换方法，包括:
+    /// <code>
+    /// - <see cref="Time.unscaledDeltaTime"/>    -> <see cref="Time.deltaTime"/><br/>
+    /// - <see cref="Time.unscaledTime"/>         -> <see cref="Time.time"/><br/>
+    /// - <see cref="Time.unscaledTimeAsDouble"/> -> <see cref="Time.timeAsDouble"/><br/>
+    /// </code>
+    /// </summary>
     public static class ChartRenderTimeScalePatch
     {
+        /// <summary>
+        /// 补丁包体 (伪结构体)
+        /// </summary>
         private sealed class PatchPackage
         {
             internal PatchPackage(string typ)
             {
                 type = typ;
-                methods = new();
+                // 预先生成4个元素 不大不小刚刚好
+                methods = new(4);
             }
+            /// <summary>
+            /// <see cref="Type.FullName"/>返回的值
+            /// </summary>
             internal readonly string type;
+            /// <summary>
+            /// 一个列表，包含来自<see cref="RuntimeMethodInfo"/>的<see cref="MemberInfo.Name"/>返回的值
+            /// </summary>
             internal readonly List<string> methods;
         }
-        public static void Init()
+        /// <summary>
+        /// 创建新的补丁
+        /// </summary>
+        public static void Create()
         {
             DateTime start = DateTime.Now;
+            // 计数器 用于记录补丁数量
             int counter = 0;
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+            // 快速通道 直接使用缓存数据
+            // 但是为了"快速" 要求极为严苛
             Main.Log("try to fast patch");
+            // 1. 检查缓存数据是否存在以及长度是否相等
             if (aAll != null && aAll.Length == assemblies.Length)
             {
-                Main.Log("fast patch flag: a");
+                // 就一个调试日志别管
+                Main.Log("fast patch flag1");
+                // 2. 检查缓存数据是否匹配
                 bool eq = true;
                 for (int i = 0; i < aAll.Length && eq; i++)
                 {
-                    eq &= aAll[i] == assemblies[i];
+                    eq &= aAll[i].FullName == assemblies[i].FullName;
                 }
                 if (eq)
                 {
+                    // 就两个调试日志别管
                     Main.Log("succ, goto fast patch");
-                    // fast path
+                    // 进入快速路径 只补丁缓存内的数据
                     foreach (MethodInfo method in aCached)
                     {
                         harmony.Patch(method, transpiler: patchMethod);
@@ -50,13 +78,13 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                     return;
                 }
             }
-
+            // 慢速通道 重新创建缓存数据
             Main.Log("fail, goto slow patch");
             aAll = assemblies;
             aCached.Clear();
             foreach (Assembly assembly in assemblies)
             {
-                // black list
+                // 黑名单列表 专门排除不关事的Assembly
                 string name = assembly.GetName().Name;
                 if (
                     // .net
@@ -96,21 +124,38 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                 Main.Log("Patch Assembly Name: " + name);
                 Main.Log("Patch Assembly Location: " + assembly.Location);
 
-                List<PatchPackage> packages = new();
-                if (name == "Assembly-CSharp") Task_ACS(packages, assembly); else Task(packages, assembly);
+                // 如果这玩意路径都没了 那还说啥了给你了
+                if (string.IsNullOrEmpty(assembly.Location) || !System.IO.File.Exists(assembly.Location))
+                {
+                    // 如果有必要可以下一个Harmony补丁
+                    // 但是我偷懒 直接去他妈的
+                    continue;
+                }
 
+                // 派发任务 处理Assembly内的所有类型
+                // 欸你说这玩意为啥就不能是循环队列呢 真奇怪
+                Queue<PatchPackage> packages = new();
+                if (name == "Assembly-CSharp") // 由于这玩意太tm大了 所以开个小差 用一个更优的方式处理
+                    Task_ACS(packages, assembly);
+                else 
+                    Task(packages, assembly);
+
+                // 如果这玩意啥都没 那就别占用公共资源了 滚吧
                 if (packages.Count == 0)
                 {
                     Main.Log("  Patch Skip... (0)");
                     continue; 
                 }
 
-                foreach (PatchPackage pp in packages)
+                // 非经典遍历所有包体
+                while (packages.TryDequeue(out PatchPackage pp))
                 {
+                    // 还原成Type
                     Type type = assembly.GetType(pp.type);
                     total += pp.methods.Count;
                     foreach (string method in pp.methods)
                     {
+                        // 查询Method
                         MethodInfo[] methods = type.GetMethods(AccessTools.all);
                         foreach (MethodInfo mi in methods)
                         {
@@ -125,6 +170,13 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                             //     (mi.GetMethodImplementationFlags() & MethodImplAttributes.ManagedMask) != 0
                             // )
                             // { continue; }
+
+                            // 排除一下不是在这个Type的
+                            // 说真的谁想到type.GetMethods里会参杂着不是这个type的MethodInfo呢
+                            if (mi.DeclaringType != type)
+                            { continue; }
+                            // 正常检查然后补丁
+                            // 没存详细参数 所以全补丁了
                             if (mi.Name == method)
                             {
                                 try
@@ -135,8 +187,10 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                                     counter++;
                                     patched++;
                                 }
-                                catch
+                                catch (Exception ex)
                                 { 
+                                    // 对于异常直接Log算了
+                                    Main.Mod?.Logger?.LogException("  Patch: ", ex);
                                 }
                             }
                         }
@@ -146,32 +200,51 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
             }
 
             DateTime end = DateTime.Now;
+            // 都说了调试日志别管 (红温)
+            // byd写补丁脸红的和苹果一样
             Main.Log("Patch unscaledTime, Count: " + counter);
             Main.Log("Cached MethodInfo, Count: " + aCached.Count);
             Main.Log("Patch Successful, Time: " + ((end - start).Ticks) / 10000 + " ms");
         }
-        public static void Uninit()
+        public static void Destroy()
         {
+            // 全给你删了全给你删了我全给你删了
             harmony.UnpatchAll(harmony.Id);
         }
 
-        private static void Task(List<PatchPackage> result, Assembly assembly)
+        /// <summary>
+        /// 第二大屎山 这个还没那么离谱
+        /// </summary>
+        /// <param name="result"><see cref="this"/>, 一个静态伪实例</param>
+        /// <param name="assembly">需要搞的Assembly</param>
+        private static void Task(Queue<PatchPackage> result, Assembly assembly)
         {
-            if (assembly.Location is null || !System.IO.File.Exists(assembly.Location))
-            {
-                return;
-            }
             Mono.Cecil.AssemblyDefinition assemblyDefinition = Mono.Cecil.AssemblyDefinition.ReadAssembly(assembly.Location);
 
+            // 非常正常的遍历所有类型
             foreach (Mono.Cecil.TypeDefinition type in assemblyDefinition.MainModule.Types)
             {
                 PatchPackage package = new(type.FullName);
+                // 非常正常的遍历所有方法
                 foreach (Mono.Cecil.MethodDefinition method in type.Methods)
                 {
+                    // 非常正常的排除一部分不可能在里面使用的方法
                     if (!method.HasBody || method.Name == "Equals" || method.Name == "Finalize" || method.Name == "GetHashCode" || method.Name == "ToString" || method.Name == "CompareTo")
                     { continue; }
+                    // 非常正常的查IL
                     foreach (Mono.Cecil.Cil.Instruction instruction in method.Body.Instructions)
                     {
+                        // 如果看不懂下面的代码 我这里解释一下
+                        // 首先 对于静态方法 调用通通是用OpCodes.Call
+                        // 而实例方法不需要知道
+                        // 而所有的property的get和set其实都是Method
+                        //   只不过前面会加一句"get_"或是"set_"而已
+                        // 而我们目标是把所有的unscaled读取出来
+                        // 所以就是查询OpCode是不是OpCodes.Call
+                        // 然后查询当前类型是不是来自"UnityEngine.Time"
+                        // 最后查询方法是不是"get_unscaledDeltaTime"或"get_unscaledTime"或"get_unscaledTimeAsDouble"其中之一
+                        // 是就加进去package.methods里 然后退出
+                        // 不是就滚
                         if (instruction.OpCode == Mono.Cecil.Cil.OpCodes.Call)
                         {
                             string typ = (instruction.Operand! as Mono.Cecil.MethodReference).DeclaringType.FullName;
@@ -179,28 +252,34 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                             if (typ == "UnityEngine.Time" && (mtd == "get_unscaledDeltaTime" || mtd == "get_unscaledTime" || mtd == "get_unscaledTimeAsDouble"))
                             {
                                 package.methods.Add(method.Name);
+                                break;
                             }
                         }
                     }
                 }
+                // 非常正常的判断是否有方法需要打补丁
+                // 有就加进去队列里
                 if (package.methods.Count > 0)
                 {
-                    result.Add(package);
+                    result.Enqueue(package);
                 }
             }
             return;
         }
-        private static void Task_ACS(List<PatchPackage> result, Assembly assembly)
+        /// <summary>
+        /// 第一大屎山 纯硬编码的产物:)
+        /// </summary>
+        /// <param name="result"><see cref="this"/>, 一个静态伪实例</param>
+        /// <param name="assembly">需要搞的Assembly</param>
+        private static void Task_ACS(Queue<PatchPackage> result, Assembly assembly)
         {
-            if (assembly.Location is null || !System.IO.File.Exists(assembly.Location))
-            {
-                return;
-            }
             Mono.Cecil.AssemblyDefinition assemblyDefinition = Mono.Cecil.AssemblyDefinition.ReadAssembly(assembly.Location);
 
+            // 非常正常的遍历所有类型
             foreach (Mono.Cecil.TypeDefinition type in assemblyDefinition.MainModule.Types)
             {
                 Mono.Cecil.TypeReference baseType = type.BaseType;
+                // 这里多了个检查类是不是由UnityEngine.MonoBehaviour派生出来的
                 bool isMonoBehaviour = false;
 
                 while (baseType != null && !isMonoBehaviour)
@@ -220,10 +299,15 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                     baseType = baseTypeDef.BaseType;
                 }
                 PatchPackage package = new(type.FullName);
+                // 非常正常的遍历所有方法
                 foreach (Mono.Cecil.MethodDefinition method in type.Methods)
                 {
+                    // 非常正常的排除一部分不可能在里面使用的方法
                     if (!method.HasBody || method.Name == "Equals" || method.Name == "Finalize" || method.Name == "GetHashCode" || method.Name == "ToString" || method.Name == "CompareTo")
                     { continue; }
+                    // 非常雷霆的硬编码查询:)
+                    // 这都是为了优化啊(被打)
+                    // 其实Mono.Cecil的IL遍历速度不差了 但是加了这点东西性能高很多 就留下来吧
                     if (isMonoBehaviour)
                     {
                         if (
@@ -268,8 +352,10 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                             method.Name == nameof(MonoBehaviour.SendMessageUpwards)
                         ) { continue; }
                     }
+                    // 非常正常的查IL
                     foreach (Mono.Cecil.Cil.Instruction instruction in method.Body.Instructions)
                     {
+                        // 如果看不懂就看前面Task的
                         if (instruction.OpCode == Mono.Cecil.Cil.OpCodes.Call)
                         {
                             string typ = (instruction.Operand! as Mono.Cecil.MethodReference).DeclaringType.FullName;
@@ -277,23 +363,36 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
                             if (typ == "UnityEngine.Time" && (mtd == "get_unscaledDeltaTime" || mtd == "get_unscaledTime" || mtd == "get_unscaledTimeAsDouble"))
                             {
                                 package.methods.Add(method.Name);
+                                break;
                             }
                         }
                     }
                 }
+                // 非常正常的判断是否有方法需要打补丁
+                // 有就加进去队列里
                 if (package.methods.Count > 0)
                 {
-                    result.Add(package);
+                    result.Enqueue(package);
                 }
             }
             return;
         }
 
+        /// <summary>
+        /// dddd
+        /// </summary>
         private static Harmony harmony = new Harmony("ADOFAI::EditorTweaks::src::Features::ChartRendering::ChartRenderTimeScale");
 
+        /// <summary>
+        /// 当前补丁的缓存
+        /// </summary>
         private static List<MethodInfo> aCached = new();
+        /// <summary>
+        /// 当前缓存的Assembly 用于校验
+        /// </summary>
         private static Assembly[]? aAll;
 
+        // 这里纯大粪
         private static readonly HarmonyMethod patchMethod = new(typeof(ChartRenderTimeScalePatch).GetMethod(nameof(Transpiler), AccessTools.all));
         private static readonly MethodInfo unscaledDeltaTimeMethod = typeof(Time).GetProperty(nameof(Time.unscaledDeltaTime)).GetGetMethod();
         private static readonly MethodInfo deltaTimeMethod = typeof(Time).GetProperty(nameof(Time.deltaTime)).GetGetMethod();
@@ -304,6 +403,10 @@ namespace ADOFAI.EditorTweaks.src.Features.ChartRendering
 
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
         {
+            // 这里也大粪 但是还是得解释一下
+            // 简单来说就是和上面的一样 也是遍历IL
+            // 但是不一样的是 这里遍历了之后会直接替换了 而不是仅查找
+            // 性能最差的也是这里 性能差到什么程度? 大部分开销都来自这里:)
             foreach (CodeInstruction ci in instructions)
             {
                 if (ci.opcode == OpCodes.Call && (ci.operand as MethodInfo) == unscaledDeltaTimeMethod)

@@ -25,7 +25,7 @@ namespace ADOFAI.EditorTweaks.Features.ChartRendering
 
         public void StartPlayback(ChartRenderRange renderRange, ChartRenderPlaybackMode playbackMode)
         {
-            ChartRenderTimeScalePatch.Init();
+            ChartRenderTimeScalePatch.Create();
             savedState = RenderState.Capture();
             Time.captureFramerate = Math.Max(1, settings.ChartRenderFps);
             QualitySettings.vSyncCount = 0;
