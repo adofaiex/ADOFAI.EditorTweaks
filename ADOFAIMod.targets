@@ -44,6 +44,7 @@
     <PropertyGroup>
       <ModsDir>$(GameDir)$(PathSeparator)Mods$(PathSeparator)$(AssemblyName)$(PathSeparator)</ModsDir>
     </PropertyGroup>
+    <RemoveDir Directories="$(ModsDir)Resources" Condition="Exists('$(ModsDir)Resources')" />
     <MakeDir Directories="$(ModsDir);$(ModsDir)Resources" />
     <ItemGroup>
       <DeployFiles Include="$(ProjectDir)out\*.*" />
