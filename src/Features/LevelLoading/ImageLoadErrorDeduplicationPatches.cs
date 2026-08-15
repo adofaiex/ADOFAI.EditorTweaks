@@ -17,6 +17,11 @@ namespace ADOFAI.EditorTweaks.Features.LevelLoading
                 Dictionary<string, string> ___errorImageResult,
                 ref bool ___isUnauthorizedAccess)
             {
+                if (!Main.Settings.EnableImageLoadErrorDeduplication)
+                {
+                    return true;
+                }
+
                 if (!__instance.isLoading || !IsImageLoadError(loadResult))
                 {
                     return true;

@@ -1,140 +1,58 @@
 <Project>
+  <PropertyGroup>
+    <GameDir>$([System.IO.Path]::GetDirectoryName($(GameExePath)))</GameDir>
+    <GameFileName>$([System.IO.Path]::GetFileNameWithoutExtension($(GameExePath)))</GameFileName>
+    <IsWindows>true</IsWindows>
+    <PathSeparator>\</PathSeparator>
+    <SourceManagedAssembliesDir>$(GameDir)$(PathSeparator)$(GameFileName)_Data$(PathSeparator)Managed</SourceManagedAssembliesDir>
+    <ManagedAssembliesDir Condition="'$(ManagedAssembliesDir)' == ''">$(SourceManagedAssembliesDir)</ManagedAssembliesDir>
+    <CreateModPackage Condition="'$(CreateModPackage)' == ''">true</CreateModPackage>
+    <AutoLaunchGame Condition="'$(AutoLaunchGame)' == ''">false</AutoLaunchGame>
+  </PropertyGroup>
 
-    <!-- 根据 GameExePath 计算游戏依赖目录，直接从本机游戏安装读取 / Resolve dependencies from the local game installation -->
+  <Target Name="ValidateManagedAssemblies" BeforeTargets="ResolveAssemblyReferences">
+    <Error Text="游戏可执行文件不存在：$(GameExePath)。请设置正确的 GameExePath。"
+           Condition="'$(GameExePath)' == '' OR !Exists('$(GameExePath)')" />
+    <Error Text="找不到游戏 Managed 目录：$(ManagedAssembliesDir)。"
+           Condition="!Exists('$(ManagedAssembliesDir)')" />
+    <Error Text="游戏 Managed 目录缺少 Assembly-CSharp.dll。"
+           Condition="!Exists('$(ManagedAssembliesDir)\Assembly-CSharp.dll')" />
+    <Error Text="游戏 Managed 目录缺少 UnityModManager\0Harmony.dll。"
+           Condition="!Exists('$(ManagedAssembliesDir)\UnityModManager\0Harmony.dll')" />
+  </Target>
+
+  <Target Name="CopyToOut" AfterTargets="Build">
+    <PropertyGroup><OutDir>$(ProjectDir)out\</OutDir></PropertyGroup>
+    <RemoveDir Directories="$(OutDir)" Condition="Exists('$(OutDir)')" />
+    <MakeDir Directories="$(OutDir);$(OutDir)Resources" />
+    <ItemGroup>
+      <ModFiles Include="$(OutputPath)$(AssemblyName).dll;$(ProjectDir)Info.json" />
+      <ResourceFiles Include="$(ProjectDir)Resources\**\*" Exclude="$(ProjectDir)Resources\**\*\" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ResourceFiles)" DestinationFolder="$(OutDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Message Text="Files copied to out folder: $(OutDir)" Importance="high" />
+  </Target>
+
+  <Target Name="PackageMod" AfterTargets="CopyToOut"
+          Condition="'$(OS)' == 'Windows_NT' AND '$(CreateModPackage)' == 'true'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\PackageMod.ps1&quot; -ProjectDirectory &quot;$(MSBuildProjectDirectory)&quot; -SourceDirectory &quot;$(MSBuildProjectDirectory)\out&quot; -BuildDirectory &quot;$(MSBuildProjectDirectory)\Build&quot; -InfoPath &quot;$(MSBuildProjectDirectory)\Info.json&quot;" />
+  </Target>
+
+  <Target Name="DeployAndLaunch" AfterTargets="CopyToOut"
+          Condition="'$(GameExePath)' != '' AND Exists('$(GameExePath)')">
     <PropertyGroup>
-        <GameDir>$([System.IO.Path]::GetDirectoryName($(GameExePath)))</GameDir>
-        <GameFileName>$([System.IO.Path]::GetFileNameWithoutExtension($(GameExePath)))</GameFileName>
-        <IsWindows>true</IsWindows>
-        <PathSeparator Condition="'$(IsWindows)' == 'true'">\</PathSeparator>
-        <PathSeparator Condition="'$(IsUnix)' == 'true'">/</PathSeparator>
-        <SourceManagedAssembliesDir>$(GameDir)$(PathSeparator)$(GameFileName)_Data$(PathSeparator)Managed</SourceManagedAssembliesDir>
-        <ManagedAssembliesDir Condition="'$(ManagedAssembliesDir)' == ''">$(SourceManagedAssembliesDir)</ManagedAssembliesDir>
-        <CreateModPackage Condition="'$(CreateModPackage)' == ''">true</CreateModPackage>
-        <BumpModVersion Condition="'$(BumpModVersion)' == ''">false</BumpModVersion>
-        <ModVersionBumpKind Condition="'$(ModVersionBumpKind)' == ''">Minor</ModVersionBumpKind>
+      <ModsDir>$(GameDir)$(PathSeparator)Mods$(PathSeparator)$(AssemblyName)$(PathSeparator)</ModsDir>
     </PropertyGroup>
-
-    <!-- 构建前验证本机游戏依赖；不再复制 DLL 到项目目录 / Validate local game dependencies without copying DLLs -->
-    <Target Name="ValidateManagedAssemblies" BeforeTargets="ResolveAssemblyReferences">
-        <Error Text="游戏可执行文件不存在：$(GameExePath)。请设置正确的 GameExePath。/ Game executable does not exist: $(GameExePath). Set GameExePath to the installed game executable."
-               Condition="'$(GameExePath)' == '' OR !Exists('$(GameExePath)')" />
-        <Error Text="找不到游戏 Managed 目录：$(ManagedAssembliesDir)。请检查 GameExePath 或使用 /p:ManagedAssembliesDir 指定目录。/ Game Managed directory was not found. Check GameExePath or set ManagedAssembliesDir."
-               Condition="!Exists('$(ManagedAssembliesDir)')" />
-        <Error Text="游戏 Managed 目录缺少 Assembly-CSharp.dll：$(ManagedAssembliesDir)。/ Assembly-CSharp.dll is missing from the game Managed directory."
-               Condition="!Exists('$(ManagedAssembliesDir)\Assembly-CSharp.dll')" />
-        <Error Text="游戏 Managed 目录缺少 UnityModManager\0Harmony.dll：$(ManagedAssembliesDir)。/ UnityModManager\0Harmony.dll is missing from the game Managed directory."
-               Condition="!Exists('$(ManagedAssembliesDir)\UnityModManager\0Harmony.dll')" />
-    </Target>
-
-    <!-- 确保 FFmpeg 和分发说明文件存在 / Ensure FFmpeg and redistribution notices exist -->
-    <Target Name="EnsureFfmpegTool" BeforeTargets="CopyToOut" Condition="'$(OS)' == 'Windows_NT'">
-        <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\EnsureFfmpeg.ps1&quot; -FfmpegDirectory &quot;$(ProjectDir)ThirdParty\FFmpeg&quot;" />
-    </Target>
-
-    <!-- 构建并内置 Web 设置页；发布包只复制 dist，不复制源码和 node_modules / Build and embed the Web settings page. -->
-    <Target Name="BuildWebUi" BeforeTargets="CopyToOut" Condition="'$(BuildWebUi)' != 'false'">
-        <Error Text="找不到 webui/package.json，无法构建 Web 设置页。/ webui/package.json was not found."
-               Condition="!Exists('$(ProjectDir)webui\package.json')" />
-        <Exec Command="node --version"
-              WorkingDirectory="$(ProjectDir)webui"
-              IgnoreExitCode="false" />
-        <Exec Command="npm --version"
-              WorkingDirectory="$(ProjectDir)webui"
-              IgnoreExitCode="false" />
-        <Exec Command="npm ci --no-audit --no-fund"
-              WorkingDirectory="$(ProjectDir)webui"
-              Condition="!Exists('$(ProjectDir)webui\node_modules')" />
-        <Exec Command="npm run build"
-              WorkingDirectory="$(ProjectDir)webui" />
-    </Target>
-
-    <!-- 可选递增 Info.json 版本号 / Optionally bump Info.json version -->
-    <Target Name="BumpInfoJsonVersion" BeforeTargets="CopyToOut" Condition="'$(OS)' == 'Windows_NT' AND '$(BumpModVersion)' == 'true'">
-        <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\BumpModVersion.ps1&quot; -InfoPath &quot;$(ProjectDir)Info.json&quot; -Kind &quot;$(ModVersionBumpKind)&quot;" />
-    </Target>
-
-    <!-- 复制文件到 out 文件夹 / Copy files to out folder -->
-    <Target Name="CopyToOut" AfterTargets="Build">
-        <PropertyGroup>
-            <OutDir>$(ProjectDir)out\</OutDir>
-        </PropertyGroup>
-        <RemoveDir Directories="$(OutDir)" Condition="Exists('$(OutDir)')" />
-        <MakeDir Directories="$(OutDir)" />
-        <MakeDir Directories="$(OutDir)Resources" />
-        <MakeDir Directories="$(OutDir)Resources\WebUI" />
-        <MakeDir Directories="$(OutDir)ThirdParty" />
-        <MakeDir Directories="$(OutDir)ThirdParty\7-Zip\x64" />
-        <MakeDir Directories="$(OutDir)ThirdParty\FFmpeg" />
-        <MakeDir Directories="$(OutDir)ThirdParty\SharpSevenZip" />
-        <ItemGroup>
-            <FilesToCopy Include="$(OutputPath)$(AssemblyName).dll" />
-            <ManagedDependencyFiles Include="$(OutputPath)SharpSevenZip.dll" />
-            <ManagedDependencyFiles Include="$(OutputPath)System.Memory.dll" />
-            <ManagedDependencyFiles Include="$(OutputPath)System.Buffers.dll" />
-            <ManagedDependencyFiles Include="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
-            <ManagedDependencyFiles Include="$(OutputPath)System.Numerics.Vectors.dll" Condition="Exists('$(OutputPath)System.Numerics.Vectors.dll')" />
-            <SevenZipNativeFile Include="$(OutputPath)x64\7z.dll" />
-            <!-- NuGetPackageRoot may not end with a separator (for example with recent .NET SDKs). -->
-            <SharpSevenZipLicenseFile Include="$(NuGetPackageRoot)\sharpsevenzip\2.0.109\LICENSE" />
-            <FilesToCopy Include="$(ProjectDir)Info.json" />
-            <ResourceFiles Include="$(ProjectDir)Resources\**\*" Exclude="$(ProjectDir)Resources\**\*\" />
-            <WebUiFiles Include="$(ProjectDir)webui\dist\**\*" Exclude="$(ProjectDir)webui\dist\**\*\" />
-            <ThirdPartyFiles Include="$(ProjectDir)ThirdParty\**\*" Exclude="$(ProjectDir)ThirdParty\**\*\" />
-        </ItemGroup>
-        <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(ManagedDependencyFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(SevenZipNativeFile)" DestinationFolder="$(OutDir)ThirdParty\7-Zip\x64" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(SharpSevenZipLicenseFile)" DestinationFiles="$(OutDir)ThirdParty\SharpSevenZip\LICENSE.txt" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(ResourceFiles)" DestinationFolder="$(OutDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(WebUiFiles)" DestinationFolder="$(OutDir)Resources\WebUI\%(RecursiveDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(ThirdPartyFiles)" DestinationFolder="$(OutDir)ThirdParty\%(RecursiveDir)" SkipUnchangedFiles="true" />
-        <Message Text="Files copied to out folder: $(OutDir)" Importance="high" />
-    </Target>
-
-    <!-- 生成 Build 目录和 zip 包 / Create Build folder and zip package -->
-    <Target Name="PackageMod" AfterTargets="CopyToOut" Condition="'$(OS)' == 'Windows_NT' AND '$(CreateModPackage)' == 'true'">
-        <PropertyGroup>
-            <PackageBuildDir>$(ProjectDir)Build\</PackageBuildDir>
-        </PropertyGroup>
-        <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\PackageMod.ps1&quot; -ProjectDirectory &quot;$(MSBuildProjectDirectory)&quot; -SourceDirectory &quot;$(MSBuildProjectDirectory)\out&quot; -BuildDirectory &quot;$(MSBuildProjectDirectory)\Build&quot; -InfoPath &quot;$(MSBuildProjectDirectory)\Info.json&quot;" />
-    </Target>
-
-    <!-- 部署到游戏目录并启动游戏 / Deploy to game directory and launch game -->
-    <Target Name="DeployAndLaunch" AfterTargets="CopyToOut" Condition="'$(GameExePath)' != '' AND Exists('$(GameExePath)')">
-        <PropertyGroup>
-            <ModsDir>$(GameDir)$(PathSeparator)Mods$(PathSeparator)$(AssemblyName)$(PathSeparator)</ModsDir>
-        </PropertyGroup>
-
-        <Message Text="Game Directory: $(GameDir)" Importance="high" />
-        <Message Text="Managed Assemblies Path: $(ManagedAssembliesDir)" Importance="high" />
-        <Message Text="Platform: $(OS)" Importance="high" />
-
-        <MakeDir Directories="$(ModsDir)" />
-        <MakeDir Directories="$(ModsDir)Resources" />
-        <MakeDir Directories="$(ModsDir)ThirdParty" />
-        <RemoveDir Directories="$(ModsDir)Tools" Condition="Exists('$(ModsDir)Tools')" />
-        <ItemGroup>
-            <ModFiles Include="$(ProjectDir)out\*.*" Exclude="$(ProjectDir)out\Resources\**\*" />
-            <ModResourceFiles Include="$(ProjectDir)out\Resources\**\*" Exclude="$(ProjectDir)out\Resources\**\*\" />
-            <ModThirdPartyFiles Include="$(ProjectDir)out\ThirdParty\**\*" Exclude="$(ProjectDir)out\ThirdParty\**\*\" />
-        </ItemGroup>
-        <Copy SourceFiles="@(ModFiles)" DestinationFolder="$(ModsDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(ModResourceFiles)" DestinationFolder="$(ModsDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(ModThirdPartyFiles)" DestinationFolder="$(ModsDir)ThirdParty\%(RecursiveDir)" SkipUnchangedFiles="true" />
-        <Message Text="Mod deployed to game directory: $(ModsDir)" Importance="high" />
-
-        <!-- Windows 启动命令 / Windows launch command -->
-        <Exec Command="start &quot;&quot; &quot;$(GameExePath)&quot;"
-              IgnoreExitCode="true"
-              Condition="'$(AutoLaunchGame)' == 'true' AND '$(IsWindows)' == 'true'" />
-
-        <!-- Linux/Unix 启动命令 / Linux/Unix launch command -->
-        <Exec Command="chmod +x &quot;$(GameExePath)&quot; &amp;&amp; nohup &quot;$(GameExePath)&quot; &gt; /dev/null 2&gt;&amp;1 &amp;"
-              IgnoreExitCode="true"
-              Condition="'$(AutoLaunchGame)' == 'true' AND '$(IsUnix)' == 'true'" />
-
-        <Message Text="Game launched: $(GameExePath)" Importance="high" Condition="'$(AutoLaunchGame)' == 'true'" />
-        <Message Text="Auto-launch disabled. Game not started." Importance="high" Condition="'$(AutoLaunchGame)' != 'true'" />
-    </Target>
-
+    <MakeDir Directories="$(ModsDir);$(ModsDir)Resources" />
+    <ItemGroup>
+      <DeployFiles Include="$(ProjectDir)out\*.*" />
+      <DeployResources Include="$(ProjectDir)out\Resources\**\*" Exclude="$(ProjectDir)out\Resources\**\*\" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ModsDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(DeployResources)" DestinationFolder="$(ModsDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />
+    <Message Text="Mod deployed to game directory: $(ModsDir)" Importance="high" />
+    <Exec Command="start &quot;&quot; &quot;$(GameExePath)&quot;" IgnoreExitCode="true"
+          Condition="'$(AutoLaunchGame)' == 'true' AND '$(IsWindows)' == 'true'" />
+  </Target>
 </Project>

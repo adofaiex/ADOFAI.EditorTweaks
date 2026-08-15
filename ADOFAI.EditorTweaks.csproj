@@ -28,6 +28,10 @@
   <PropertyGroup>
     <GameExePath>D:\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice.exe</GameExePath>
     <AutoLaunchGame>false</AutoLaunchGame>
+    <BuildWebUi>false</BuildWebUi>
+    <IncludeFfmpeg>false</IncludeFfmpeg>
+    <IncludeThirdParty>false</IncludeThirdParty>
+    <IncludeSharpSevenZip>false</IncludeSharpSevenZip>
   </PropertyGroup>
 
   <!-- 导入构建目标 / Import build targets -->
@@ -317,10 +321,6 @@
     <None Update="Info.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="SharpSevenZip" Version="2.0.109" />
   </ItemGroup>
 
 </Project>

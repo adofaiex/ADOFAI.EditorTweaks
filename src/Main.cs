@@ -1,7 +1,4 @@
-using System;
 using System.Threading;
-using ADOFAI.EditorTweaks.Features.ChartRendering;
-using ADOFAI.EditorTweaks.Features.WebUi;
 using ADOFAI.EditorTweaks.Patching;
 using UnityModManagerNet;
 
@@ -37,22 +34,10 @@ namespace ADOFAI.EditorTweaks
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks enabled.");
                 PatchManager.ApplyAll(modEntry.Info.Id);
-                if (PatchManager.IsAvailable(PatchFeature.ChartRendering))
-                {
-                    ChartRenderService.Ensure();
-                }
-                else
-                {
-                    ChartRenderService.Destroy();
-                }
-
-                WebUiHost.Ensure();
             }
             else
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks disabled.");
-                WebUiHost.Destroy();
-                ChartRenderService.Destroy();
                 PatchManager.UnpatchAll();
             }
 
