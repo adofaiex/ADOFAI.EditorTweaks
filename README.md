@@ -1,6 +1,6 @@
 # ADOFAI.EditorTweaks
 
-这是编辑器与游戏优化 Mod，版本 `1.4.7`。它与 `ADOFAI.EditorTweaks.BetterZip`、`ADOFAI.EditorTweaks.ChartRendering` 完全独立，不依赖对方的 DLL、源码或配置。
+这是编辑器与游戏优化 Mod，版本 `1.4.8`。它与 `ADOFAI.EditorTweaks.BetterZip`、`ADOFAI.EditorTweaks.ChartRendering` 完全独立，不依赖对方的 DLL、源码或配置。
 
 包含功能：
 
