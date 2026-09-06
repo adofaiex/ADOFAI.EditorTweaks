@@ -8,11 +8,13 @@
     <ManagedAssembliesDir Condition="'$(ManagedAssembliesDir)' == ''">$(SourceManagedAssembliesDir)</ManagedAssembliesDir>
     <CreateModPackage Condition="'$(CreateModPackage)' == ''">true</CreateModPackage>
     <AutoLaunchGame Condition="'$(AutoLaunchGame)' == ''">false</AutoLaunchGame>
+    <RequireGameExecutable Condition="'$(RequireGameExecutable)' == ''">true</RequireGameExecutable>
+    <EnableModDeployment Condition="'$(EnableModDeployment)' == ''">true</EnableModDeployment>
   </PropertyGroup>
 
   <Target Name="ValidateManagedAssemblies" BeforeTargets="ResolveAssemblyReferences">
     <Error Text="游戏可执行文件不存在：$(GameExePath)。请设置正确的 GameExePath。"
-           Condition="'$(GameExePath)' == '' OR !Exists('$(GameExePath)')" />
+           Condition="'$(RequireGameExecutable)' == 'true' AND ('$(GameExePath)' == '' OR !Exists('$(GameExePath)'))" />
     <Error Text="找不到游戏 Managed 目录：$(ManagedAssembliesDir)。"
            Condition="!Exists('$(ManagedAssembliesDir)')" />
     <Error Text="游戏 Managed 目录缺少 Assembly-CSharp.dll。"
@@ -40,7 +42,7 @@
   </Target>
 
   <Target Name="DeployAndLaunch" AfterTargets="CopyToOut"
-          Condition="'$(GameExePath)' != '' AND Exists('$(GameExePath)')">
+          Condition="'$(EnableModDeployment)' == 'true' AND '$(GameExePath)' != '' AND Exists('$(GameExePath)')">
     <PropertyGroup>
       <ModsDir>$(GameDir)$(PathSeparator)Mods$(PathSeparator)$(AssemblyName)$(PathSeparator)</ModsDir>
     </PropertyGroup>

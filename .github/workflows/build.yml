@@ -1,0 +1,44 @@
+name: Build Mod
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout mod source
+        uses: actions/checkout@v4
+
+      - name: Checkout private game assemblies
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GAME_ASSEMBLIES_REPOSITORY || 'adofaiex/ADOFAI.GameAssemblies' }}
+          ref: ${{ vars.GAME_ASSEMBLIES_REF || 'game-assemblies-2026.09.06' }}
+          token: ${{ secrets.GAME_ASSEMBLIES_READ_TOKEN }}
+          path: .game-assemblies
+
+      - name: Build release package
+        shell: pwsh
+        run: >-
+          dotnet build .\ADOFAI.EditorTweaks.csproj
+          -c Release
+          /p:CreateModPackage=true
+          /p:BumpModVersion=false
+          /p:ManagedAssembliesDir="$env:GITHUB_WORKSPACE\.game-assemblies"
+          /p:RequireGameExecutable=false
+          /p:EnableModDeployment=false
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ADOFAI.EditorTweaks-release
+          path: Build/*.zip
+          if-no-files-found: error
