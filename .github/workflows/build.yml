@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.GAME_ASSEMBLIES_REPOSITORY || 'adofaiex/ADOFAI.GameAssemblies' }}
-          ref: ${{ vars.GAME_ASSEMBLIES_REF || 'game-assemblies-2026.09.06.1' }}
+          ref: ${{ vars.GAME_ASSEMBLIES_REF || 'game-assemblies-2026.09.06.2' }}
           token: ${{ secrets.GAME_ASSEMBLIES_READ_TOKEN }}
           path: .game-assemblies
 
@@ -41,6 +41,7 @@ jobs:
           /p:CreateModPackage=true
           /p:BumpModVersion=false
           /p:ManagedAssembliesDir="$env:GITHUB_WORKSPACE\.compile-assemblies"
+          /p:UseGameMscorlib=false
           /p:RequireGameExecutable=false
           /p:EnableModDeployment=false
 

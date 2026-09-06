@@ -63,7 +63,7 @@
     <Reference Include="netstandard">
       <HintPath>$(ManagedAssembliesDir)\netstandard.dll</HintPath>
     </Reference>
-    <Reference Include="mscorlib">
+    <Reference Include="mscorlib" Condition="'$(UseGameMscorlib)' != 'false'">
       <HintPath>$(ManagedAssembliesDir)\mscorlib.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">

@@ -11,7 +11,7 @@ dotnet build ADOFAI.EditorTweaks.csproj -c Release
 
 ## GitHub Actions
 
-`.github/workflows/build.yml` 会从私有仓库 `adofaiex/ADOFAI.GameAssemblies` 的 `game-assemblies-2026.09.06.1` 标签读取游戏程序集，然后执行 Release 构建。
+`.github/workflows/build.yml` 会从私有仓库 `adofaiex/ADOFAI.GameAssemblies` 的 `game-assemblies-2026.09.06.2` 标签读取游戏程序集，然后执行 Release 构建。
 
 主仓库需要配置一个名为 `GAME_ASSEMBLIES_READ_TOKEN` 的 Secret，用于读取程序集私有仓库。也可以配置以下仓库变量：
 
