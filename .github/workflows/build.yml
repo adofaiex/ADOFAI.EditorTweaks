@@ -5,9 +5,15 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish the generated package as a GitHub Release
+        required: true
+        default: true
+        type: boolean
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -51,3 +57,16 @@ jobs:
           name: ADOFAI.EditorTweaks-release
           path: Build/*.zip
           if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $info = Get-Content -LiteralPath .\Info.json -Raw | ConvertFrom-Json
+          $package = Get-ChildItem -LiteralPath .\Build -File -Filter '*.zip' | Select-Object -First 1
+          if ($null -eq $package) {
+              throw 'No release package was found.'
+          }
+          gh release create $info.Version $package.FullName --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "$($info.DisplayName) $($info.Version)" --generate-notes
