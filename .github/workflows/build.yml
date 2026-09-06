@@ -22,7 +22,7 @@ jobs:
         with:
           repository: ${{ vars.GAME_ASSEMBLIES_REPOSITORY || 'adofaiex/ADOFAI.GameAssemblies' }}
           ref: ${{ vars.GAME_ASSEMBLIES_REF || 'game-assemblies-2026.09.06' }}
-          token: ${{ secrets.GAME_ASSEMBLIES_READ_TOKEN }}
+          ssh-key: ${{ secrets.GAME_ASSEMBLIES_DEPLOY_KEY }}
           path: .game-assemblies
 
       - name: Build release package
