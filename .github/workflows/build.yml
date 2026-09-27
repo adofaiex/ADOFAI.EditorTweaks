@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ vars.GAME_ASSEMBLIES_REPOSITORY || 'adofaiex/ADOFAI.GameAssemblies' }}
-          ref: ${{ vars.GAME_ASSEMBLIES_REF || 'game-assemblies-2026.09.06.2' }}
+          ref: ${{ vars.GAME_ASSEMBLIES_REF || 'game-assemblies-2026.09.27' }}
           token: ${{ secrets.GAME_ASSEMBLIES_READ_TOKEN }}
           path: .game-assemblies
 
