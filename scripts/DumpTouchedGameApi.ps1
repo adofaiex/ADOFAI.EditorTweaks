@@ -37,13 +37,15 @@ try {
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.MetadataLoadContext" Version="8.0.1" />
+  </ItemGroup>
 </Project>
 '@
     Set-Content -LiteralPath (Join-Path $projectDir 'Dumper.csproj') -Value $csproj -Encoding UTF8
 
     $program = @'
 using System.Reflection;
-using System.Reflection.Metadata;
 using System.Runtime.Loader;
 using System.Text;
 
@@ -57,6 +59,11 @@ static string FormatType(Type type)
     int tick = name.IndexOf('`');
     if (tick >= 0) name = name[..tick];
     return name + "<" + string.Join(", ", type.GetGenericArguments().Select(FormatType)) + ">";
+}
+
+static string FormatParameters(MethodInfo method)
+{
+    return string.Join(", ", method.GetParameters().Select(p => $"{FormatType(p.ParameterType)} {p.Name}"));
 }
 
 static void DumpType(Type? type, StringBuilder sb)
@@ -86,8 +93,7 @@ static void DumpType(Type? type, StringBuilder sb)
     {
         if (method.IsSpecialName) continue;
         string vis = method.IsPublic ? "public" : method.IsFamily ? "protected" : method.IsAssembly ? "internal" : "private";
-        string args = string.Join(", ", method.GetParameters().Select(p => $"{FormatType(p.ParameterType)} {p.Name}"));
-        sb.AppendLine($"  METHOD {vis} {FormatType(method.ReturnType)} {method.Name}({args})");
+        sb.AppendLine($"  METHOD {vis} {FormatType(method.ReturnType)} {method.Name}({FormatParameters(method)})");
     }
 }
 
@@ -192,7 +198,17 @@ sb.AppendLine();
 
 Dictionary<string, Type> bySimple = new(StringComparer.Ordinal);
 Dictionary<string, Type> byFull = new(StringComparer.Ordinal);
-foreach (Type t in asm.GetTypes())
+Type[] loadedTypes;
+try
+{
+    loadedTypes = asm.GetTypes();
+}
+catch (ReflectionTypeLoadException ex)
+{
+    loadedTypes = ex.Types.Where(t => t is not null).Cast<Type>().ToArray();
+}
+
+foreach (Type t in loadedTypes)
 {
     if (!string.IsNullOrEmpty(t.FullName)) byFull[t.FullName] = t;
     if (!bySimple.ContainsKey(t.Name)) bySimple[t.Name] = t;
@@ -237,8 +253,7 @@ foreach (string item in requiredMethods)
     {
         foreach (MethodInfo method in methods)
         {
-            string args = string.Join(", ", method.GetParameters().Select(p => $"{FormatType(p.ParameterType)} {p.Name}"));
-            sb.AppendLine($"OK_METHOD {item}({args})");
+            sb.AppendLine($"OK_METHOD {item}({FormatParameters(method)})");
         }
     }
 }

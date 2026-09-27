@@ -57,6 +57,7 @@ jobs:
           -DestinationDirectory .\.compile-assemblies-prev
 
       - name: Dump touched game API surface
+        continue-on-error: true
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path .\api-dump | Out-Null
@@ -81,6 +82,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Build release package
+        id: build
         shell: pwsh
         run: >-
           dotnet build .\ADOFAI.EditorTweaks.csproj
@@ -93,6 +95,7 @@ jobs:
           /p:EnableModDeployment=false
 
       - name: Upload release package
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: ADOFAI.EditorTweaks-release
