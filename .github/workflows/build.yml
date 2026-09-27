@@ -67,7 +67,9 @@ jobs:
             -AssembliesDirectory .\.compile-assemblies-prev `
             -OutputPath .\api-dump\old-Assembly-CSharp.txt `
             -Label game-assemblies-2026.09.06.2
-          git diff --no-index --text -- .\api-dump\old-Assembly-CSharp.txt .\api-dump\new-Assembly-CSharp.txt > .\api-dump\touched-api.diff || true
+          git diff --no-index --text -- .\api-dump\old-Assembly-CSharp.txt .\api-dump\new-Assembly-CSharp.txt |
+            Out-File -FilePath .\api-dump\touched-api.diff -Encoding utf8
+          if ($LASTEXITCODE -gt 1) { throw "git diff failed with exit code $LASTEXITCODE" }
 
       - name: Upload API dump
         if: always()
