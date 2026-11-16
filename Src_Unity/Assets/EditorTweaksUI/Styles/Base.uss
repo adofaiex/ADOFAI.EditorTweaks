@@ -1,0 +1,40 @@
+/*
+ * EditorTweaks 设置界面：基础样式（颜色变量、Label 重置、图标尺寸）。必须第一个导入。
+ * 风格照 ADOUAC 的设置页：近黑的底，原版“冰与火”两颗星球的红蓝做强调色，方正扁平，细线，慢而顺的缓动。
+ * 参考分辨率 1920×1080，按高度缩放。字体不在这里设：中文字体运行时由 UiFonts 从系统字体生成。
+ */
+
+:root {
+    --fire: #FF4B3A;
+    --ice: #4B6BFF;
+    --ink: #07080D;
+    --text: #F3F1EC;
+    --text-dim: rgba(243, 241, 236, 0.62);
+    --text-faint: rgba(243, 241, 236, 0.36);
+    --line: rgba(243, 241, 236, 0.14);
+    color: rgb(243, 241, 236);
+    font-size: 22px;
+}
+
+/* 默认主题给 Label 加了边距和内边距，这里清掉（要写在其他规则前面） */
+.unity-label {
+    margin: 0;
+    padding: 0;
+    color: rgb(243, 241, 236);
+}
+
+.grow { flex-grow: 1; }
+
+/* 图标：白色小图，用着色变成想要的颜色。大小 sm(18) / 默认(26) / lg(30) */
+.ic {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgba(243, 241, 236, 0.62);
+    transition-property: -unity-background-image-tint-color, scale, rotate, opacity;
+    transition-duration: 0.2s, 0.3s, 0.3s, 0.2s;
+    transition-timing-function: ease-out, ease-out-back, ease-out-cubic, ease-out;
+}
+.ic.sm { width: 18px; height: 18px; }
+.ic.lg { width: 30px; height: 30px; }

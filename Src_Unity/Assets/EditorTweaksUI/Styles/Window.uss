@@ -1,0 +1,260 @@
+/* 设置窗口：遮罩、窗口、顶栏、分类栏、页面、底栏、提示条。方正扁平，照 ADOUAC。 */
+
+.etw-overlay {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+.etw-backdrop {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    background-color: rgba(3, 4, 8, 0.55);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.3s;
+}
+.etw-overlay.shown .etw-backdrop { opacity: 1; }
+
+/* 窗口用 left / top 定位（可以拖动），进出场的动画只动透明度、缩放、位移 */
+.etw-window {
+    position: absolute;
+    left: 0; top: 0;
+    width: 1280px;
+    height: 820px;
+    background-color: rgba(7, 8, 13, 0.985);
+    border-width: 1px;
+    border-top-width: 3px;
+    border-color: rgba(243, 241, 236, 0.16);
+    border-top-color: #FF4B3A;
+    opacity: 0;
+    scale: 0.94 0.94;
+    translate: 0 30px;
+    transition-property: opacity, scale, translate, border-color;
+    transition-duration: 0.28s, 0.55s, 0.55s, 0.2s;
+    transition-timing-function: ease-out, ease-out-back, ease-out-cubic, ease-out;
+}
+.etw-overlay.shown .etw-window { opacity: 1; scale: 1 1; translate: 0 0; }
+.etw-window.dragging { border-color: rgba(243, 241, 236, 0.34); border-top-color: #FF4B3A; }
+
+/* 进场：先藏起来，代码隔一点点时间再放出来 */
+.intro {
+    transition-property: opacity, translate;
+    transition-duration: 0.5s, 0.6s;
+    transition-timing-function: ease-out, ease-out-cubic;
+}
+.intro-hidden { opacity: 0; translate: 0 14px; }
+
+/* ---------------------------------------------------------------- 顶栏（按住拖动） */
+
+.etw-head {
+    height: 116px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 36px 0 40px;
+    border-bottom-width: 1px;
+    border-color: rgba(243, 241, 236, 0.14);
+}
+
+.etw-logo { width: 56px; height: 56px; margin-right: 22px; }
+.orbit-ring {
+    position: absolute;
+    left: 6px; right: 6px; top: 6px; bottom: 6px;
+    border-radius: 100px;
+    border-width: 1.5px;
+    border-color: rgba(243, 241, 236, 0.22);
+}
+.orbit-arm { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+.orbit-dot {
+    position: absolute;
+    left: 22px; top: 0;
+    width: 12px; height: 12px;
+    border-radius: 6px;
+}
+.orbit-dot.fire { background-color: #FF4B3A; }
+.orbit-dot.ice { background-color: #4B6BFF; }
+.orbit-core {
+    position: absolute;
+    left: 24px; top: 24px;
+    width: 8px; height: 8px;
+    border-radius: 4px;
+    background-color: rgba(243, 241, 236, 0.9);
+}
+
+.etw-titles { flex-shrink: 0; }
+.etw-title { font-size: 54px; -unity-font-style: bold; }
+.etw-tag { font-size: 13px; letter-spacing: 8px; color: rgba(243, 241, 236, 0.36); margin-top: 2px; }
+.etw-drag-hint { font-size: 13px; letter-spacing: 6px; color: rgba(243, 241, 236, 0.22); margin-right: 22px; }
+
+.etw-x {
+    width: 52px; height: 52px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0);
+    transition-property: background-color, rotate, scale, opacity, translate;
+    transition-duration: 0.18s, 0.4s, 0.15s, 0.5s, 0.6s;
+    transition-timing-function: ease-out, ease-out-back, ease-out, ease-out, ease-out-cubic;
+}
+.etw-x:hover { background-color: #FF4B3A; rotate: 90deg; }
+.etw-x:active { scale: 0.88 0.88; }
+.etw-x:hover .ic { -unity-background-image-tint-color: #FFFFFF; }
+
+/* ---------------------------------------------------------------- 主体 */
+
+.etw-body { flex-grow: 1; flex-direction: row; }
+
+.etw-side {
+    width: 300px;
+    padding: 28px 24px 0 36px;
+}
+.etw-cats { position: relative; }
+
+/* 分类按钮：高 64 + 下边距 4 = 68，和代码里的 CategoryStride 对上 */
+.cat {
+    height: 64px;
+    margin-bottom: 4px;
+    padding-left: 22px;
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0);
+    transition-property: background-color, opacity, translate;
+    transition-duration: 0.2s, 0.5s, 0.6s;
+    transition-timing-function: ease-out, ease-out, ease-out-cubic;
+}
+.cat.intro-hidden { opacity: 0; translate: -30px 0; }
+.cat:hover { background-color: rgba(255, 255, 255, 0.05); }
+.cat:hover .ic { scale: 1.15 1.15; }
+.cat .ic { margin-right: 16px; -unity-background-image-tint-color: rgba(243, 241, 236, 0.5); }
+.cat.selected .ic { -unity-background-image-tint-color: #F3F1EC; }
+.cat-name { font-size: 27px; color: rgba(243, 241, 236, 0.62); transition-property: color; transition-duration: 0.2s; }
+.cat.selected .cat-name { color: #F3F1EC; }
+
+/* 会滑动的高亮：只是移动 top */
+.cat-hl {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: 64px;
+    background-color: rgba(255, 255, 255, 0.08);
+    transition-property: top;
+    transition-duration: 0.45s;
+    transition-timing-function: ease-out-back;
+}
+.cat-hl-bar {
+    position: absolute;
+    left: 0; top: 8px; bottom: 8px;
+    width: 3px;
+    background-color: #FF4B3A;
+}
+
+.etw-main { flex-grow: 1; }
+.etw-page {
+    flex-grow: 1;
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.13s;
+}
+.etw-page.out { opacity: 0; }
+
+.etw-scroll { flex-grow: 1; }
+.etw-scroll .unity-scroll-view__content-container { padding: 4px 22px 24px 20px; }
+.etw-scroll .unity-scroll-view__vertical-scroller { width: 8px; margin-right: 10px; margin-top: 8px; margin-bottom: 8px; }
+.etw-scroll .unity-scroller__low-button,
+.etw-scroll .unity-scroller__high-button { display: none; }
+.etw-scroll .unity-base-slider__tracker { background-color: rgba(0, 0, 0, 0); border-width: 0; }
+.etw-scroll .unity-base-slider__dragger {
+    width: 4px;
+    border-width: 0;
+    background-color: rgba(255, 255, 255, 0.18);
+}
+.etw-scroll .unity-base-slider__dragger:hover { background-color: rgba(255, 255, 255, 0.34); }
+
+/* 分区小标题 */
+.st-section {
+    max-height: 60px;
+    margin: 22px 0 10px 6px;
+    font-size: 17px;
+    letter-spacing: 4px;
+    color: rgba(243, 241, 236, 0.36);
+    transition-property: opacity, translate, max-height, margin-top, margin-bottom;
+    transition-duration: 0.35s, 0.45s, 0.5s, 0.5s, 0.5s;
+    transition-timing-function: ease-out, ease-out-cubic, ease-in-out-cubic, ease-in-out-cubic, ease-in-out-cubic;
+}
+.st-section.hidden { opacity: 0; translate: 0 14px; }
+.st-section.collapsed { opacity: 0; max-height: 0; margin-top: 0; margin-bottom: 0; }
+
+/* ---------------------------------------------------------------- 底栏 */
+
+.etw-foot {
+    height: 96px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 40px;
+    border-top-width: 1px;
+    border-color: rgba(243, 241, 236, 0.10);
+}
+.etw-hints {
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: rgba(243, 241, 236, 0.36);
+}
+
+.etw-reset {
+    flex-direction: row;
+    align-items: center;
+    height: 56px;
+    padding: 0 26px;
+    margin-right: 16px;
+    border-width: 1px;
+    border-color: rgba(243, 241, 236, 0.22);
+    background-color: rgba(255, 255, 255, 0.06);
+    transition-property: background-color, border-color, scale, opacity, translate;
+    transition-duration: 0.2s, 0.2s, 0.2s, 0.5s, 0.6s;
+    transition-timing-function: ease-out, ease-out, ease-out-back, ease-out, ease-out-cubic;
+}
+.etw-reset:hover { background-color: rgba(255, 255, 255, 0.14); }
+.etw-reset:active { scale: 0.96 0.96; }
+.etw-reset.armed { background-color: #FF4B3A; border-color: #FF4B3A; }
+.etw-reset .ic { -unity-background-image-tint-color: rgba(243, 241, 236, 0.8); }
+.etw-reset.armed .ic { -unity-background-image-tint-color: #FFFFFF; }
+.etw-reset-label { margin-left: 12px; font-size: 21px; }
+
+/* 白色的“关闭设置”，悬停变红 */
+.etw-close {
+    width: 280px;
+    height: 56px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.92);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.4);
+    transition-property: background-color, scale, opacity, translate;
+    transition-duration: 0.15s, 0.15s, 0.5s, 0.6s;
+    transition-timing-function: ease-out, ease-out, ease-out, ease-out-cubic;
+}
+.etw-close > Label { font-size: 25px; letter-spacing: 6px; color: #07080D; transition-property: color; transition-duration: 0.15s; }
+.etw-close:hover { background-color: #FF4B3A; }
+.etw-close:hover > Label { color: #F3F1EC; }
+.etw-close:active { scale: 0.97 0.97; }
+
+/* ---------------------------------------------------------------- 提示条 */
+
+.etw-toast {
+    position: absolute;
+    left: 50%;
+    bottom: 120px;
+    width: 220px;
+    margin-left: -110px;
+    height: 46px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: #F3F1EC;
+    opacity: 0;
+    scale: 0.9 0.9;
+    translate: 0 24px;
+    transition-property: opacity, scale, translate;
+    transition-duration: 0.25s, 0.5s, 0.5s;
+    transition-timing-function: ease-out, ease-out-back, ease-out-back;
+}
+.etw-toast.show { opacity: 1; scale: 1 1; translate: 0 0; }
+.etw-toast .ic { -unity-background-image-tint-color: #07080D; margin-right: 10px; }
+.etw-toast-label { font-size: 18px; color: #07080D; }

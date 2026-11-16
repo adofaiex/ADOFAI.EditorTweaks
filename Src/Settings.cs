@@ -26,9 +26,30 @@ namespace ADOFAI.EditorTweaks
 
         public int MaxFloatingPoints = 3;
 
+        /// <summary>呼出设置界面的按键。</summary>
+        public KeyCode OpenSettingsKey = KeyCode.F8;
+
+        /// <summary>UMM 里只放一个入口按钮，真正的设置在游戏里弹出的界面（SettingsUi）。界面加载失败时退回下面这套简易设置。</summary>
         public void OnGUI(UnityModManager.ModEntry modEntry)
         {
             GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label("在游戏里按 " + OpenSettingsKey + " 也可以打开设置界面。");
+            if (GUILayout.Button("打开设置界面", GUILayout.Height(40f)))
+            {
+                SettingsUi.Open();
+            }
+
+            if (SettingsUi.LastError != null)
+            {
+                GUILayout.Label("设置界面加载失败，已显示简易设置：" + SettingsUi.LastError);
+                DrawClassic();
+            }
+
+            GUILayout.EndVertical();
+        }
+
+        private void DrawClassic()
+        {
             GUILayout.Label("编辑器与游戏优化");
             EnableNumericDrag = GUILayout.Toggle(EnableNumericDrag, "启用数值拖动");
             if (EnableNumericDrag)
@@ -46,8 +67,6 @@ namespace ADOFAI.EditorTweaks
             PersistEditorPreferences = GUILayout.Toggle(PersistEditorPreferences, "编辑器偏好即时保存");
             EnableImageLoadErrorDeduplication = GUILayout.Toggle(
                 EnableImageLoadErrorDeduplication, "启用缺图错误去重");
-
-            GUILayout.EndVertical();
         }
 
         public void OnSaveGUI(UnityModManager.ModEntry modEntry)

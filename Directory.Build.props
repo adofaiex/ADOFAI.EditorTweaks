@@ -2,7 +2,13 @@
   <!-- 所有构建产物集中在 .build/ / All build artifacts live under .build/ -->
   <PropertyGroup>
     <BuildRoot>$(MSBuildThisFileDirectory).build\</BuildRoot>
-    <BaseIntermediateOutputPath>$(BuildRoot)obj\</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(BuildRoot)bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(BuildRoot)obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(BuildRoot)bin\$(MSBuildProjectName)\</BaseOutputPath>
+  </PropertyGroup>
+
+  <!-- 游戏位置：主项目和 Unity 预览用的 UI 库共用。云端构建用 /p:ManagedAssembliesDir 覆盖。 -->
+  <PropertyGroup>
+    <GameExePath Condition="'$(GameExePath)' == ''">D:\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice.exe</GameExePath>
+    <ManagedAssembliesDir Condition="'$(ManagedAssembliesDir)' == ''">$([System.IO.Path]::GetDirectoryName($(GameExePath)))\$([System.IO.Path]::GetFileNameWithoutExtension($(GameExePath)))_Data\Managed</ManagedAssembliesDir>
   </PropertyGroup>
 </Project>

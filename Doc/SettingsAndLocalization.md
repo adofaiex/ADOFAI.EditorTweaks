@@ -14,5 +14,15 @@
 | `EnableVideoBackgroundSyncFix` | true | 启用普通游戏视频同步。 |
 | `PersistEditorPreferences` | true | 即时保存官方编辑器偏好。 |
 | `EnableImageLoadErrorDeduplication` | true | 去重缺图加载错误。 |
+| `OpenSettingsKey` | F8 | 在游戏里呼出设置界面的按键。 |
 
 `Resources/localization.json` 只包含本项目设置面板和补丁状态所需文本。
+
+## 设置界面
+
+UMM 面板里只有一个“打开设置界面”按钮；真正的设置界面是游戏里弹出的一个可拖动窗口（也可以按 `OpenSettingsKey`）。
+
+- 代码：`Src/UI`（UI Toolkit，不依赖游戏逻辑）和 `Src/SettingsUi.cs`（加载资源、创建窗口、呼出键）。
+- 样式、图标、PanelSettings：`Src_Unity/Assets/EditorTweaksUI`，由 `Src_Unity/Assets/Editor/BuildAssetBundles.cs`（菜单 EditorTweaks / Build AssetBundles）打成 `Resources/editortweaks.ui`。改了样式或图标之后要重新打包，并把新的 bundle 一起提交。
+- 图标由 `Src_Unity/Tools/GenerateIcons.py` 生成。
+- 窗口里的文字目前直接写在 `Src/UI/SettingsModel.cs`，没有走 `localization.json`。

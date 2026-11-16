@@ -29,3 +29,6 @@
 *.unitypackage
 sysinfo.txt
 crashlytics-build.properties
+
+# 图标总览图（GenerateIcons.py 每次生成，只用来肉眼检查）
+/Tools/icons-preview.png

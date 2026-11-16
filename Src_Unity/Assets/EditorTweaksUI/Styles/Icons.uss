@@ -1,0 +1,37 @@
+/* 图标：由 Tools/GenerateIcons.py 生成，不要手改。白色图，用 -unity-background-image-tint-color 着色。 */
+
+.ic-arrow-left { background-image: url("project://database/Assets/EditorTweaksUI/Icons/arrow-left.png"); }
+.ic-arrow-right { background-image: url("project://database/Assets/EditorTweaksUI/Icons/arrow-right.png"); }
+.ic-bolt { background-image: url("project://database/Assets/EditorTweaksUI/Icons/bolt.png"); }
+.ic-camera { background-image: url("project://database/Assets/EditorTweaksUI/Icons/camera.png"); }
+.ic-check { background-image: url("project://database/Assets/EditorTweaksUI/Icons/check.png"); }
+.ic-chevron-down { background-image: url("project://database/Assets/EditorTweaksUI/Icons/chevron-down.png"); }
+.ic-chevron-right { background-image: url("project://database/Assets/EditorTweaksUI/Icons/chevron-right.png"); }
+.ic-close { background-image: url("project://database/Assets/EditorTweaksUI/Icons/close.png"); }
+.ic-cursor { background-image: url("project://database/Assets/EditorTweaksUI/Icons/cursor.png"); }
+.ic-decimal { background-image: url("project://database/Assets/EditorTweaksUI/Icons/decimal.png"); }
+.ic-diamond { background-image: url("project://database/Assets/EditorTweaksUI/Icons/diamond.png"); }
+.ic-drag { background-image: url("project://database/Assets/EditorTweaksUI/Icons/drag.png"); }
+.ic-film { background-image: url("project://database/Assets/EditorTweaksUI/Icons/film.png"); }
+.ic-gauge { background-image: url("project://database/Assets/EditorTweaksUI/Icons/gauge.png"); }
+.ic-hand { background-image: url("project://database/Assets/EditorTweaksUI/Icons/hand.png"); }
+.ic-image { background-image: url("project://database/Assets/EditorTweaksUI/Icons/image.png"); }
+.ic-info { background-image: url("project://database/Assets/EditorTweaksUI/Icons/info.png"); }
+.ic-keyboard { background-image: url("project://database/Assets/EditorTweaksUI/Icons/keyboard.png"); }
+.ic-layers { background-image: url("project://database/Assets/EditorTweaksUI/Icons/layers.png"); }
+.ic-minus { background-image: url("project://database/Assets/EditorTweaksUI/Icons/minus.png"); }
+.ic-numbers { background-image: url("project://database/Assets/EditorTweaksUI/Icons/numbers.png"); }
+.ic-pivot { background-image: url("project://database/Assets/EditorTweaksUI/Icons/pivot.png"); }
+.ic-play { background-image: url("project://database/Assets/EditorTweaksUI/Icons/play.png"); }
+.ic-plus { background-image: url("project://database/Assets/EditorTweaksUI/Icons/plus.png"); }
+.ic-reset { background-image: url("project://database/Assets/EditorTweaksUI/Icons/reset.png"); }
+.ic-ruler { background-image: url("project://database/Assets/EditorTweaksUI/Icons/ruler.png"); }
+.ic-save { background-image: url("project://database/Assets/EditorTweaksUI/Icons/save.png"); }
+.ic-settings { background-image: url("project://database/Assets/EditorTweaksUI/Icons/settings.png"); }
+.ic-shapes { background-image: url("project://database/Assets/EditorTweaksUI/Icons/shapes.png"); }
+.ic-snap { background-image: url("project://database/Assets/EditorTweaksUI/Icons/snap.png"); }
+.ic-sparkle { background-image: url("project://database/Assets/EditorTweaksUI/Icons/sparkle.png"); }
+.ic-stairs { background-image: url("project://database/Assets/EditorTweaksUI/Icons/stairs.png"); }
+.ic-sync { background-image: url("project://database/Assets/EditorTweaksUI/Icons/sync.png"); }
+.ic-tune { background-image: url("project://database/Assets/EditorTweaksUI/Icons/tune.png"); }
+.ic-warning { background-image: url("project://database/Assets/EditorTweaksUI/Icons/warning.png"); }

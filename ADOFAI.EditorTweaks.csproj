@@ -26,7 +26,6 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <GameExePath>D:\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice.exe</GameExePath>
     <AutoLaunchGame>false</AutoLaunchGame>
   </PropertyGroup>
 

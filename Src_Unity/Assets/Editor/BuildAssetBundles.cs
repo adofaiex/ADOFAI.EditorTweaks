@@ -7,13 +7,13 @@ using UnityEngine;
 namespace EditorTweaks.Build
 {
     /// <summary>
-    /// 把 Assets/UI 下的全部资源打成一个 AssetBundle，输出到仓库根目录的 Resources/。
+    /// 把 Assets/EditorTweaksUI 下的全部资源打成一个 AssetBundle，输出到仓库根目录的 Resources/。
     /// 菜单：EditorTweaks/Build AssetBundles
     /// 命令行：Unity.exe -batchmode -quit -projectPath Src_Unity -executeMethod EditorTweaks.Build.BuildAssetBundles.BuildFromCommandLine
     /// </summary>
     public static class BuildAssetBundles
     {
-        private const string SourceFolder = "Assets/UI";
+        private const string SourceFolder = "Assets/EditorTweaksUI";
         private const string BundleName = "editortweaks.ui";
 
         private static string OutputFolder =>
