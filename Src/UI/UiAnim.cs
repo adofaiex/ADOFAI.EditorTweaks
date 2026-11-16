@@ -98,7 +98,9 @@ namespace ADOFAI.EditorTweaks.UI
             var icon = new VisualElement { pickingMode = PickingMode.Ignore };
             icon.AddToClassList("ic");
             icon.AddToClassList("ic-" + name);
-            if (extraClass != null) icon.AddToClassList(extraClass);
+            if (extraClass != null)
+                foreach (string name2 in extraClass.Split(' '))
+                    if (name2.Length > 0) icon.AddToClassList(name2);
             return icon;
         }
     }

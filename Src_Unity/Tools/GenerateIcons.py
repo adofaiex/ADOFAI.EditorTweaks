@@ -346,6 +346,19 @@ def icon_wifi(p):
     p.disc(12, 19.2, 1.4)
 
 
+def icon_history(p):
+    # 逆时针箭头绕成的钟面 + 指针
+    p.arc(12, 12, 9, 200, 520)
+    p.line([(1.5, 6.5), (3.6, 9.6), (6.9, 8.0)])
+    p.line([(12, 7), (12, 12), (15.5, 14)])
+
+
+def icon_music(p):
+    p.line([(9, 18), (9, 5), (20, 3), (20, 16)])
+    p.circle(6.5, 18, 2.6)
+    p.circle(17.5, 16, 2.6)
+
+
 ICONS = {
     "settings": icon_settings, "close": icon_close, "check": icon_check,
     "chevron-right": icon_chevron_right, "chevron-down": icon_chevron_down,
@@ -359,7 +372,7 @@ ICONS = {
     "sparkle": icon_sparkle, "gauge": icon_gauge, "diamond": icon_diamond,
     "layers": icon_layers, "arrow-left": icon_arrow_left, "arrow-right": icon_arrow_right, "plus": icon_plus, "minus": icon_minus, "hand": icon_hand,
     "users": icon_users, "link": icon_link, "logout": icon_logout, "folder": icon_folder,
-    "download": icon_download, "wifi": icon_wifi,
+    "download": icon_download, "wifi": icon_wifi, "history": icon_history, "music": icon_music,
 }
 
 META_TEMPLATE = """fileFormatVersion: 2

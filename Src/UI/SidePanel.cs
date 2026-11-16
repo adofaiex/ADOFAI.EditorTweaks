@@ -25,6 +25,8 @@ namespace ADOFAI.EditorTweaks.UI
         private readonly Label _chipLabel;
         private readonly VisualElement _armA;
         private readonly VisualElement _armB;
+        private readonly AvatarStack _avatars;
+        private VisualElement _customContent;
         private readonly List<VisualElement> _categoryButtons = new List<VisualElement>();
         private readonly List<SettingRow> _rows = new List<SettingRow>();
         private readonly List<KeyValuePair<VisualElement, SettingsSection>> _headers = new List<KeyValuePair<VisualElement, SettingsSection>>();
@@ -63,6 +65,9 @@ namespace ADOFAI.EditorTweaks.UI
             _chipLabel = Need<Label>(root, "sp-chip-label");
             _armA = Need<VisualElement>(root, "sp-arm-a");
             _armB = Need<VisualElement>(root, "sp-arm-b");
+            Tooltip = new UiTooltip(Need<VisualElement>(root, "sp-root"));
+            _avatars = new AvatarStack(Tooltip);
+            Need<VisualElement>(root, "sp-avatars").Add(_avatars);
 
             _handle.RegisterCallback<ClickEvent>(_ => Toggle());
             Need<VisualElement>(root, "sp-close").RegisterCallback<ClickEvent>(_ => Close());
@@ -105,6 +110,12 @@ namespace ADOFAI.EditorTweaks.UI
         }
 
         public bool IsOpen => _open;
+
+        /// <summary>面板共用的悬停提示。</summary>
+        public UiTooltip Tooltip { get; }
+
+        /// <summary>顶栏右边显示的参与者头像。</summary>
+        public Func<IReadOnlyList<PersonInfo>> People { get; set; }
 
         /// <summary>顶栏右边状态牌上的文字。</summary>
         public Func<string> StatusText { get; set; }
@@ -191,7 +202,27 @@ namespace ADOFAI.EditorTweaks.UI
             _scroll.scrollOffset = Vector2.zero;
             _headers.Clear();
             int order = 0;
-            foreach (SettingsSection section in _categories[_category].Sections)
+            SettingsCategory category = _categories[_category];
+            category.Refresh?.Invoke();
+
+            // 整页自定义内容（修改记录）：不显示设置行
+            _customContent?.RemoveFromHierarchy();
+            _customContent = category.Content;
+            _scroll.style.display = _customContent == null ? DisplayStyle.Flex : DisplayStyle.None;
+            if (_customContent != null)
+            {
+                _page.Add(_customContent);
+                FadeIn(_customContent, 0, token);
+                return;
+            }
+
+            if (category.Header != null)
+            {
+                _scroll.Add(category.Header);
+                FadeIn(category.Header, order++, token);
+            }
+
+            foreach (SettingsSection section in category.Sections)
             {
                 var header = new Label(section.Title) { pickingMode = PickingMode.Ignore };
                 header.AddToClassList("st-section");
@@ -262,7 +293,12 @@ namespace ADOFAI.EditorTweaks.UI
             {
                 _nextRefresh = t + 0.25f;
                 RefreshStatus();
-                if (_open) RefreshRows();
+                if (_open)
+                {
+                    RefreshRows();
+                    _categories[_category].Refresh?.Invoke();
+                    if (People != null) _avatars.SetPeople(People());
+                }
             }
 
             bool attention = !_open && Attention != null && Attention();

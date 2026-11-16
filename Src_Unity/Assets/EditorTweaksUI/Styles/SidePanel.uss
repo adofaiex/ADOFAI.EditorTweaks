@@ -155,3 +155,151 @@
 .sp-page .st-label { font-size: 22px; }
 .sp-page .st-hint-text { font-size: 15px; }
 .sp-page .st-row { min-height: 68px; }
+
+/* 收起的行要真的收起来：上面给 .sp-page .st-row 设了 min-height，这里优先级更高才能把它压回 0（之前中间那段空白就是这个） */
+.sp-page .st-row.collapsed { min-height: 0; }
+
+/* ---------------------------------------------------------------- 顶栏：参与者头像 */
+
+.sp-avatars { flex-direction: row; align-items: center; margin-right: 16px; }
+.av-stack { flex-direction: row-reverse; align-items: center; }
+.av {
+    width: 42px; height: 42px;
+    margin-left: -10px;
+    border-radius: 21px;
+    border-width: 2px;
+    border-color: rgba(7, 8, 13, 0.95);
+    background-color: rgba(255, 255, 255, 0.14);
+    -unity-background-scale-mode: scale-and-crop;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    scale: 0.4 0.4;
+    transition-property: opacity, scale, translate, border-color;
+    transition-duration: 0.3s, 0.45s, 0.3s, 0.2s;
+    transition-timing-function: ease-out, ease-out-back, ease-out-back, ease-out;
+}
+.av.in { opacity: 1; scale: 1 1; }
+.av.host { border-color: #FF4B3A; }
+.av:hover { scale: 1.18 1.18; translate: 0 -2px; border-color: #F3F1EC; }
+.av-initial { font-size: 18px; -unity-font-style: bold; color: #F3F1EC; }
+.av-badge {
+    position: absolute;
+    bottom: -7px;
+    padding: 0 4px;
+    font-size: 10px;
+    color: #FFFFFF;
+    background-color: #FF4B3A;
+}
+
+/* 悬停提示：小黑条，出现在目标下方居中 */
+.tip {
+    position: absolute;
+    padding: 6px 12px;
+    font-size: 16px;
+    color: #F3F1EC;
+    background-color: rgba(7, 8, 13, 0.96);
+    border-width: 1px;
+    border-color: rgba(243, 241, 236, 0.2);
+    border-top-color: #FF4B3A;
+    translate: -50% 6px;
+    opacity: 0;
+    transition-property: opacity, translate;
+    transition-duration: 0.15s, 0.25s;
+    transition-timing-function: ease-out, ease-out-cubic;
+}
+.tip.show { opacity: 1; translate: -50% 0; }
+
+/* ---------------------------------------------------------------- 当前谱面卡片 */
+
+.lv-card {
+    flex-direction: row;
+    padding: 16px;
+    margin: 4px 0 14px 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-left-width: 3px;
+    border-color: #4B6BFF;
+    transition-property: opacity, translate;
+    transition-duration: 0.4s, 0.5s;
+    transition-timing-function: ease-out, ease-out-cubic;
+}
+.lv-card.hidden { opacity: 0; translate: 0 20px; }
+.lv-cover {
+    width: 128px; height: 128px;
+    flex-shrink: 0;
+    margin-right: 20px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.07);
+    -unity-background-scale-mode: scale-and-crop;
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.4s;
+}
+.lv-cover.flash { opacity: 0.2; }
+.lv-cover-icon { width: 48px; height: 48px; -unity-background-image-tint-color: rgba(243, 241, 236, 0.3); }
+.lv-text { flex-grow: 1; flex-shrink: 1; min-width: 0; justify-content: center; }
+.lv-title { font-size: 28px; -unity-font-style: bold; white-space: normal; }
+.lv-subtitle { font-size: 16px; color: rgba(243, 241, 236, 0.62); margin-top: 2px; white-space: normal; }
+.lv-stats { flex-direction: row; flex-wrap: wrap; margin-top: 12px; }
+.lv-stat {
+    flex-direction: row;
+    align-items: flex-end;
+    padding: 4px 12px;
+    margin: 0 8px 6px 0;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+.lv-stat-value { font-size: 20px; -unity-font-style: bold; scale: 1 1; transition-property: scale, color; transition-duration: 0.3s, 0.3s; transition-timing-function: ease-out-back, ease-out; }
+.lv-stat-value.bump { scale: 1.25 1.25; color: #FF4B3A; }
+.lv-stat-name { font-size: 13px; color: rgba(243, 241, 236, 0.45); margin-left: 6px; margin-bottom: 2px; }
+.lv-path { font-size: 13px; color: rgba(243, 241, 236, 0.3); margin-top: 4px; white-space: normal; }
+
+/* ---------------------------------------------------------------- 修改记录 */
+
+.feed { flex-grow: 1; transition-property: opacity, translate; transition-duration: 0.4s, 0.5s; transition-timing-function: ease-out, ease-out-cubic; }
+.feed.hidden { opacity: 0; translate: 0 20px; }
+.feed-scroll { flex-grow: 1; }
+.feed-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 60px;
+    padding: 8px 16px 8px 14px;
+    margin-bottom: 4px;
+    background-color: rgba(255, 255, 255, 0.04);
+    border-left-width: 3px;
+    border-color: rgba(0, 0, 0, 0);
+    transition-property: background-color, border-color, opacity, translate;
+    transition-duration: 0.15s, 0.15s, 0.35s, 0.45s;
+    transition-timing-function: ease-out, ease-out, ease-out, ease-out-back;
+}
+.feed-row.enter { opacity: 0; translate: 0 -24px; }
+.feed-row.link:hover { background-color: rgba(255, 255, 255, 0.1); border-color: #FF4B3A; }
+.feed-av {
+    width: 34px; height: 34px;
+    flex-shrink: 0;
+    border-radius: 17px;
+    margin-right: 12px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.14);
+    -unity-background-scale-mode: scale-and-crop;
+}
+.feed-av-initial { font-size: 15px; -unity-font-style: bold; }
+.feed-icon { margin-right: 12px; -unity-background-image-tint-color: rgba(243, 241, 236, 0.45); }
+.feed-row.link:hover .feed-icon { -unity-background-image-tint-color: #FF4B3A; }
+.feed-text { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+.feed-who { font-size: 14px; color: rgba(243, 241, 236, 0.5); }
+.feed-what { font-size: 18px; white-space: normal; }
+.feed-time { font-size: 13px; color: rgba(243, 241, 236, 0.36); margin-left: 12px; flex-shrink: 0; }
+.feed-go { margin-left: 8px; opacity: 0.3; }
+.feed-row.link:hover .feed-go { opacity: 1; translate: 3px 0; }
+.feed-empty {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0 80px;
+}
+.feed-empty .ic { width: 56px; height: 56px; -unity-background-image-tint-color: rgba(243, 241, 236, 0.2); margin-bottom: 14px; }
+.feed-empty-title { font-size: 22px; color: rgba(243, 241, 236, 0.6); }
+.feed-empty-hint { font-size: 15px; color: rgba(243, 241, 236, 0.32); margin-top: 6px; white-space: normal; -unity-text-align: middle-center; }

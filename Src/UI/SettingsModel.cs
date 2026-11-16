@@ -52,6 +52,15 @@ namespace ADOFAI.EditorTweaks.UI
         public string Icon { get; }
 
         public IReadOnlyList<SettingsSection> Sections { get; }
+
+        /// <summary>放在设置行上面的自定义内容（比如当前谱面卡片），可以为 null。</summary>
+        public UnityEngine.UIElements.VisualElement Header { get; set; }
+
+        /// <summary>整页自定义内容（比如修改记录），设了就不显示设置行。</summary>
+        public UnityEngine.UIElements.VisualElement Content { get; set; }
+
+        /// <summary>这一页显示着的时候每 0.25 秒调用一次（刷新卡片、记录之类）。</summary>
+        public Action Refresh { get; set; }
     }
 
     /// <summary>设置页里有哪些分类、哪些设置、各自怎么显示。</summary>

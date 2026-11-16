@@ -119,8 +119,9 @@ namespace ADOFAI.EditorTweaks
             try
             {
                 var layout = Load<VisualTreeAsset>(SidePanelAsset);
-                sidePanel = new SidePanel(sideLayer!, layout, new[] { Coop.CoopPage.Build() })
+                sidePanel = new SidePanel(sideLayer!, layout, Coop.CoopPage.Build())
                 {
+                    People = Coop.CoopSession.People,
                     StatusText = () => Coop.CoopSession.StatusText,
                     StatusTone = Coop.CoopPage.StatusTone,
                     Live = () => Coop.CoopSession.InSession,

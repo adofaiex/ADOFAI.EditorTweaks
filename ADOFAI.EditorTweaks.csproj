@@ -41,7 +41,6 @@
     <ReferencePath Include="$(ManagedAssembliesDir)\DOTweenPro.dll" />
     <ReferencePath Include="$(ManagedAssembliesDir)\RDTools.dll" />
     <ReferencePath Include="$(ManagedAssembliesDir)\netstandard.dll" />
-    <ReferencePath Include="$(ManagedAssembliesDir)\mscorlib.dll" Condition="'$(UseGameMscorlib)' != 'false'" />
     <ReferencePath Include="$(ManagedAssembliesDir)\UnityEngine.dll" />
     <ReferencePath Include="$(ManagedAssembliesDir)\UnityEngine.AccessibilityModule.dll" />
     <ReferencePath Include="$(ManagedAssembliesDir)\UnityEngine.AIModule.dll" />

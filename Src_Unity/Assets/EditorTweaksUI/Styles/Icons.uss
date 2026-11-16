@@ -17,6 +17,7 @@
 .ic-folder { background-image: url("project://database/Assets/EditorTweaksUI/Icons/folder.png"); }
 .ic-gauge { background-image: url("project://database/Assets/EditorTweaksUI/Icons/gauge.png"); }
 .ic-hand { background-image: url("project://database/Assets/EditorTweaksUI/Icons/hand.png"); }
+.ic-history { background-image: url("project://database/Assets/EditorTweaksUI/Icons/history.png"); }
 .ic-image { background-image: url("project://database/Assets/EditorTweaksUI/Icons/image.png"); }
 .ic-info { background-image: url("project://database/Assets/EditorTweaksUI/Icons/info.png"); }
 .ic-keyboard { background-image: url("project://database/Assets/EditorTweaksUI/Icons/keyboard.png"); }
@@ -24,6 +25,7 @@
 .ic-link { background-image: url("project://database/Assets/EditorTweaksUI/Icons/link.png"); }
 .ic-logout { background-image: url("project://database/Assets/EditorTweaksUI/Icons/logout.png"); }
 .ic-minus { background-image: url("project://database/Assets/EditorTweaksUI/Icons/minus.png"); }
+.ic-music { background-image: url("project://database/Assets/EditorTweaksUI/Icons/music.png"); }
 .ic-numbers { background-image: url("project://database/Assets/EditorTweaksUI/Icons/numbers.png"); }
 .ic-pivot { background-image: url("project://database/Assets/EditorTweaksUI/Icons/pivot.png"); }
 .ic-play { background-image: url("project://database/Assets/EditorTweaksUI/Icons/play.png"); }

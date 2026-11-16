@@ -30,6 +30,7 @@
                         <ui:Label name="sp-tag" text="EDITOR TWEAKS" class="sp-tag" picking-mode="Ignore" />
                     </ui:VisualElement>
                     <ui:VisualElement class="grow" picking-mode="Ignore" />
+                    <ui:VisualElement name="sp-avatars" class="sp-avatars" picking-mode="Ignore" />
                     <ui:VisualElement name="sp-chip" class="sp-chip" picking-mode="Ignore">
                         <ui:VisualElement class="sp-chip-dot" picking-mode="Ignore" />
                         <ui:Label name="sp-chip-label" class="sp-chip-label" picking-mode="Ignore" />

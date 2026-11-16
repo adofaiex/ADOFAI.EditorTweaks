@@ -246,6 +246,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
             SetState(CoopState.CreatingRoom);
             SetMessage(string.Empty);
+            CoopActivity.Clear();
             try
             {
                 ConfigureNetworking();
@@ -276,6 +277,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 SetState(CoopState.Hosting);
                 StartHostSync();
                 SetMessage("房间已创建，邀请好友加入吧");
+                CoopActivity.Add(SteamClient.SteamId.Value, SteamClient.Name, "users", "用《" + CoopEditor.CurrentSongName() + "》创建了房间");
                 Invite();
             }
             catch (Exception exception)
@@ -309,6 +311,7 @@ namespace ADOFAI.EditorTweaks.Coop
         {
             if (InSession) Leave(null);
             ResetSync();
+            CoopActivity.Clear();
             SetState(CoopState.JoiningRoom);
             SetMessage(string.Empty);
             SettingsUi.OpenSidePanel(CoopPage.CategoryName);
@@ -513,6 +516,7 @@ namespace ADOFAI.EditorTweaks.Coop
             _backupStamp = null;
             ResetSync();
             bool wasInSession = InSession;
+            if (wasInSession && SteamClient.IsValid) CoopActivity.Add(SteamClient.SteamId.Value, SteamClient.Name, "logout", message ?? "离开了房间");
             SetState(CoopState.Idle);
             if (message != null && wasInSession)
             {
@@ -616,6 +620,7 @@ namespace ADOFAI.EditorTweaks.Coop
             if (!OnJoinOpened()) return;
             SetState(CoopState.Synced);
             SetMessage("已加入，开始一起制谱吧");
+            CoopActivity.Add(SteamClient.SteamId.Value, SteamClient.Name, "users", "加入了 " + HostName + " 的房间");
             CoopEditor.Notify("已加入 " + HostName + " 的多人制谱");
         }
 
@@ -766,6 +771,8 @@ namespace ADOFAI.EditorTweaks.Coop
             else
             {
                 _assetsDirty = true;
+                CoopActivity.Add(peer.SteamId, peer.Name, "download",
+                    "传来素材 " + string.Join("、", file.Targets.Select(Path.GetFileName).Distinct()) + "（" + FormatSize(file.Size) + "）");
             }
 
             if (FileWaiters.TryGetValue(sha, out List<CoopPeer> waiters))
@@ -824,6 +831,7 @@ namespace ADOFAI.EditorTweaks.Coop
             if (peer.Accepted)
             {
                 SetMessage(peer.Name + " 离开了房间");
+                CoopActivity.Add(peer.SteamId, peer.Name, "logout", "离开了房间");
                 CoopEditor.Notify(peer.Name + " 离开了多人制谱");
             }
         }
@@ -882,6 +890,7 @@ namespace ADOFAI.EditorTweaks.Coop
             peer.Send(CoopLane.Control, CoopMessage.Welcome, stream.ToArray());
             RequestSnapshotFor(peer);
             SetMessage(peer.Name + " 加入了房间");
+            CoopActivity.Add(peer.SteamId, peer.Name, "users", "加入了房间");
             CoopEditor.Notify(peer.Name + " 加入了多人制谱");
         }
 

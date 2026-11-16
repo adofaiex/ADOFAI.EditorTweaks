@@ -131,7 +131,11 @@ namespace ADOFAI.EditorTweaks.Coop
 
             // 标记文件里写了谱面路径：还没进编辑器就自己带着这张谱进去
             scnEditor editor = CoopEditor.Editor;
-            string wanted = File.ReadAllText(flag).Trim();
+            // 第一行是谱面路径；后面几行是选项：panel = 打开右侧面板（截图检查界面用），noselftest = 不跑自检
+            string[] lines = File.ReadAllLines(flag);
+            string wanted = lines.Length > 0 ? lines[0].Trim() : string.Empty;
+            bool openPanel = lines.Any(l => l.Trim() == "panel");
+            bool skipTest = lines.Any(l => l.Trim() == "noselftest");
             if (editor == null)
             {
                 if (_autoTestEditorRequested || wanted.Length == 0 || Time.realtimeSinceStartup < 10f || ADOBase.loader == null) return;
@@ -143,6 +147,8 @@ namespace ADOFAI.EditorTweaks.Coop
 
             if (editor.isLoading || !editor.initialized || CoopEditor.LevelPath == null) return;
             _autoTestDone = true;
+            if (openPanel) SettingsUi.OpenSidePanel(CoopPage.CategoryName);
+            if (skipTest) return;
             string report;
             try
             {
@@ -184,6 +190,98 @@ namespace ADOFAI.EditorTweaks.Coop
             }
         }
 
+        // ================================================================ 面板用：参与者、修改记录、跳转
+
+        /// <summary>顶栏头像：房主在最前，自己标"你"。没进房间时只有自己。</summary>
+        public static IReadOnlyList<UI.PersonInfo> People()
+        {
+            var people = new List<UI.PersonInfo>();
+            if (!SteamClient.IsValid) return people;
+            ulong me = SteamClient.SteamId.Value;
+            void Add(ulong id, string name, bool host)
+            {
+                people.Add(new UI.PersonInfo
+                {
+                    Key = id,
+                    Name = name,
+                    Avatar = CoopAvatars.Get(id),
+                    IsHost = host,
+                    Badge = id == me ? (host ? "你 · 房主" : "你") : host ? "房主" : null,
+                });
+            }
+
+            if (IsHost)
+            {
+                Add(me, SteamClient.Name, true);
+                foreach (CoopPeer peer in AcceptedPeers()) Add(peer.SteamId, peer.Name, false);
+            }
+            else if (_lobby.HasValue && InSession)
+            {
+                try
+                {
+                    Steamworks.Data.Lobby lobby = _lobby.Value;
+                    ulong owner = lobby.Owner.Id.Value;
+                    Add(owner, lobby.Owner.Name, true);
+                    foreach (Friend member in lobby.Members)
+                        if (member.Id.Value != owner) Add(member.Id.Value, member.Name, false);
+                }
+                catch (Exception)
+                {
+                    // 房间信息还没到
+                }
+            }
+            else
+            {
+                Add(me, SteamClient.Name, false);
+            }
+
+            return people;
+        }
+
+        private static string NameOf(ulong steamId)
+        {
+            foreach (UI.PersonInfo person in People())
+                if (person.Key == steamId) return person.Name;
+            try
+            {
+                return new Friend(steamId).Name;
+            }
+            catch (Exception)
+            {
+                return "?";
+            }
+        }
+
+        private static void LogEdit(ulong who, string name, List<CoopOp> ops)
+        {
+            string text = CoopActivity.Describe(ops, _model, out string icon, out long tile, out long decoration);
+            Action jump = tile == 0 && decoration == 0 ? null : (Action)(() => JumpTo(tile, decoration));
+            CoopActivity.Add(who, name, icon, text, jump);
+        }
+
+        /// <summary>修改记录里点一条：选中那个装饰，或者跳到那块砖。</summary>
+        private static void JumpTo(long tile, long decoration)
+        {
+            scnEditor editor = CoopEditor.Editor;
+            if (editor == null || !IsSyncing || !CoopEditor.CanApplyNow) return;
+            try
+            {
+                if (decoration != 0 && _model.Items.TryGetValue(decoration, out CoopModel.Item item) && !item.Parked)
+                {
+                    editor.DeselectAllDecorations();
+                    editor.SelectDecoration(item.Obj);
+                    return;
+                }
+
+                int floor = _model.FloorOf(tile);
+                if (floor >= 0 && floor < editor.floors.Count) editor.SelectFloor(editor.floors[floor]);
+            }
+            catch (Exception exception)
+            {
+                Main.Log("[Coop] Jump failed: " + exception.Message);
+            }
+        }
+
         // ================================================================ 本地修改 → 发出去
 
         private static void FlushLocalEdit()
@@ -219,6 +317,7 @@ namespace ADOFAI.EditorTweaks.Coop
             }
 
             if (ops.Count == 0) return;
+            LogEdit(SteamClient.SteamId.Value, SteamClient.Name, ops);
             var batch = new CoopBatch { Author = SteamClient.SteamId.Value, AuthorSeq = ++_authorSeq, Ops = ops };
             var outgoing = new Outgoing { Batch = batch };
             OutQueue.Add(outgoing);
@@ -306,6 +405,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 KeyValuePair<CoopPeer, CoopBatch> item = HostInbox.Dequeue();
                 if (!Peers.ContainsValue(item.Key)) continue;
                 CoopBatch batch = item.Value;
+                LogEdit(item.Key.SteamId, item.Key.Name, batch.Ops);
                 if (!CoopEditor.ApplyOps(_model, batch.Ops, out string error))
                     SetMessage("应用 " + item.Key.Name + " 的修改失败：" + error, error: true);
                 batch.Seq = ++_seq;
@@ -443,6 +543,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 else
                 {
                     _foreignApplied++;
+                    LogEdit(batch.Author, NameOf(batch.Author), batch.Ops);
                     EnsureFiles(batch.Manifest, LevelDir, _hostPeer);
                 }
 
@@ -504,6 +605,7 @@ namespace ADOFAI.EditorTweaks.Coop
             _foreignApplied++;
             EnsureFiles(snapshot.Manifest, LevelDir, _hostPeer);
             SetMessage("已和房主重新同步");
+            CoopActivity.Add(_hostPeer?.SteamId ?? 0, HostName, "sync", "重新同步了整份谱面（和房主对齐）");
             Main.Log("[Coop] Resynced to seq " + snapshot.Seq);
         }
     }

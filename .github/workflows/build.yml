@@ -46,7 +46,6 @@ jobs:
           -c Release
           /p:CreateModPackage=true
           /p:ManagedAssembliesDir="$env:GITHUB_WORKSPACE\.compile-assemblies"
-          /p:UseGameMscorlib=false
           /p:RequireGameExecutable=false
           /p:EnableModDeployment=false
 

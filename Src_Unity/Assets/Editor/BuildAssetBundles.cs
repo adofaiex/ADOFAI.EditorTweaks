@@ -30,7 +30,7 @@ namespace EditorTweaks.Build
         // Src/UI/SidePanel.cs 在 SidePanel.uxml 里查找的元素
         private static readonly string[] SidePanelNames =
         {
-            "sp-dock", "sp-handle", "sp-cat-hl", "sp-page", "sp-scroll", "sp-chip", "sp-chip-label", "sp-arm-a", "sp-arm-b", "sp-close", "sp-cats"
+            "sp-dock", "sp-handle", "sp-cat-hl", "sp-page", "sp-scroll", "sp-chip", "sp-chip-label", "sp-arm-a", "sp-arm-b", "sp-close", "sp-cats", "sp-avatars", "sp-root"
         };
 
         [MenuItem("EditorTweaks/Build AssetBundles")]
