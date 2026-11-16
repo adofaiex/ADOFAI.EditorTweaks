@@ -229,6 +229,15 @@ namespace ADOFAI.EditorTweaks.Coop
         /// </summary>
         public static List<string> CollectReferenced(LevelData data, string levelDir)
         {
+            var all = new List<LevelEvent>(data.settings);
+            all.AddRange(data.levelEvents);
+            all.AddRange(data.decorations);
+            return CollectReferenced(all, levelDir);
+        }
+
+        /// <summary>只看给定的这些事件 / 设置引用了哪些文件（一次修改附带的素材清单用）。</summary>
+        public static List<string> CollectReferenced(IEnumerable<LevelEvent> events, string levelDir)
+        {
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var checkedValues = new HashSet<string>(StringComparer.Ordinal);
 
@@ -251,9 +260,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 }
             }
 
-            foreach (LevelEvent settings in data.settings) Scan(settings);
-            foreach (LevelEvent levelEvent in data.levelEvents) Scan(levelEvent);
-            foreach (LevelEvent decoration in data.decorations) Scan(decoration);
+            foreach (LevelEvent levelEvent in events) Scan(levelEvent);
 
             var list = new List<string>(names);
             list.Sort(StringComparer.OrdinalIgnoreCase);

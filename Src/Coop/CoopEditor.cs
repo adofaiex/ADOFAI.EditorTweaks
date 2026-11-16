@@ -168,6 +168,125 @@ namespace ADOFAI.EditorTweaks.Coop
             return true;
         }
 
+        /// <summary>
+        /// 把别人的一组修改应用到编辑器（第二阶段的增量同步）：改 levelData 和记录，再只刷新受影响的部分，
+        /// 尽量保持选中的砖块（按砖块 ID 找回）和装饰，检查器正在显示的对象被改了就重新显示。
+        /// </summary>
+        public static bool ApplyOps(CoopModel model, List<CoopOp> ops, out string error)
+        {
+            error = null;
+            scnEditor editor = Editor;
+            if (editor == null)
+            {
+                error = "不在编辑器里";
+                return false;
+            }
+
+            var selectedTiles = new List<long>();
+            foreach (scrFloor floor in editor.selectedFloors)
+                if (floor != null) selectedTiles.Add(model.TileOf(floor.seqID));
+            LevelEvent shownEvent = editor.levelEventsPanel.selectedEvent;
+            LevelEventType settingsType = editor.settingsPanel.selectedEventType;
+
+            CoopModel.ApplyResult result;
+            editor.changingState++;
+            try
+            {
+                result = model.Apply(editor.levelData, ops);
+                if (!result.Any) return true;
+
+                if (result.TilesChanged)
+                {
+                    editor.DeselectFloors();
+                    editor.RemakePath();
+                    ReselectFloors(editor, model, selectedTiles);
+                }
+                else if (result.EventsChanged)
+                {
+                    editor.ApplyEventsToFloors();
+                }
+
+                bool decorationRemoved = false;
+                foreach (LevelEvent decoration in editor.selectedDecorations)
+                    if (result.Removed.Contains(decoration)) decorationRemoved = true;
+                if (decorationRemoved)
+                {
+                    var keep = new List<LevelEvent>(editor.selectedDecorations);
+                    keep.RemoveAll(result.Removed.Contains);
+                    editor.DeselectAllDecorations();
+                    foreach (LevelEvent decoration in keep)
+                        editor.SelectDecoration(decoration, jumpToDecoration: false, showPanel: false, ignoreDeselection: true);
+                }
+
+                if (result.DecorationsRebuilt)
+                {
+                    editor.UpdateDecorationObjects();
+                    editor.propertyControlDecorationsList.RefreshItemsList(forceRefreshAll: true);
+                }
+                else if (result.DecorationsChanged.Count > 0)
+                {
+                    foreach (LevelEvent decoration in result.DecorationsChanged) editor.UpdateDecorationObject(decoration);
+                    editor.propertyControlDecorationsList.RefreshItemsList();
+                }
+
+                if (result.SettingsChanged)
+                {
+                    editor.UpdateSongAndLevelSettings();
+                    editor.settingsPanel.ShowPanel(settingsType);
+                    editor.customLevel.ReloadAssets(force: false, reloadDecorations: false);
+                }
+
+                // 检查器正显示的事件被别人改了 / 删了：重新显示（删了就收起）
+                if (shownEvent != null && (result.Touched.Contains(shownEvent) || result.Removed.Contains(shownEvent)))
+                {
+                    if (result.Removed.Contains(shownEvent)) editor.levelEventsPanel.HideAllInspectorTabs();
+                    else if (shownEvent.IsDecoration) editor.levelEventsPanel.ShowPanel(shownEvent.eventType);
+                    else if (editor.selectedFloors.Count == 1) editor.levelEventsPanel.ShowPanelOfEvent(shownEvent);
+                }
+            }
+            catch (Exception exception)
+            {
+                error = exception.Message;
+                Main.Log("[Coop] Applying ops failed: " + exception);
+                return false;
+            }
+            finally
+            {
+                editor.changingState--;
+            }
+
+            // 撤销记录是整份谱面的拷贝，撤销会把别人的修改也撤掉，所以清空（各自撤销在第三阶段做）
+            editor.undoStates.Clear();
+            editor.redoStates.Clear();
+            MarkUnsaved(editor);
+            return true;
+        }
+
+        private static void ReselectFloors(scnEditor editor, CoopModel model, List<long> tiles)
+        {
+            List<scrFloor> floors = editor.floors;
+            var indices = new List<int>();
+            foreach (long tile in tiles)
+            {
+                int index = model.FloorOf(tile);
+                if (index >= 0 && index < floors.Count) indices.Add(index);
+            }
+
+            if (indices.Count == 0) return;
+            indices.Sort();
+            if (indices.Count > 1) editor.MultiSelectFloors(floors[indices[0]], floors[indices[indices.Count - 1]]);
+            else editor.SelectFloor(floors[indices[0]], cameraJump: false);
+        }
+
+        /// <summary>整份谱面 JSON 的校验值（房主和客人比较用）。</summary>
+        public static string HashLevel()
+        {
+            string json = EncodeLevel();
+            if (json == null) return string.Empty;
+            using (var md5 = System.Security.Cryptography.MD5.Create())
+                return FileHashes.ToHex(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json)));
+        }
+
         /// <summary>新文件到了之后刷新图片、音频、视频。</summary>
         public static void ReloadAssets()
         {

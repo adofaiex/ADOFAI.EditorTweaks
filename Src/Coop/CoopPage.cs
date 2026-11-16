@@ -74,14 +74,18 @@ namespace ADOFAI.EditorTweaks.Coop
 
             var help = new InfoRow("info", "怎么用",
                 "房主：进入编辑器，打开并保存谱面，点「创建」再邀请好友。好友：接受邀请就会弹出这一页。" +
-                "目前每次修改都会同步整份谱面，几个人同时改时以最后到达的为准；收到别人的修改后，本地的撤销记录会清空。",
+                "每次修改只同步改动的部分，几个人改不同的东西互不影响，改到同一处时以房主收到的先后为准；收到别人的修改后，本地的撤销记录会清空。",
                 () => string.Empty);
+
+            var selfTest = new ActionRow("sparkle", "同步自检",
+                    "在当前谱面的拷贝上模拟三个人同时随机修改 200 轮，检查大家最后的谱面是否完全一致。不会改动你的谱面。")
+                .Button("play", "运行", CoopSession.RunSelfTest, enabled: () => CoopEditor.Editor != null && !CoopSession.InSession);
 
             return new SettingsCategory(CategoryName, "users",
                 new SettingsSection("房间", status, host, invite, members, leave),
                 new SettingsSection("加入谱面", offer, suggested, existing, download),
                 new SettingsSection("传输", transfer),
-                new SettingsSection("说明", help));
+                new SettingsSection("说明", help, selfTest));
         }
     }
 }

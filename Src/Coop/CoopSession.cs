@@ -25,18 +25,15 @@ namespace ADOFAI.EditorTweaks.Coop
     }
 
     /// <summary>
-    /// 多人制谱的会话（第一阶段：整份同步）。
+    /// 多人制谱的会话：房间、连接、加入流程、素材文件。谱面同步本身在 CoopSync.cs（同一个类的另一半）。
     /// <para>房主：用当前谱面建一个 Steam 房间（好友可见），开一个 Steam 中继 socket；客人通过邀请或好友列表"加入游戏"进来。</para>
     /// <para>客人进来后先选谱面放哪（本地已有的文件夹 / 下载到新文件夹），只下载缺的或不一样的素材，再打开房主的谱面。</para>
-    /// <para>之后谁改了谱面，就把整份谱面发给房主；房主按收到的顺序转发给所有人（包括作者本人），大家按同样的顺序应用，
-    /// 所以最后都一样。自己还有没被房主确认的修改时，先忽略别人的版本（反正房主会把自己的排在后面）。</para>
     /// </summary>
-    internal static class CoopSession
+    internal static partial class CoopSession
     {
         private static readonly Dictionary<uint, CoopPeer> Peers = new Dictionary<uint, CoopPeer>();
         private static readonly Dictionary<string, IncomingFile> Downloads = new Dictionary<string, IncomingFile>();
         private static readonly Dictionary<string, List<CoopPeer>> FileWaiters = new Dictionary<string, List<CoopPeer>>();
-        private static readonly Queue<KeyValuePair<CoopPeer, CoopSnapshot>> HostInbox = new Queue<KeyValuePair<CoopPeer, CoopSnapshot>>();
 
         private static GameObject _runner;
         private static bool _commandLineChecked;
@@ -48,18 +45,8 @@ namespace ADOFAI.EditorTweaks.Coop
         private static float _stateSince;
         private static bool _welcomed;
 
-        // 谱面同步
+        // 同步中的谱面文件
         private static string _sessionLevelPath;
-        private static string _lastJson;
-        private static bool _dirty;
-        private static float _dirtyAt;
-        private static bool _building;
-        private static int _buildGeneration;
-        private static int _mySeq;
-        private static int _myLatestSent;
-        private static int _myLatestEchoed;
-        private static CoopSnapshot _pendingApply;
-        private static byte[] _latestHostPayload;
         private static float _editorMissingSince = -1f;
 
         // 客人加入
@@ -286,8 +273,8 @@ namespace ADOFAI.EditorTweaks.Coop
                 _sessionLevelPath = CoopEditor.LevelPath;
                 HostName = SteamClient.Name;
                 ResetSync();
-                MarkDirty();
                 SetState(CoopState.Hosting);
+                StartHostSync();
                 SetMessage("房间已创建，邀请好友加入吧");
                 Invite();
             }
@@ -321,6 +308,7 @@ namespace ADOFAI.EditorTweaks.Coop
         public static async void Join(SteamId lobbyId)
         {
             if (InSession) Leave(null);
+            ResetSync();
             SetState(CoopState.JoiningRoom);
             SetMessage(string.Empty);
             SettingsUi.OpenSidePanel(CoopPage.CategoryName);
@@ -438,7 +426,7 @@ namespace ADOFAI.EditorTweaks.Coop
             _downloadDone = 0;
             SetState(CoopState.Downloading);
             SetMessage("正在比对本地文件…");
-            EnsureFiles(_offer, Path.GetDirectoryName(levelPath), _hostPeer);
+            EnsureFiles(_offer.Manifest, Path.GetDirectoryName(levelPath), _hostPeer);
         }
 
         /// <summary>素材都齐了：把房主的谱面写进目标文件（旧文件先备份），在编辑器里打开。</summary>
@@ -465,7 +453,6 @@ namespace ADOFAI.EditorTweaks.Coop
                 return;
             }
 
-            _pendingApply = null;
             SetState(CoopState.Opening);
             SetMessage(string.Empty);
             editor.OpenLevel(_joinTarget);
@@ -517,7 +504,6 @@ namespace ADOFAI.EditorTweaks.Coop
             foreach (IncomingFile file in Downloads.Values) file.Abort();
             Downloads.Clear();
             FileWaiters.Clear();
-            HostInbox.Clear();
             _offer = null;
             _joinTarget = null;
             SuggestedLevelPath = null;
@@ -548,6 +534,7 @@ namespace ADOFAI.EditorTweaks.Coop
         {
             MainThread.Drain();
             CheckCommandLine();
+            MaybeAutoSelfTest();
             if (State == CoopState.Idle) return;
 
             try
@@ -578,9 +565,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
             if (IsSyncing)
             {
-                if (_dirty && !_building && now - _dirtyAt > 0.25f && CoopEditor.CanApplyNow) FlushLocalEdit();
-                if (IsHost) ProcessHostInbox();
-                else ApplyPending();
+                SyncUpdate(now);
                 if (_assetsDirty && Downloads.Count == 0 && _hashingJobs == 0 && CoopEditor.CanApplyNow)
                 {
                     _assetsDirty = false;
@@ -628,171 +613,19 @@ namespace ADOFAI.EditorTweaks.Coop
             }
 
             _sessionLevelPath = _joinTarget;
-            _lastJson = CoopEditor.EncodeLevel();
+            if (!OnJoinOpened()) return;
             SetState(CoopState.Synced);
             SetMessage("已加入，开始一起制谱吧");
             CoopEditor.Notify("已加入 " + HostName + " 的多人制谱");
         }
 
-        // ================================================================ 本地修改 → 发出去
-
-        /// <summary>编辑器里发生了一次修改（由 Harmony 补丁调用）。真正发送在停手 0.25 秒后。</summary>
-        public static void MarkDirty()
-        {
-            if (!IsSyncing) return;
-            _dirty = true;
-            _dirtyAt = Time.unscaledTime;
-        }
-
-        private static void FlushLocalEdit()
-        {
-            _dirty = false;
-            string json = CoopEditor.EncodeLevel();
-            if (json == null || json == _lastJson) return;
-            _lastJson = json;
-
-            scnEditor editor = CoopEditor.Editor;
-            string levelDir = Path.GetDirectoryName(_sessionLevelPath);
-            List<string> names = LevelFiles.CollectReferenced(editor.levelData, levelDir);
-            var paths = names.Select(n => Path.Combine(levelDir, n)).ToList();
-            var snapshot = new CoopSnapshot
-            {
-                Author = SteamClient.SteamId.Value,
-                AuthorSeq = ++_mySeq,
-                LevelFileName = Path.GetFileName(_sessionLevelPath),
-                Identity = CoopEditor.CurrentIdentity(),
-                SongName = CoopEditor.CurrentSongName(),
-                Json = json,
-            };
-
-            int generation = ++_buildGeneration;
-            _building = true;
-            FileHashes.HashAsync(paths, hashes =>
-            {
-                if (generation != _buildGeneration || !IsSyncing) return;
-                _building = false;
-                for (int i = 0; i < names.Count; i++)
-                {
-                    if (!hashes.TryGetValue(paths[i], out string sha) || sha == null) continue;
-                    long size;
-                    try
-                    {
-                        size = new FileInfo(paths[i]).Length;
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-
-                    snapshot.Manifest.Add(new ManifestEntry(names[i].Replace('\\', '/'), sha, size));
-                }
-
-                byte[] payload = snapshot.Encode();
-                _myLatestSent = snapshot.AuthorSeq;
-                if (IsHost)
-                {
-                    _latestHostPayload = payload;
-                    Broadcast(payload, except: null);
-                }
-                else
-                {
-                    _hostPeer?.Send(CoopLane.Control, CoopMessage.Snapshot, payload);
-                }
-            });
-        }
-
-        private static void Broadcast(byte[] payload, CoopPeer except)
-        {
-            foreach (CoopPeer peer in AcceptedPeers())
-                if (peer != except) peer.Send(CoopLane.Control, CoopMessage.Snapshot, payload);
-        }
-
-        // ================================================================ 别人的修改 → 应用
-
-        /// <summary>房主：按收到的顺序处理客人发来的版本。自己正在编辑（按着鼠标、打字、还没发出去）时先等，自己的先排进去。</summary>
-        private static void ProcessHostInbox()
-        {
-            if (HostInbox.Count == 0 || _building || _dirty || !CoopEditor.CanApplyNow) return;
-            CoopSnapshot last = null;
-            CoopPeer lastAuthor = null;
-            while (HostInbox.Count > 0)
-            {
-                KeyValuePair<CoopPeer, CoopSnapshot> item = HostInbox.Dequeue();
-                if (!Peers.ContainsValue(item.Key)) continue;
-                // 转发给所有人（包括作者本人，他靠这个知道自己的版本已经排进去了）
-                _latestHostPayload = item.Value.Payload;
-                Broadcast(item.Value.Payload, except: null);
-                last = item.Value;
-                lastAuthor = item.Key;
-            }
-
-            if (last == null) return;
-            ApplySnapshot(last);
-            EnsureFiles(last, Path.GetDirectoryName(_sessionLevelPath), lastAuthor);
-        }
-
-        /// <summary>客人：应用房主转发来的最新版本（按上面说的规则跳过已经过时的）。</summary>
-        private static void ApplyPending()
-        {
-            CoopSnapshot snapshot = _pendingApply;
-            if (snapshot == null || !CoopEditor.CanApplyNow) return;
-
-            if (_dirty || _building) return; // 先把自己的发出去，房主会排在这一份后面，这一份不用应用了（下面会被丢掉）
-            _pendingApply = null;
-
-            bool mine = snapshot.Author == SteamClient.SteamId.Value;
-            if (mine)
-            {
-                if (snapshot.AuthorSeq < _myLatestSent) return;
-            }
-            else if (_myLatestSent > _myLatestEchoed)
-            {
-                // 自己还有一份没被房主确认：房主会把它排在这一份后面，所以这一份会被覆盖，不用应用
-                return;
-            }
-
-            ApplySnapshot(snapshot);
-            EnsureFiles(snapshot, Path.GetDirectoryName(_sessionLevelPath), _hostPeer);
-        }
-
-        private static void ApplySnapshot(CoopSnapshot snapshot)
-        {
-            if (snapshot.Json == _lastJson) return;
-            if (!CoopEditor.ApplyLevelJson(snapshot.Json, out string error))
-            {
-                SetMessage("应用别人的修改失败：" + error, error: true);
-                return;
-            }
-
-            // 自己没发出去的修改被覆盖了，作废
-            _buildGeneration++;
-            _building = false;
-            _dirty = false;
-            _lastJson = CoopEditor.EncodeLevel();
-        }
-
-        private static void ResetSync()
-        {
-            _lastJson = null;
-            _dirty = false;
-            _building = false;
-            _buildGeneration++;
-            _mySeq = 0;
-            _myLatestSent = 0;
-            _myLatestEchoed = 0;
-            _pendingApply = null;
-            _latestHostPayload = null;
-            _assetsDirty = false;
-            _editorMissingSince = -1f;
-        }
-
         // ================================================================ 素材文件
 
         /// <summary>对照清单检查本地文件，缺的或不一样的向 source 要；本机别处有同样内容的直接复制。</summary>
-        private static void EnsureFiles(CoopSnapshot snapshot, string levelDir, CoopPeer source)
+        private static void EnsureFiles(List<ManifestEntry> manifest, string levelDir, CoopPeer source)
         {
-            if (source == null || snapshot.Manifest.Count == 0) return;
-            var entries = snapshot.Manifest.Where(e => LevelFiles.IsSafeRelative(e.Name)).ToList();
+            if (source == null || manifest.Count == 0) return;
+            var entries = manifest.Where(e => LevelFiles.IsSafeRelative(e.Name)).ToList();
             var paths = entries.Select(e => Path.Combine(levelDir, e.Name)).ToList();
             _hashingJobs++;
             FileHashes.HashAsync(paths, local =>
@@ -1006,8 +839,11 @@ namespace ADOFAI.EditorTweaks.Coop
                     case CoopMessage.Hello:
                         OnHello(peer, payload);
                         break;
-                    case CoopMessage.Snapshot when peer.Accepted:
-                        HostInbox.Enqueue(new KeyValuePair<CoopPeer, CoopSnapshot>(peer, CoopSnapshot.Decode(payload)));
+                    case CoopMessage.Ops when peer.Accepted:
+                        HostReceivedOps(peer, CoopBatch.Decode(payload));
+                        break;
+                    case CoopMessage.ResyncRequest when peer.Accepted:
+                        RequestSnapshotFor(peer);
                         break;
                     case CoopMessage.FileRequest when peer.Accepted:
                         OnFileRequest(peer, payload);
@@ -1044,7 +880,7 @@ namespace ADOFAI.EditorTweaks.Coop
             BinaryWriter writer = Packet.Writer(out MemoryStream stream);
             writer.Write(SteamClient.Name);
             peer.Send(CoopLane.Control, CoopMessage.Welcome, stream.ToArray());
-            if (_latestHostPayload != null) peer.Send(CoopLane.Control, CoopMessage.Snapshot, _latestHostPayload);
+            RequestSnapshotFor(peer);
             SetMessage(peer.Name + " 加入了房间");
             CoopEditor.Notify(peer.Name + " 加入了多人制谱");
         }
@@ -1086,6 +922,12 @@ namespace ADOFAI.EditorTweaks.Coop
                     case CoopMessage.Snapshot:
                         OnClientSnapshot(CoopSnapshot.Decode(payload));
                         break;
+                    case CoopMessage.Ops:
+                        ClientReceivedOps(CoopBatch.Decode(payload));
+                        break;
+                    case CoopMessage.StateHash:
+                        ClientReceivedHash(payload);
+                        break;
                     case CoopMessage.FileRequest:
                         OnFileRequest(peer, payload);
                         break;
@@ -1105,12 +947,11 @@ namespace ADOFAI.EditorTweaks.Coop
 
         private static void OnClientSnapshot(CoopSnapshot snapshot)
         {
-            if (snapshot.Author == SteamClient.SteamId.Value) _myLatestEchoed = Math.Max(_myLatestEchoed, snapshot.AuthorSeq);
-
             switch (State)
             {
                 case CoopState.Connecting:
                     _offer = snapshot;
+                    ClientOfferChanged(snapshot);
                     SuggestedLevelPath = FindLocalCopy(snapshot);
                     SetState(CoopState.ChoosingFolder);
                     SetMessage(string.Empty);
@@ -1118,14 +959,16 @@ namespace ADOFAI.EditorTweaks.Coop
                     break;
                 case CoopState.ChoosingFolder:
                     _offer = snapshot;
+                    ClientOfferChanged(snapshot);
                     break;
                 case CoopState.Downloading:
                     _offer = snapshot;
-                    EnsureFiles(snapshot, Path.GetDirectoryName(_joinTarget), _hostPeer);
+                    ClientOfferChanged(snapshot);
+                    EnsureFiles(snapshot.Manifest, Path.GetDirectoryName(_joinTarget), _hostPeer);
                     break;
                 case CoopState.Opening:
                 case CoopState.Synced:
-                    _pendingApply = snapshot;
+                    ClientResyncSnapshot(snapshot);
                     break;
             }
         }

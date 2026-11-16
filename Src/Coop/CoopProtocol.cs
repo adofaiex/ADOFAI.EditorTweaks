@@ -7,7 +7,7 @@ namespace ADOFAI.EditorTweaks.Coop
     /// <summary>多人制谱的网络协议常量。改了消息格式就把 Version 加一，不同版本的人进不了同一个房间。</summary>
     internal static class CoopProtocol
     {
-        public const int Version = 1;
+        public const int Version = 2;
 
         /// <summary>Steam 中继 socket 的虚拟端口（同一个 Steam 账号上区分不同用途的连接）。</summary>
         public const int VirtualPort = 7713;
@@ -47,8 +47,17 @@ namespace ADOFAI.EditorTweaks.Coop
         /// <summary>房主 → 客人：拒绝（原因）。</summary>
         Reject = 3,
 
-        /// <summary>整份谱面（作者、作者序号、谱面文件名、素材清单、压缩的 JSON）。</summary>
+        /// <summary>房主 → 客人：整份谱面（加入时、校验不一致时）。</summary>
         Snapshot = 10,
+
+        /// <summary>一组修改：客人 → 房主（未排序），房主 → 所有人（带全局序号）。</summary>
+        Ops = 11,
+
+        /// <summary>房主 → 所有人：到某个序号为止的谱面校验值。</summary>
+        StateHash = 12,
+
+        /// <summary>客人 → 房主：校验对不上，请重发整份谱面。</summary>
+        ResyncRequest = 13,
 
         /// <summary>请求文件（一组 sha256）。</summary>
         FileRequest = 20,

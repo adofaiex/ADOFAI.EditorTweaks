@@ -7,13 +7,13 @@ using System.Text;
 namespace ADOFAI.EditorTweaks.Coop
 {
     /// <summary>
-    /// 一份完整的谱面状态：谁改的（作者 SteamID + 作者自己的序号）、谱面文件名、谱面身份、素材清单、谱面 JSON（gzip 压缩传输）。
-    /// 第一阶段每次修改都发一整份；房主按收到的顺序转发给所有人（包括作者本人），大家按同样的顺序应用。
+    /// 一份完整的谱面状态（客人加入、或者校验发现不一致时由房主发）：对应的修改序号、谱面文件名、谱面身份、
+    /// 素材清单、谱面 JSON（gzip 压缩传输），以及 ID 表（客人打开谱面后按它给砖块、事件、装饰编上和房主一样的 ID）。
     /// </summary>
     internal sealed class CoopSnapshot
     {
-        public ulong Author;
-        public int AuthorSeq;
+        public int Seq;
+        public byte[] IdTable = new byte[0];
         public string LevelFileName;
         public string Identity;
         public string SongName;
@@ -26,8 +26,9 @@ namespace ADOFAI.EditorTweaks.Coop
         public byte[] Encode()
         {
             BinaryWriter writer = Packet.Writer(out MemoryStream stream);
-            writer.Write(Author);
-            writer.Write(AuthorSeq);
+            writer.Write(Seq);
+            writer.Write(IdTable.Length);
+            writer.Write(IdTable);
             writer.Write(LevelFileName ?? string.Empty);
             writer.Write(Identity ?? string.Empty);
             writer.Write(SongName ?? string.Empty);
@@ -46,8 +47,8 @@ namespace ADOFAI.EditorTweaks.Coop
             var snapshot = new CoopSnapshot
             {
                 Payload = payload,
-                Author = reader.ReadUInt64(),
-                AuthorSeq = reader.ReadInt32(),
+                Seq = reader.ReadInt32(),
+                IdTable = reader.ReadBytes(reader.ReadInt32()),
                 LevelFileName = reader.ReadString(),
                 Identity = reader.ReadString(),
                 SongName = reader.ReadString(),
