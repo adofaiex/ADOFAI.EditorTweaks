@@ -9,7 +9,7 @@ namespace ADOFAI.EditorTweaks.UI
     /// <summary>
     /// 编辑器右侧的侧边面板（布局 SidePanel.uxml，样式 Styles/SidePanel.uss）。
     /// 平时只在屏幕右边缘露出一个把手（左半边圆角矩形 + 小三角），点一下整个面板从右边滑出来，再点收回去。
-    /// 面板 16:9、半透明底，左边是分类栏（现在只有"多人制谱"，以后的功能往这里加），右边是设置行（和设置窗口共用行组件）。
+    /// 面板占屏幕右半边、半透明底，左边是分类栏（现在只有"多人制谱"，以后的功能往这里加），右边是设置行（和设置窗口共用行组件）。
     /// </summary>
     public sealed class SidePanel
     {
@@ -61,6 +61,7 @@ namespace ADOFAI.EditorTweaks.UI
             _highlight = Need<VisualElement>(root, "sp-cat-hl");
             _page = Need<VisualElement>(root, "sp-page");
             _scroll = Need<ScrollView>(root, "sp-scroll");
+            SmoothScroll.Attach(_scroll);
             _chip = Need<VisualElement>(root, "sp-chip");
             _chipLabel = Need<Label>(root, "sp-chip-label");
             _armA = Need<VisualElement>(root, "sp-arm-a");

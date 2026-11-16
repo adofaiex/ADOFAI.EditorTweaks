@@ -293,6 +293,7 @@ namespace ADOFAI.EditorTweaks.UI
             _scroll.AddToClassList("etw-scroll");
             _scroll.AddToClassList("feed-scroll");
             Add(_scroll);
+            SmoothScroll.Attach(_scroll);
 
             _empty = new VisualElement { pickingMode = PickingMode.Ignore };
             _empty.AddToClassList("feed-empty");

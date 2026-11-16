@@ -208,3 +208,27 @@
 /* 进度条（文件传输） */
 .st-progress { width: 270px; height: 6px; margin-left: 16px; background-color: rgba(255, 255, 255, 0.10); overflow: hidden; }
 .st-progress-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: #FF4B3A; transition-property: width; transition-duration: 0.25s; transition-timing-function: ease-out; }
+
+/* ---------------------------------------------------------------- 平滑滚动的滚动条（Src/UI/SmoothScroll.cs，替代 Unity 自带的） */
+
+/* 整条是 14px 宽的点击区，里面的滑块平时 4px 细线，悬停 / 拖动时变 8px */
+.ss-bar {
+    position: absolute;
+    right: 4px; top: 8px; bottom: 8px;
+    width: 14px;
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 0.25s;
+}
+.ss-bar.off { opacity: 0; }
+.ss-thumb {
+    position: absolute;
+    right: 3px;
+    width: 4px;
+    background-color: rgba(243, 241, 236, 0.18);
+    transition-property: width, background-color;
+    transition-duration: 0.18s, 0.18s;
+    transition-timing-function: ease-out-cubic, ease-out;
+}
+.ss-bar.hover .ss-thumb { width: 8px; background-color: rgba(243, 241, 236, 0.36); }
+.ss-bar.dragging .ss-thumb { width: 8px; background-color: #FF4B3A; }

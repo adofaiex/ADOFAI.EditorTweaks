@@ -29,6 +29,7 @@ namespace ADOFAI.EditorTweaks.UI
         private readonly VisualElement _head;
         private readonly VisualElement _highlight;
         private readonly ScrollView _scroll;
+        private readonly SmoothScroll _smooth;
         private readonly VisualElement _page;
         private readonly VisualElement _toast;
         private readonly Label _toastLabel;
@@ -119,6 +120,7 @@ namespace ADOFAI.EditorTweaks.UI
 
             _page = Need<VisualElement>(root, "page");
             _scroll = Need<ScrollView>(root, "scroll");
+            _smooth = SmoothScroll.Attach(_scroll);
 
             // ---- 底栏
             _resetButton = Need<VisualElement>(root, "reset");
@@ -416,7 +418,7 @@ namespace ADOFAI.EditorTweaks.UI
             if (_navigation.Count == 0) return;
             _selected = Mathf.Clamp(index, 0, _navigation.Count - 1);
             for (int i = 0; i < _navigation.Count; i++) _navigation[i].SetSelected(i == _selected);
-            if (scroll) _scroll.ScrollTo(_navigation[_selected].Element);
+            if (scroll) _smooth.ScrollIntoView(_navigation[_selected].Element);
         }
 
         private void OnKeyDown(KeyDownEvent e)
