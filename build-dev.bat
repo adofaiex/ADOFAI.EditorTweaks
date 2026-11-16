@@ -5,7 +5,7 @@ pushd "%~dp0"
 if errorlevel 1 exit /b 1
 
 echo Building development package...
-dotnet build "ADOFAI.EditorTweaks.csproj" -c Debug /p:CreateModPackage=true /p:BumpModVersion=false
+dotnet build "ADOFAI.EditorTweaks.csproj" -c Debug /p:CreateModPackage=true
 set "EXIT_CODE=%ERRORLEVEL%"
 
 if "%EXIT_CODE%"=="0" (

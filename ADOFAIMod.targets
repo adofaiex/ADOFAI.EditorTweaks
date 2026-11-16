@@ -24,7 +24,7 @@
   </Target>
 
   <Target Name="CopyToOut" AfterTargets="Build">
-    <PropertyGroup><OutDir>$(ProjectDir)out\</OutDir></PropertyGroup>
+    <PropertyGroup><OutDir>$(BuildRoot)out\</OutDir></PropertyGroup>
     <RemoveDir Directories="$(OutDir)" Condition="Exists('$(OutDir)')" />
     <MakeDir Directories="$(OutDir);$(OutDir)Resources" />
     <ItemGroup>
@@ -38,7 +38,7 @@
 
   <Target Name="PackageMod" AfterTargets="CopyToOut"
           Condition="'$(OS)' == 'Windows_NT' AND '$(CreateModPackage)' == 'true'">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\PackageMod.ps1&quot; -ProjectDirectory &quot;$(MSBuildProjectDirectory)&quot; -SourceDirectory &quot;$(MSBuildProjectDirectory)\out&quot; -BuildDirectory &quot;$(MSBuildProjectDirectory)\Build&quot; -InfoPath &quot;$(MSBuildProjectDirectory)\Info.json&quot;" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)scripts\PackageMod.ps1&quot; -ProjectDirectory &quot;$(MSBuildProjectDirectory)&quot; -SourceDirectory &quot;$(BuildRoot)out&quot; -BuildDirectory &quot;$(BuildRoot)package&quot; -InfoPath &quot;$(MSBuildProjectDirectory)\Info.json&quot;" />
   </Target>
 
   <Target Name="DeployAndLaunch" AfterTargets="CopyToOut"
@@ -49,8 +49,8 @@
     <RemoveDir Directories="$(ModsDir)Resources" Condition="Exists('$(ModsDir)Resources')" />
     <MakeDir Directories="$(ModsDir);$(ModsDir)Resources" />
     <ItemGroup>
-      <DeployFiles Include="$(ProjectDir)out\*.*" />
-      <DeployResources Include="$(ProjectDir)out\Resources\**\*" Exclude="$(ProjectDir)out\Resources\**\*\" />
+      <DeployFiles Include="$(BuildRoot)out\*.*" />
+      <DeployResources Include="$(BuildRoot)out\Resources\**\*" Exclude="$(BuildRoot)out\Resources\**\*\" />
     </ItemGroup>
     <Copy SourceFiles="@(DeployFiles)" DestinationFolder="$(ModsDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(DeployResources)" DestinationFolder="$(ModsDir)Resources\%(RecursiveDir)" SkipUnchangedFiles="true" />

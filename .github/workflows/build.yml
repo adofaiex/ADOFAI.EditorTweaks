@@ -45,7 +45,6 @@ jobs:
           dotnet build .\ADOFAI.EditorTweaks.csproj
           -c Release
           /p:CreateModPackage=true
-          /p:BumpModVersion=false
           /p:ManagedAssembliesDir="$env:GITHUB_WORKSPACE\.compile-assemblies"
           /p:UseGameMscorlib=false
           /p:RequireGameExecutable=false
@@ -55,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ADOFAI.EditorTweaks-release
-          path: Build/*.zip
+          path: .build/package/*.zip
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -65,7 +64,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $info = Get-Content -LiteralPath .\Info.json -Raw | ConvertFrom-Json
-          $package = Get-ChildItem -LiteralPath .\Build -File -Filter '*.zip' | Select-Object -First 1
+          $package = Get-ChildItem -LiteralPath .\.build\package -File -Filter '*.zip' | Select-Object -First 1
           if ($null -eq $package) {
               throw 'No release package was found.'
           }

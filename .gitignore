@@ -1,9 +1,6 @@
 # Build output
-bin/
-obj/
-out/
+.build/
 dist/
-Build/
 lib/
 webui/node_modules/
 webui/dist/

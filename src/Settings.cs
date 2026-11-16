@@ -75,27 +75,6 @@ namespace ADOFAI.EditorTweaks
 
         }
 
-        public void ResetAllDefaults(UnityModManager.ModEntry modEntry)
-        {
-            EnableNumericDrag = true;
-            EnableCameraRelativeDecorationDragFix = true;
-            EnableDecorationPivotFix = true;
-            EnableVideoBackgroundSyncFix = true;
-            PersistEditorPreferences = true;
-            EnableImageLoadErrorDeduplication = true;
-            DecorationMoveSnapStep = 0.5f;
-            FloatStepPerPixel = 0.1f;
-            IntStepPerPixel = 1f;
-            MaxFloatingPoints = 3;
-
-            Normalize();
-        }
-
-        public static string Text(string key)
-        {
-            return Localization.Text(key);
-        }
-
         public static Settings Load(UnityModManager.ModEntry modEntry)
         {
             return Load<Settings>(modEntry);

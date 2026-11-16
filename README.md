@@ -20,7 +20,7 @@ dotnet build ADOFAI.EditorTweaks.csproj -c Debug
 dotnet build ADOFAI.EditorTweaks.csproj -c Release
 ```
 
-也可以使用 `build-dev.bat` 和 `build-release.bat`。输出在 `out/`，发行压缩包在 `Build/`，部署目录为：
+也可以使用 `build-dev.bat` 和 `build-release.bat`。输出在 `.build/out/`，发行压缩包在 `.build/package/`，部署目录为：
 
 ```text
 Mods/ADOFAI.EditorTweaks/

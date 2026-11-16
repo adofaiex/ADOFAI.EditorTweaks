@@ -8,8 +8,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <OutputPath>bin\$(Configuration)\</OutputPath>
-    <DefaultItemExcludes>$(DefaultItemExcludes);src_unity\**</DefaultItemExcludes>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\</OutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -28,18 +27,10 @@
   <PropertyGroup>
     <GameExePath>D:\Steam\steamapps\common\A Dance of Fire and Ice\A Dance of Fire and Ice.exe</GameExePath>
     <AutoLaunchGame>false</AutoLaunchGame>
-    <BuildWebUi>false</BuildWebUi>
-    <IncludeFfmpeg>false</IncludeFfmpeg>
-    <IncludeThirdParty>false</IncludeThirdParty>
-    <IncludeSharpSevenZip>false</IncludeSharpSevenZip>
   </PropertyGroup>
 
   <!-- 导入构建目标 / Import build targets -->
   <Import Project="ADOFAIMod.targets" />
-
-  <ItemGroup>
-    <Compile Remove="src_unity\**\*.cs" />
-  </ItemGroup>
 
   <!-- 游戏程序集直接以路径交给编译器，不经过引用解析，因此不会复制到输出目录 -->
   <ItemGroup>

@@ -1,0 +1,8 @@
+<Project>
+  <!-- 所有构建产物集中在 .build/ / All build artifacts live under .build/ -->
+  <PropertyGroup>
+    <BuildRoot>$(MSBuildThisFileDirectory).build\</BuildRoot>
+    <BaseIntermediateOutputPath>$(BuildRoot)obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(BuildRoot)bin\</BaseOutputPath>
+  </PropertyGroup>
+</Project>
