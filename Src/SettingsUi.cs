@@ -15,6 +15,7 @@ namespace ADOFAI.EditorTweaks
     {
         private const string BundleFile = "editortweaks.ui";
         private const string PanelAsset = "Assets/EditorTweaksUI/EditorTweaksPanel.asset";
+        private const string LayoutAsset = "Assets/EditorTweaksUI/Settings.uxml";
 
         private static AssetBundle? bundle;
         private static GameObject? host;
@@ -88,6 +89,14 @@ namespace ADOFAI.EditorTweaks
                     return false;
                 }
 
+                var layout = bundle.LoadAsset<VisualTreeAsset>(LayoutAsset);
+                if (layout == null)
+                {
+                    LastError = "界面资源里没有布局：" + LayoutAsset;
+                    Unload();
+                    return false;
+                }
+
                 // 先不激活，等 PanelSettings 设好再激活，UIDocument 才会用它建面板
                 host = new GameObject("ADOFAI.EditorTweaks UI");
                 host.SetActive(false);
@@ -99,7 +108,7 @@ namespace ADOFAI.EditorTweaks
                 VisualElement root = document.rootVisualElement;
                 root.style.flexGrow = 1f;
                 UiFonts.Apply(root);
-                window = new SettingsWindow(root, new SettingsAccess(Main.Settings), Main.Mod.Info.Version, SaveSettings);
+                window = new SettingsWindow(root, layout, new SettingsAccess(Main.Settings), Main.Mod.Info.Version, SaveSettings);
                 LastError = null;
                 return true;
             }

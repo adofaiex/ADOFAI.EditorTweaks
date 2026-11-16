@@ -22,7 +22,7 @@
 
 UMM 面板里只有一个“打开设置界面”按钮；真正的设置界面是游戏里弹出的一个可拖动窗口（也可以按 `OpenSettingsKey`）。
 
-- 代码：`Src/UI`（UI Toolkit，不依赖游戏逻辑）和 `Src/SettingsUi.cs`（加载资源、创建窗口、呼出键）。
-- 样式、图标、PanelSettings：`Src_Unity/Assets/EditorTweaksUI`，由 `Src_Unity/Assets/Editor/BuildAssetBundles.cs`（菜单 EditorTweaks / Build AssetBundles）打成 `Resources/editortweaks.ui`。改了样式或图标之后要重新打包，并把新的 bundle 一起提交。
+- 代码：`Src/UI`（UI Toolkit，不依赖游戏逻辑）和 `Src/SettingsUi.cs`（加载资源、创建窗口、呼出键）。窗口的静态外壳在 `Src_Unity/Assets/EditorTweaksUI/Settings.uxml`，`SettingsWindow` 按名字查找其中的元素并绑定事件；分类按钮和设置行由代码按 `SettingsModel.cs` 的清单动态生成。
+- 样式、图标、PanelSettings：`Src_Unity/Assets/EditorTweaksUI`，由 `Src_Unity/Assets/Editor/BuildAssetBundles.cs`（菜单 EditorTweaks / Build AssetBundles）打成 `Resources/editortweaks.ui`。改了样式、图标或 UXML 之后要重新打包，并把新的 bundle 一起提交（打包后会自检 UXML 里有没有代码要找的元素）。
 - 图标由 `Src_Unity/Tools/GenerateIcons.py` 生成。
 - 窗口里的文字目前直接写在 `Src/UI/SettingsModel.cs`，没有走 `localization.json`。

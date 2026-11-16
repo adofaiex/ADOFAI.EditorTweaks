@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace EditorTweaks.Build
 {
@@ -19,10 +20,18 @@ namespace EditorTweaks.Build
         private static string OutputFolder =>
             Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "Resources"));
 
+        // Src/UI/SettingsWindow.cs 会按名字在 Settings.uxml 里查找这些元素，少一个窗口就建不出来
+        private static readonly string[] RequiredNames =
+        {
+            "overlay", "backdrop", "window", "head", "logo", "titles", "tag", "x", "body", "cats", "cat-hl",
+            "page", "scroll", "foot", "reset", "reset-icon", "reset-label", "close", "toast", "toast-label", "arm-a", "arm-b"
+        };
+
         [MenuItem("EditorTweaks/Build AssetBundles")]
         public static void BuildFromMenu()
         {
             Build();
+            Verify();
         }
 
         public static void BuildFromCommandLine()
@@ -30,12 +39,42 @@ namespace EditorTweaks.Build
             try
             {
                 Build();
+                Verify();
                 EditorApplication.Exit(0);
             }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
                 EditorApplication.Exit(1);
+            }
+        }
+
+        /// <summary>把刚打好的包加载一遍：PanelSettings、主题、布局都在，并且布局里有代码要找的全部名字。</summary>
+        private static void Verify()
+        {
+            string path = Path.Combine(OutputFolder, BundleName);
+            if (!File.Exists(path)) return;
+
+            AssetBundle bundle = AssetBundle.LoadFromFile(path);
+            if (bundle == null) throw new InvalidOperationException("打好的包加载失败：" + path);
+            try
+            {
+                var panel = bundle.LoadAsset<PanelSettings>(SourceFolder + "/EditorTweaksPanel.asset");
+                if (panel == null) throw new InvalidOperationException("包里没有 PanelSettings");
+                if (panel.themeStyleSheet == null) throw new InvalidOperationException("PanelSettings 没有绑主题");
+
+                var layout = bundle.LoadAsset<VisualTreeAsset>(SourceFolder + "/Settings.uxml");
+                if (layout == null) throw new InvalidOperationException("包里没有 Settings.uxml");
+
+                VisualElement root = layout.Instantiate();
+                string[] missing = RequiredNames.Where(name => root.Q(name) == null).ToArray();
+                if (missing.Length > 0) throw new InvalidOperationException("Settings.uxml 缺少元素：" + string.Join(", ", missing));
+
+                Debug.Log("[EditorTweaks] 自检通过：PanelSettings、主题、布局（" + RequiredNames.Length + " 个必需元素）都在。");
+            }
+            finally
+            {
+                bundle.Unload(true);
             }
         }
 

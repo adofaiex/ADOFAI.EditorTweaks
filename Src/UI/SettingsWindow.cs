@@ -64,88 +64,45 @@ namespace ADOFAI.EditorTweaks.UI
         public event Action Closed;
 
         /// <param name="host">挂载点：UIDocument 的根元素。</param>
+        /// <param name="layout">静态外壳（Settings.uxml）。</param>
         /// <param name="save">把设置写到磁盘。</param>
-        public SettingsWindow(VisualElement host, IEditorTweaksSettings settings, string version, Action save)
+        public SettingsWindow(VisualElement host, VisualTreeAsset layout, IEditorTweaksSettings settings, string version, Action save)
         {
             _settings = settings;
             _save = save;
             _categories = SettingsSchema.Build(settings);
 
-            _overlay = El("etw-overlay");
+            VisualElement root = layout.Instantiate();
+            root.style.position = Position.Absolute;
+            root.style.left = 0f;
+            root.style.right = 0f;
+            root.style.top = 0f;
+            root.style.bottom = 0f;
+            root.pickingMode = PickingMode.Ignore;
+            host.Add(root);
+
+            _overlay = Need<VisualElement>(root, "overlay");
             _overlay.style.display = DisplayStyle.None;
-            _overlay.focusable = true;
-            _overlay.tabIndex = 0;
-            host.Add(_overlay);
+            _window = Need<VisualElement>(root, "window");
+            _head = Need<VisualElement>(root, "head");
+            _armA = Need<VisualElement>(root, "arm-a");
+            _armB = Need<VisualElement>(root, "arm-b");
+            Need<Label>(root, "tag").text = "EDITOR TWEAKS  ·  v" + version;
 
-            _overlay.Add(El("etw-backdrop"));
-
-            _window = El("etw-window");
-            _overlay.Add(_window);
-
-            // ---- 顶栏（按住拖动）
-            _head = El("etw-head");
-            _window.Add(_head);
-
-            var logo = El("etw-logo");
-            logo.pickingMode = PickingMode.Ignore;
-            logo.Add(El("orbit-ring"));
-            _armA = El("orbit-arm");
-            _armA.Add(El("orbit-dot", "fire"));
-            _armB = El("orbit-arm");
-            _armB.Add(El("orbit-dot", "ice"));
-            logo.Add(_armA);
-            logo.Add(_armB);
-            logo.Add(El("orbit-core"));
-            _head.Add(logo);
-            Intro(logo);
-
-            var titles = El("etw-titles");
-            titles.pickingMode = PickingMode.Ignore;
-            var title = new Label("设置") { pickingMode = PickingMode.Ignore };
-            title.AddToClassList("etw-title");
-            var tag = new Label("EDITOR TWEAKS  ·  v" + version) { pickingMode = PickingMode.Ignore };
-            tag.AddToClassList("etw-tag");
-            titles.Add(title);
-            titles.Add(tag);
-            _head.Add(titles);
-            Intro(titles);
-
-            var grow = El("grow");
-            grow.pickingMode = PickingMode.Ignore;
-            _head.Add(grow);
-
-            var drag = new Label("按住拖动") { pickingMode = PickingMode.Ignore };
-            drag.AddToClassList("etw-drag-hint");
-            _head.Add(drag);
-
-            var close = El("etw-x");
-            close.Add(UiIcon.Create("close", "lg"));
-            close.RegisterCallback<ClickEvent>(_ => Close());
-            _head.Add(close);
-            Intro(close);
-
+            Need<VisualElement>(root, "x").RegisterCallback<ClickEvent>(_ => Close());
             _head.RegisterCallback<PointerDownEvent>(OnDragStart);
             _head.RegisterCallback<PointerMoveEvent>(OnDragMove);
             _head.RegisterCallback<PointerUpEvent>(OnDragEnd);
             _head.RegisterCallback<PointerCaptureOutEvent>(_ => _dragging = false);
 
-            // ---- 主体
-            var body = El("etw-body");
-            _window.Add(body);
-
-            var side = El("etw-side");
-            body.Add(side);
-            var cats = El("etw-cats");
-            side.Add(cats);
-            _highlight = El("cat-hl");
-            _highlight.pickingMode = PickingMode.Ignore;
-            _highlight.Add(El("cat-hl-bar"));
-            cats.Add(_highlight);
+            // ---- 分类按钮（按设置清单生成，放在会滑动的高亮后面）
+            _highlight = Need<VisualElement>(root, "cat-hl");
+            VisualElement cats = Need<VisualElement>(root, "cats");
             for (int i = 0; i < _categories.Count; i++)
             {
                 int index = i;
                 SettingsCategory category = _categories[i];
-                var button = El("cat");
+                var button = El("cat", "intro");
                 button.Add(UiIcon.Create(category.Icon, "lg"));
                 var name = new Label(category.Name) { pickingMode = PickingMode.Ignore };
                 name.AddToClassList("cat-name");
@@ -153,54 +110,24 @@ namespace ADOFAI.EditorTweaks.UI
                 button.RegisterCallback<ClickEvent>(_ => ShowCategory(index, animate: true));
                 cats.Add(button);
                 _categoryButtons.Add(button);
-                Intro(button);
             }
 
-            var main = El("etw-main");
-            body.Add(main);
-            _page = El("etw-page");
-            main.Add(_page);
-            _scroll = new ScrollView(ScrollViewMode.Vertical);
-            _scroll.AddToClassList("etw-scroll");
-            _scroll.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
-            _scroll.mouseWheelScrollSize = 120f;
-            _page.Add(_scroll);
+            _page = Need<VisualElement>(root, "page");
+            _scroll = Need<ScrollView>(root, "scroll");
 
             // ---- 底栏
-            var foot = El("etw-foot");
-            _window.Add(foot);
-            var hints = new Label("↑ ↓ 选择    ← → 调整    Q / E 切换分类    ESC 关闭") { pickingMode = PickingMode.Ignore };
-            hints.AddToClassList("etw-hints");
-            foot.Add(hints);
-            Intro(hints);
-            var footGrow = El("grow");
-            footGrow.pickingMode = PickingMode.Ignore;
-            foot.Add(footGrow);
-
-            _resetButton = El("etw-reset");
-            _resetIcon = UiIcon.Create("reset");
-            _resetButton.Add(_resetIcon);
-            _resetLabel = new Label("恢复默认") { pickingMode = PickingMode.Ignore };
-            _resetLabel.AddToClassList("etw-reset-label");
-            _resetButton.Add(_resetLabel);
+            _resetButton = Need<VisualElement>(root, "reset");
+            _resetIcon = Need<VisualElement>(root, "reset-icon");
+            _resetLabel = Need<Label>(root, "reset-label");
             _resetButton.RegisterCallback<ClickEvent>(_ => OnResetClicked());
-            foot.Add(_resetButton);
-            Intro(_resetButton);
             _resetSpin = new Tweener(_resetButton);
+            Need<VisualElement>(root, "close").RegisterCallback<ClickEvent>(_ => Close());
 
-            var closeButton = El("etw-close");
-            closeButton.Add(new Label("关闭设置") { pickingMode = PickingMode.Ignore });
-            closeButton.RegisterCallback<ClickEvent>(_ => Close());
-            foot.Add(closeButton);
-            Intro(closeButton);
+            _toast = Need<VisualElement>(root, "toast");
+            _toastLabel = Need<Label>(root, "toast-label");
 
-            _toast = El("etw-toast");
-            _toast.pickingMode = PickingMode.Ignore;
-            _toast.Add(UiIcon.Create("check", "sm"));
-            _toastLabel = new Label { pickingMode = PickingMode.Ignore };
-            _toastLabel.AddToClassList("etw-toast-label");
-            _toast.Add(_toastLabel);
-            _window.Add(_toast);
+            // 进场动画：带 intro 类的元素按文档顺序依次滑入
+            _overlay.Query(className: "intro").ForEach(element => _intro.Add(element));
 
             // ---- 每一行：悬停选中、改动回调
             foreach (SettingsCategory category in _categories)
@@ -640,10 +567,11 @@ namespace ADOFAI.EditorTweaks.UI
 
         // ---------------------------------------------------------------- 小工具
 
-        private void Intro(VisualElement element)
+        private static T Need<T>(VisualElement root, string name) where T : VisualElement
         {
-            element.AddToClassList("intro");
-            _intro.Add(element);
+            T element = root.Q<T>(name);
+            if (element == null) throw new InvalidOperationException("设置界面布局（Settings.uxml）里找不到名为 " + name + " 的元素");
+            return element;
         }
 
         private static VisualElement El(params string[] classes)

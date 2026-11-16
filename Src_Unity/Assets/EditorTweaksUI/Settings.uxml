@@ -1,0 +1,73 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <!--
+        设置窗口的静态外壳。样式全在 Styles/*.uss（由 EditorTweaksTheme.tss 汇总）。
+        带 name 的元素，Src/UI/SettingsWindow.cs 会按名字查找并绑定事件；
+        分类按钮（放进 cats）和设置行（放进 scroll）是代码根据设置清单动态生成的。
+        带 intro 类的元素会在打开窗口时按文档顺序依次滑入。
+    -->
+    <ui:VisualElement name="overlay" class="etw-overlay" focusable="true" tabindex="0">
+        <ui:VisualElement name="backdrop" class="etw-backdrop" />
+
+        <ui:VisualElement name="window" class="etw-window">
+
+            <!-- 顶栏：按住拖动窗口 -->
+            <ui:VisualElement name="head" class="etw-head">
+                <ui:VisualElement name="logo" class="etw-logo intro" picking-mode="Ignore">
+                    <ui:VisualElement class="orbit-ring" picking-mode="Ignore" />
+                    <ui:VisualElement name="arm-a" class="orbit-arm" picking-mode="Ignore">
+                        <ui:VisualElement class="orbit-dot fire" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="arm-b" class="orbit-arm" picking-mode="Ignore">
+                        <ui:VisualElement class="orbit-dot ice" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="orbit-core" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement name="titles" class="etw-titles intro" picking-mode="Ignore">
+                    <ui:Label text="设置" class="etw-title" picking-mode="Ignore" />
+                    <ui:Label name="tag" text="EDITOR TWEAKS" class="etw-tag" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement class="grow" picking-mode="Ignore" />
+                <ui:Label text="按住拖动" class="etw-drag-hint" picking-mode="Ignore" />
+                <ui:VisualElement name="x" class="etw-x intro">
+                    <ui:VisualElement class="ic ic-close lg" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- 主体：左边分类栏，右边设置行 -->
+            <ui:VisualElement name="body" class="etw-body">
+                <ui:VisualElement class="etw-side">
+                    <ui:VisualElement name="cats" class="etw-cats">
+                        <ui:VisualElement name="cat-hl" class="cat-hl" picking-mode="Ignore">
+                            <ui:VisualElement class="cat-hl-bar" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="etw-main">
+                    <ui:VisualElement name="page" class="etw-page">
+                        <ui:ScrollView name="scroll" class="etw-scroll" horizontal-scroller-visibility="Hidden" mouse-wheel-scroll-size="120" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- 底栏 -->
+            <ui:VisualElement name="foot" class="etw-foot">
+                <ui:Label text="↑ ↓ 选择    ← → 调整    Q / E 切换分类    ESC 关闭" class="etw-hints intro" picking-mode="Ignore" />
+                <ui:VisualElement class="grow" picking-mode="Ignore" />
+                <ui:VisualElement name="reset" class="etw-reset intro">
+                    <ui:VisualElement name="reset-icon" class="ic ic-reset" picking-mode="Ignore" />
+                    <ui:Label name="reset-label" text="恢复默认" class="etw-reset-label" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:VisualElement name="close" class="etw-close intro">
+                    <ui:Label text="关闭设置" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- 自动保存等提示 -->
+            <ui:VisualElement name="toast" class="etw-toast" picking-mode="Ignore">
+                <ui:VisualElement class="ic ic-check sm" picking-mode="Ignore" />
+                <ui:Label name="toast-label" class="etw-toast-label" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
