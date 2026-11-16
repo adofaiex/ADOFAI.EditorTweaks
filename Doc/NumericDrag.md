@@ -1,6 +1,6 @@
 # NumericDrag 模块
 
-`src/NumericDrag` 给官方编辑器数值输入框增加右键拖动调节。它复用游戏已有的 `DraggableNumberInputField`，并在拖动时实时写回当前事件。
+`Src/NumericDrag` 给官方编辑器数值输入框增加右键拖动调节。它复用游戏已有的 `DraggableNumberInputField`，并在拖动时实时写回当前事件。
 
 ## 文件职责
 

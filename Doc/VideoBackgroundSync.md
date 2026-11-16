@@ -1,6 +1,6 @@
 # VideoBackgroundSync 模块
 
-`src/VideoBackgroundSync` 修复从中途播放谱面时视频背景不同步的问题。
+`Src/VideoBackgroundSync` 修复从中途播放谱面时视频背景不同步的问题。
 
 ## 问题背景
 

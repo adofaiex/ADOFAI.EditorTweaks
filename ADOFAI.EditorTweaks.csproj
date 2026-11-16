@@ -8,6 +8,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Src_Unity\**</DefaultItemExcludes>
     <OutputPath>$(BaseOutputPath)$(Configuration)\</OutputPath>
   </PropertyGroup>
 

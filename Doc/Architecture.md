@@ -9,4 +9,4 @@ UMM -> Main -> Settings / Localization
                  EditorPreferences / LevelLoading
 ```
 
-`src/` 每个文件夹是一个功能，补丁类以嵌套 `[HarmonyPatch]` 类的形式写在 `*Patches.cs` 里。视频背景补丁只处理普通游戏运行时的时间校正，不包含离线渲染分支。
+`Src/` 每个文件夹是一个功能，补丁类以嵌套 `[HarmonyPatch]` 类的形式写在 `*Patches.cs` 里。视频背景补丁只处理普通游戏运行时的时间校正，不包含离线渲染分支。

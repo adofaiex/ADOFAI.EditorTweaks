@@ -1,0 +1,31 @@
+# Unity 生成目录 / Unity generated folders
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Bb]uild/
+/[Bb]uilds/
+
+# IDE 生成的工程文件 / IDE generated project files
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.pidb
+*.booproj
+
+# 构建与崩溃日志 / Build and crash logs
+*.log
+*.pdb
+*.mdb
+*.apk
+*.aab
+*.unitypackage
+sysinfo.txt
+crashlytics-build.properties

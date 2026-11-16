@@ -30,21 +30,6 @@ packages/
 *.tmp
 *.bak
 
-# Unity asset project
-src_unity/Library/
-src_unity/Temp/
-src_unity/Logs/
-src_unity/UserSettings/
-src_unity/Obj/
-src_unity/Build/
-src_unity/Builds/
-src_unity/AssetBundles/
-src_unity/*.csproj
-src_unity/*.sln
-!src_unity/Packages/
-!src_unity/Packages/manifest.json
-!src_unity/Packages/packages-lock.json
-
 # OS files
 Thumbs.db
 Desktop.ini
