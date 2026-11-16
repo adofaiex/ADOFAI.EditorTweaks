@@ -33,7 +33,6 @@ Mods/ADOFAI.EditorTweaks/
 - [用户手册](Doc/README.md)
 - [架构](Doc/Architecture.md)
 - [构建说明](Doc/BuildAndRelease.md)
-- [补丁清单](Doc/PatchInventory.md)
 - [设置与本地化](Doc/SettingsAndLocalization.md)
 - [技术栈](Doc/TechnologyStack.md)
 - [功能文档](Doc/NumericDrag.md)、[装饰选择](Doc/DecorationSelection.md)、[视频背景同步](Doc/VideoBackgroundSync.md)、[编辑器偏好](Doc/EditorPreferences.md)

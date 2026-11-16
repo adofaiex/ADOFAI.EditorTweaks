@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 
-namespace ADOFAI.EditorTweaks.Features.DecorationSelection
+namespace ADOFAI.EditorTweaks.DecorationSelection
 {
     internal static class CameraRelativeDecorationDragPatches
     {

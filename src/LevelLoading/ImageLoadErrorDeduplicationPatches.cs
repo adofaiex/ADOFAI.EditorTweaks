@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using ADOFAI;
 using HarmonyLib;
 
-namespace ADOFAI.EditorTweaks.Features.LevelLoading
+namespace ADOFAI.EditorTweaks.LevelLoading
 {
     internal static class ImageLoadErrorDeduplicationPatches
     {

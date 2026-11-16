@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace ADOFAI.EditorTweaks.Features.NumericDrag
+namespace ADOFAI.EditorTweaks.NumericDrag
 {
     internal sealed class EditorTweaksNumericDragMarker : MonoBehaviour
     {

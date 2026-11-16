@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
-namespace ADOFAI.EditorTweaks.Features.NumericDrag
+namespace ADOFAI.EditorTweaks.NumericDrag
 {
     internal static class NumericDragFeature
     {

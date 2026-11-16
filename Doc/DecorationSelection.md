@@ -1,6 +1,6 @@
 # DecorationSelection 模块
 
-`src/Features/DecorationSelection` 修复装饰编辑里的三个问题：
+`src/DecorationSelection` 修复装饰编辑里的三个问题：
 
 - Camera / CameraAspect 相对装饰拖动不符合屏幕空间直觉。
 - Camera / 视差装饰的轴心十字位置不准。

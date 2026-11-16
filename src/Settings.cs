@@ -1,5 +1,4 @@
 using System.Globalization;
-using ADOFAI.EditorTweaks.Patching;
 using UnityModManagerNet;
 using UnityEngine;
 
@@ -48,8 +47,6 @@ namespace ADOFAI.EditorTweaks
             EnableImageLoadErrorDeduplication = GUILayout.Toggle(
                 EnableImageLoadErrorDeduplication, "启用缺图错误去重");
 
-            GUILayout.Space(4f);
-            GUILayout.Label("兼容性状态：" + PatchManager.GetSummary());
             GUILayout.EndVertical();
         }
 

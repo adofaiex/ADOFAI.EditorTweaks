@@ -4,7 +4,7 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace ADOFAI.EditorTweaks.Features.NumericDrag
+namespace ADOFAI.EditorTweaks.NumericDrag
 {
     internal static class NumericDragPatches
     {

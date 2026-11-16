@@ -2,7 +2,7 @@ using ADOFAI.Editor.Preferences.Controls;
 using ADOFAI.Editor.Preferences.Models;
 using HarmonyLib;
 
-namespace ADOFAI.EditorTweaks.Features.EditorPreferences
+namespace ADOFAI.EditorTweaks.EditorPreferences
 {
     internal static class EditorPreferencesPersistencePatches
     {

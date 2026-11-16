@@ -3,7 +3,7 @@ using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Video;
 
-namespace ADOFAI.EditorTweaks.Features.VideoBackgroundSync
+namespace ADOFAI.EditorTweaks.VideoBackgroundSync
 {
     internal static class VideoBackgroundSyncPatches
     {

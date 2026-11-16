@@ -1,5 +1,6 @@
+using System.Reflection;
 using System.Threading;
-using ADOFAI.EditorTweaks.Patching;
+using HarmonyLib;
 using UnityModManagerNet;
 
 namespace ADOFAI.EditorTweaks
@@ -33,12 +34,12 @@ namespace ADOFAI.EditorTweaks
             if (value)
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks enabled.");
-                PatchManager.ApplyAll(modEntry.Info.Id);
+                new Harmony(modEntry.Info.Id).PatchAll(Assembly.GetExecutingAssembly());
             }
             else
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks disabled.");
-                PatchManager.UnpatchAll();
+                new Harmony(modEntry.Info.Id).UnpatchAll(modEntry.Info.Id);
             }
 
             return true;

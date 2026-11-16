@@ -1,6 +1,6 @@
 # EditorPreferences 模块
 
-`src/Features/EditorPreferences` 只做一件事：官方编辑器偏好设置变化后立即保存。
+`src/EditorPreferences` 只做一件事：官方编辑器偏好设置变化后立即保存。
 
 ## 背景
 
