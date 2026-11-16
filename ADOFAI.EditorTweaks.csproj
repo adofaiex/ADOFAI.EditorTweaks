@@ -113,6 +113,7 @@
     <ReferencePath Include="$(ManagedAssembliesDir)\UnityEngine.XRModule.dll" />
     <ReferencePath Include="$(ManagedAssembliesDir)\UnityModManager\UnityModManager.dll" />
     <ReferencePath Include="$(ManagedAssembliesDir)\Facepunch.Steamworks.Win64.dll" />
+    <ReferencePath Include="$(ManagedAssembliesDir)\UnityFileDialog.dll" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,6 +27,12 @@ namespace EditorTweaks.Build
             "page", "scroll", "foot", "reset", "reset-icon", "reset-label", "close", "toast", "toast-label", "arm-a", "arm-b"
         };
 
+        // Src/UI/SidePanel.cs 在 SidePanel.uxml 里查找的元素
+        private static readonly string[] SidePanelNames =
+        {
+            "sp-dock", "sp-handle", "sp-cat-hl", "sp-page", "sp-scroll", "sp-chip", "sp-chip-label", "sp-arm-a", "sp-arm-b", "sp-close", "sp-cats"
+        };
+
         [MenuItem("EditorTweaks/Build AssetBundles")]
         public static void BuildFromMenu()
         {
@@ -49,6 +55,15 @@ namespace EditorTweaks.Build
             }
         }
 
+        private static void CheckLayout(AssetBundle bundle, string file, string[] names)
+        {
+            var layout = bundle.LoadAsset<VisualTreeAsset>(SourceFolder + "/" + file);
+            if (layout == null) throw new InvalidOperationException("包里没有 " + file);
+            VisualElement root = layout.Instantiate();
+            string[] missing = names.Where(name => root.Q(name) == null).ToArray();
+            if (missing.Length > 0) throw new InvalidOperationException(file + " 缺少元素：" + string.Join(", ", missing));
+        }
+
         /// <summary>把刚打好的包加载一遍：PanelSettings、主题、布局都在，并且布局里有代码要找的全部名字。</summary>
         private static void Verify()
         {
@@ -63,14 +78,11 @@ namespace EditorTweaks.Build
                 if (panel == null) throw new InvalidOperationException("包里没有 PanelSettings");
                 if (panel.themeStyleSheet == null) throw new InvalidOperationException("PanelSettings 没有绑主题");
 
-                var layout = bundle.LoadAsset<VisualTreeAsset>(SourceFolder + "/Settings.uxml");
-                if (layout == null) throw new InvalidOperationException("包里没有 Settings.uxml");
+                CheckLayout(bundle, "Settings.uxml", RequiredNames);
+                CheckLayout(bundle, "SidePanel.uxml", SidePanelNames);
 
-                VisualElement root = layout.Instantiate();
-                string[] missing = RequiredNames.Where(name => root.Q(name) == null).ToArray();
-                if (missing.Length > 0) throw new InvalidOperationException("Settings.uxml 缺少元素：" + string.Join(", ", missing));
-
-                Debug.Log("[EditorTweaks] 自检通过：PanelSettings、主题、布局（" + RequiredNames.Length + " 个必需元素）都在。");
+                Debug.Log("[EditorTweaks] 自检通过：PanelSettings、主题、设置窗口和侧边面板布局（" +
+                          (RequiredNames.Length + SidePanelNames.Length) + " 个必需元素）都在。");
             }
             finally
             {

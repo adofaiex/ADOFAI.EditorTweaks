@@ -311,6 +311,41 @@ def icon_hand(p):
     p.line([(5.8, 10.8), (4.8, 12), (5.8, 14.2)])
 
 
+def icon_users(p):
+    p.circle(9, 8, 3.6)
+    p.arc(9, 21, 7, 180, 360)
+    p.arc(16.5, 8.5, 3, -100, 120)
+    p.line([(18.5, 14.6), (21.5, 17), (22, 20.5)])
+
+
+def icon_link(p):
+    p.rrect(2.5, 8, 11, 8, 4)
+    p.rrect(10.5, 8, 11, 8, 4)
+
+
+def icon_logout(p):
+    p.line([(10, 3.5), (4, 3.5), (4, 20.5), (10, 20.5)])
+    p.line([(9.5, 12), (20.5, 12)])
+    p.line([(16, 7.5), (20.5, 12), (16, 16.5)])
+
+
+def icon_folder(p):
+    p.line([(3, 19.5), (3, 5), (9, 5), (11, 7.5), (21, 7.5), (21, 19.5)], closed=True)
+
+
+def icon_download(p):
+    p.line([(12, 3), (12, 15)])
+    p.line([(7, 10.5), (12, 15.5), (17, 10.5)])
+    p.line([(4, 17), (4, 20.5), (20, 20.5), (20, 17)])
+
+
+def icon_wifi(p):
+    p.arc(12, 19, 15, 225, 315)
+    p.arc(12, 19, 10, 228, 312)
+    p.arc(12, 19, 5, 232, 308)
+    p.disc(12, 19.2, 1.4)
+
+
 ICONS = {
     "settings": icon_settings, "close": icon_close, "check": icon_check,
     "chevron-right": icon_chevron_right, "chevron-down": icon_chevron_down,
@@ -323,6 +358,8 @@ ICONS = {
     "info": icon_info, "keyboard": icon_keyboard, "bolt": icon_bolt,
     "sparkle": icon_sparkle, "gauge": icon_gauge, "diamond": icon_diamond,
     "layers": icon_layers, "arrow-left": icon_arrow_left, "arrow-right": icon_arrow_right, "plus": icon_plus, "minus": icon_minus, "hand": icon_hand,
+    "users": icon_users, "link": icon_link, "logout": icon_logout, "folder": icon_folder,
+    "download": icon_download, "wifi": icon_wifi,
 }
 
 META_TEMPLATE = """fileFormatVersion: 2

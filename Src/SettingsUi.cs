@@ -7,25 +7,31 @@ using UnityEngine.UIElements;
 namespace ADOFAI.EditorTweaks
 {
     /// <summary>
-    /// 游戏里的设置界面：从 Mod 的 Resources/editortweaks.ui（Unity 打出来的 AssetBundle）里读样式和 PanelSettings，
-    /// 建一个带 UIDocument 的物体，把 <see cref="SettingsWindow"/> 放上去。窗口本身的代码在 Src/UI。
-    /// 第一次打开时才创建；Mod 被停用时整个销毁。
+    /// 游戏里的界面：从 Mod 的 Resources/editortweaks.ui（Unity 打出来的 AssetBundle）里读样式、布局和 PanelSettings，
+    /// 建一个带 UIDocument 的常驻物体，上面两层：下层是编辑器右侧的 <see cref="SidePanel"/>（多人制谱等），
+    /// 上层是 F8 呼出的 <see cref="SettingsWindow"/>。界面本身的代码在 Src/UI。
+    /// 用到时才创建；Mod 被停用时整个销毁。
     /// </summary>
     internal static class SettingsUi
     {
         private const string BundleFile = "editortweaks.ui";
         private const string PanelAsset = "Assets/EditorTweaksUI/EditorTweaksPanel.asset";
         private const string LayoutAsset = "Assets/EditorTweaksUI/Settings.uxml";
+        private const string SidePanelAsset = "Assets/EditorTweaksUI/SidePanel.uxml";
 
         private static AssetBundle? bundle;
         private static GameObject? host;
+        private static UIDocument? document;
+        private static VisualElement? sideLayer;
+        private static VisualElement? windowLayer;
         private static GameObject? hotkeyHost;
         private static SettingsWindow? window;
+        private static SidePanel? sidePanel;
 
         /// <summary>上一次创建界面失败的原因；没出过错是 null。</summary>
         public static string? LastError { get; private set; }
 
-        /// <summary>Mod 启用时调用：放一个常驻物体来监听呼出设置界面的按键。</summary>
+        /// <summary>Mod 启用时调用：放一个常驻物体，监听呼出设置界面的按键，并在进出编辑器时显示 / 隐藏侧边面板。</summary>
         public static void Enable()
         {
             if (hotkeyHost != null) return;
@@ -44,26 +50,93 @@ namespace ADOFAI.EditorTweaks
 
         public static void Open()
         {
-            if (EnsureCreated()) window!.Open();
+            if (EnsureWindow()) window!.Open();
         }
 
         public static void Toggle()
         {
-            if (EnsureCreated()) window!.Toggle();
+            if (EnsureWindow()) window!.Toggle();
+        }
+
+        /// <summary>拉出右侧面板并切到指定分类（比如客人加入房间时切到多人制谱）。</summary>
+        public static void OpenSidePanel(string category)
+        {
+            if (!EnsureSidePanel()) return;
+            UpdateSidePanel();
+            sidePanel!.Open(category);
+        }
+
+        /// <summary>鼠标是不是在我们的界面上（设置窗口或侧边面板）。是的话编辑器不该响应这次点击 / 滚轮。</summary>
+        public static bool IsPointerOverUi()
+        {
+            try
+            {
+                IPanel? panel = document != null ? document.rootVisualElement?.panel : null;
+                if (panel == null) return false;
+                Vector2 mouse = Input.mousePosition;
+                Vector2 position = RuntimePanelUtils.ScreenToPanel(panel, new Vector2(mouse.x, Screen.height - mouse.y));
+                return panel.Pick(position) != null;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public static void Unload()
         {
             window = null;
+            sidePanel = null;
+            sideLayer = null;
+            windowLayer = null;
+            document = null;
             if (host != null) UnityEngine.Object.Destroy(host);
             host = null;
             if (bundle != null) bundle.Unload(true);
             bundle = null;
         }
 
-        private static bool EnsureCreated()
+        private static bool EnsureWindow()
         {
-            if (window != null && host != null) return true;
+            if (window != null) return true;
+            if (!EnsureDocument()) return false;
+            try
+            {
+                var layout = Load<VisualTreeAsset>(LayoutAsset);
+                window = new SettingsWindow(windowLayer!, layout, new SettingsAccess(Main.Settings), Main.Mod!.Info.Version, SaveSettings);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                return Failed("settings window", exception);
+            }
+        }
+
+        private static bool EnsureSidePanel()
+        {
+            if (sidePanel != null) return true;
+            if (!EnsureDocument()) return false;
+            try
+            {
+                var layout = Load<VisualTreeAsset>(SidePanelAsset);
+                sidePanel = new SidePanel(sideLayer!, layout, new[] { Coop.CoopPage.Build() })
+                {
+                    StatusText = () => Coop.CoopSession.StatusText,
+                    StatusTone = Coop.CoopPage.StatusTone,
+                    Live = () => Coop.CoopSession.InSession,
+                    Attention = () => Coop.CoopSession.State == Coop.CoopState.ChoosingFolder,
+                };
+                return true;
+            }
+            catch (Exception exception)
+            {
+                return Failed("side panel", exception);
+            }
+        }
+
+        private static bool EnsureDocument()
+        {
+            if (document != null && host != null) return true;
             Unload();
             try
             {
@@ -81,44 +154,71 @@ namespace ADOFAI.EditorTweaks
                     return false;
                 }
 
-                var panel = bundle.LoadAsset<PanelSettings>(PanelAsset);
-                if (panel == null)
-                {
-                    LastError = "界面资源里没有 PanelSettings：" + PanelAsset;
-                    Unload();
-                    return false;
-                }
-
-                var layout = bundle.LoadAsset<VisualTreeAsset>(LayoutAsset);
-                if (layout == null)
-                {
-                    LastError = "界面资源里没有布局：" + LayoutAsset;
-                    Unload();
-                    return false;
-                }
+                var panel = Load<PanelSettings>(PanelAsset);
 
                 // 先不激活，等 PanelSettings 设好再激活，UIDocument 才会用它建面板
                 host = new GameObject("ADOFAI.EditorTweaks UI");
                 host.SetActive(false);
                 UnityEngine.Object.DontDestroyOnLoad(host);
-                var document = host.AddComponent<UIDocument>();
+                document = host.AddComponent<UIDocument>();
                 document.panelSettings = panel;
                 host.SetActive(true);
 
                 VisualElement root = document.rootVisualElement;
                 root.style.flexGrow = 1f;
+                root.pickingMode = PickingMode.Ignore;
                 UiFonts.Apply(root);
-                window = new SettingsWindow(root, layout, new SettingsAccess(Main.Settings), Main.Mod.Info.Version, SaveSettings);
+                sideLayer = Layer(root);
+                windowLayer = Layer(root);
                 LastError = null;
                 return true;
             }
             catch (Exception exception)
             {
-                LastError = exception.Message;
-                Main.Mod?.Logger.Error("Failed to create settings UI: " + exception);
-                Unload();
-                return false;
+                return Failed("UI document", exception);
             }
+        }
+
+        private static T Load<T>(string asset) where T : UnityEngine.Object
+        {
+            T loaded = bundle!.LoadAsset<T>(asset);
+            if (loaded == null) throw new InvalidOperationException("界面资源里没有 " + asset + "（请更新 Resources/editortweaks.ui）");
+            return loaded;
+        }
+
+        private static VisualElement Layer(VisualElement root)
+        {
+            var layer = new VisualElement { pickingMode = PickingMode.Ignore };
+            layer.style.position = Position.Absolute;
+            layer.style.left = 0f;
+            layer.style.right = 0f;
+            layer.style.top = 0f;
+            layer.style.bottom = 0f;
+            root.Add(layer);
+            return layer;
+        }
+
+        private static bool Failed(string what, Exception exception)
+        {
+            LastError = exception.Message;
+            Main.Mod?.Logger.Error("Failed to create " + what + ": " + exception);
+            Unload();
+            return false;
+        }
+
+        /// <summary>侧边面板只在关卡编辑器里（且不在试玩时）显示；客人加入房间要选谱面放哪时也显示。</summary>
+        private static void UpdateSidePanel()
+        {
+            scnEditor? editor = Coop.CoopEditor.Editor;
+            bool inEditor = editor != null && !editor.playMode;
+            bool needed = inEditor || Coop.CoopSession.State == Coop.CoopState.ChoosingFolder;
+            if (sidePanel == null)
+            {
+                if (!needed || LastError != null) return;
+                if (!EnsureSidePanel()) return;
+            }
+
+            sidePanel!.SetAvailable(needed);
         }
 
         private static void SaveSettings()
@@ -134,6 +234,7 @@ namespace ADOFAI.EditorTweaks
                 try
                 {
                     if (Input.GetKeyDown(Main.Settings.OpenSettingsKey)) Toggle();
+                    UpdateSidePanel();
                 }
                 catch (Exception exception)
                 {

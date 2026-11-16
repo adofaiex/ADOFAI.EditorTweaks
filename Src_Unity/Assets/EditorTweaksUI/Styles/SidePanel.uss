@@ -1,0 +1,157 @@
+/*
+ * 编辑器右侧的侧边面板（多人制谱等）。风格和设置窗口一致（方正扁平、红色强调），但底色半透明，比例 16:9。
+ * 整块 sp-dock = [把手][窗口] 贴在屏幕右边；收起时整体右移一个窗口宽（1120 + 右边距 24），只露出把手。
+ * 不在编辑器里时加 gone：连把手一起滑出屏幕并淡出。
+ */
+
+.sp-root {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+}
+
+/* 窗口 1120×630（16:9）；参考分辨率按高度 1080 缩放，所以 top = (1080 - 630) / 2 = 225 正好垂直居中 */
+.sp-dock {
+    position: absolute;
+    right: 0;
+    top: 225px;
+    flex-direction: row;
+    align-items: center;
+    translate: 1144px 0;
+    opacity: 1;
+    transition-property: translate, opacity;
+    transition-duration: 0.55s, 0.3s;
+    transition-timing-function: ease-out-cubic, ease-out;
+}
+.sp-dock.open { translate: 0 0; }
+.sp-dock.gone { opacity: 0; translate: 1240px 0; }
+
+/* ---------------------------------------------------------------- 把手：左半边圆角矩形 + 小三角 */
+
+.sp-handle {
+    width: 46px;
+    height: 132px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(7, 8, 13, 0.82);
+    border-width: 1px;
+    border-right-width: 0;
+    border-color: rgba(243, 241, 236, 0.18);
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+    transition-property: width, background-color, border-color;
+    transition-duration: 0.3s, 0.2s, 0.2s;
+    transition-timing-function: ease-out-back, ease-out, ease-out;
+}
+.sp-handle:hover { width: 58px; background-color: rgba(30, 32, 42, 0.9); border-color: rgba(255, 75, 58, 0.7); }
+.sp-handle:active { background-color: rgba(255, 75, 58, 0.85); }
+
+/* 收起时三角朝左（点了往左拉出来），展开后转回朝右 */
+.sp-handle-icon {
+    rotate: 180deg;
+    -unity-background-image-tint-color: rgba(243, 241, 236, 0.8);
+    transition-property: rotate, -unity-background-image-tint-color, translate;
+    transition-duration: 0.55s, 0.2s, 0.3s;
+    transition-timing-function: ease-out-back, ease-out, ease-out-back;
+}
+.sp-handle:hover .sp-handle-icon { -unity-background-image-tint-color: #F3F1EC; translate: -3px 0; }
+.sp-dock.open .sp-handle-icon { rotate: 0deg; }
+.sp-dock.open .sp-handle:hover .sp-handle-icon { translate: 3px 0; }
+
+/* 需要注意（比如客人要选谱面放哪）：把手一闪一闪变红 */
+.sp-handle.attention { background-color: rgba(255, 75, 58, 0.9); border-color: #FF4B3A; }
+.sp-handle.attention .sp-handle-icon { -unity-background-image-tint-color: #FFFFFF; }
+
+/* 在房间里：把手上亮一个小绿点 */
+.sp-handle-dot {
+    position: absolute;
+    top: 14px;
+    width: 8px; height: 8px;
+    border-radius: 4px;
+    background-color: #6FE3A0;
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.3s;
+}
+.sp-handle.live .sp-handle-dot { opacity: 1; }
+
+/* ---------------------------------------------------------------- 窗口 */
+
+.sp-window {
+    width: 1120px;
+    height: 630px;
+    margin-right: 24px;
+    background-color: rgba(7, 8, 13, 0.84);
+    border-width: 1px;
+    border-top-width: 3px;
+    border-color: rgba(243, 241, 236, 0.16);
+    border-top-color: #FF4B3A;
+}
+
+.sp-head {
+    height: 92px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 22px 0 28px;
+    border-bottom-width: 1px;
+    border-color: rgba(243, 241, 236, 0.14);
+}
+.sp-logo { width: 44px; height: 44px; margin-right: 18px; }
+.sp-titles { flex-shrink: 0; }
+.sp-title { font-size: 38px; -unity-font-style: bold; }
+.sp-tag { font-size: 12px; letter-spacing: 7px; color: rgba(243, 241, 236, 0.36); margin-top: 1px; }
+
+/* 顶栏右边的状态小牌子：点的颜色表示状态，有动静时跳一下 */
+.sp-chip {
+    flex-direction: row;
+    align-items: center;
+    height: 38px;
+    padding: 0 16px;
+    margin-right: 14px;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-width: 1px;
+    border-color: rgba(243, 241, 236, 0.14);
+}
+.sp-chip-dot {
+    width: 8px; height: 8px;
+    border-radius: 4px;
+    margin-right: 10px;
+    background-color: rgba(243, 241, 236, 0.36);
+    transition-property: background-color, scale;
+    transition-duration: 0.3s, 0.4s;
+    transition-timing-function: ease-out, ease-out-back;
+}
+.sp-chip.good .sp-chip-dot { background-color: #6FE3A0; }
+.sp-chip.busy .sp-chip-dot { background-color: #FFC24B; }
+.sp-chip.warn .sp-chip-dot { background-color: #FF4B3A; }
+.sp-chip.beat .sp-chip-dot { scale: 1.7 1.7; }
+.sp-chip-label { font-size: 17px; color: rgba(243, 241, 236, 0.8); }
+
+/* 收起按钮（和设置窗口的 × 同样的方块） */
+.sp-close {
+    width: 52px; height: 52px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.08);
+    transition-property: background-color, scale;
+    transition-duration: 0.15s, 0.2s;
+    transition-timing-function: ease-out, ease-out-back;
+}
+.sp-close:hover { background-color: #FF4B3A; }
+.sp-close:hover .ic { -unity-background-image-tint-color: #FFFFFF; translate: 3px 0; }
+.sp-close:active { scale: 0.88 0.88; }
+
+/* ---------------------------------------------------------------- 主体：左边栏 + 页面 */
+
+.sp-body { flex-grow: 1; flex-direction: row; }
+.sp-side {
+    width: 230px;
+    padding: 20px 14px 0 20px;
+    border-right-width: 1px;
+    border-color: rgba(243, 241, 236, 0.08);
+}
+.sp-side .cat { padding-left: 16px; }
+.sp-side .cat-name { font-size: 23px; }
+.sp-page { flex-grow: 1; padding-top: 12px; }
+.sp-page .st-label { font-size: 22px; }
+.sp-page .st-hint-text { font-size: 15px; }
+.sp-page .st-row { min-height: 68px; }

@@ -1,0 +1,58 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <!--
+        编辑器右侧的侧边面板（多人制谱等）。样式在 Styles/SidePanel.uss。
+        平时只露出右边缘的把手（左半边圆角矩形 + 小三角），点一下整个面板从右边滑出来。
+        带 name 的元素由 Src/UI/SidePanel.cs 按名字查找；分类按钮（放进 sp-cats）和设置行（放进 sp-scroll）由代码生成。
+    -->
+    <ui:VisualElement name="sp-root" class="sp-root" picking-mode="Ignore">
+        <ui:VisualElement name="sp-dock" class="sp-dock gone" picking-mode="Ignore">
+
+            <!-- 把手：收起时贴在屏幕右边缘 -->
+            <ui:VisualElement name="sp-handle" class="sp-handle">
+                <ui:VisualElement class="ic ic-chevron-right sp-handle-icon" picking-mode="Ignore" />
+                <ui:VisualElement class="sp-handle-dot" picking-mode="Ignore" />
+            </ui:VisualElement>
+
+            <ui:VisualElement name="sp-window" class="sp-window">
+                <ui:VisualElement class="sp-head">
+                    <ui:VisualElement class="sp-logo" picking-mode="Ignore">
+                        <ui:VisualElement class="orbit-ring" picking-mode="Ignore" />
+                        <ui:VisualElement name="sp-arm-a" class="orbit-arm" picking-mode="Ignore">
+                            <ui:VisualElement class="orbit-dot fire" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                        <ui:VisualElement name="sp-arm-b" class="orbit-arm" picking-mode="Ignore">
+                            <ui:VisualElement class="orbit-dot ice" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                        <ui:VisualElement class="orbit-core" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="sp-titles" picking-mode="Ignore">
+                        <ui:Label name="sp-title" text="多人制谱" class="sp-title" picking-mode="Ignore" />
+                        <ui:Label name="sp-tag" text="EDITOR TWEAKS" class="sp-tag" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="grow" picking-mode="Ignore" />
+                    <ui:VisualElement name="sp-chip" class="sp-chip" picking-mode="Ignore">
+                        <ui:VisualElement class="sp-chip-dot" picking-mode="Ignore" />
+                        <ui:Label name="sp-chip-label" class="sp-chip-label" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="sp-close" class="sp-close">
+                        <ui:VisualElement class="ic ic-chevron-right" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:VisualElement class="sp-body">
+                    <ui:VisualElement class="sp-side">
+                        <ui:VisualElement name="sp-cats" class="etw-cats">
+                            <ui:VisualElement name="sp-cat-hl" class="cat-hl" picking-mode="Ignore">
+                                <ui:VisualElement class="cat-hl-bar" picking-mode="Ignore" />
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="sp-page" class="etw-page sp-page">
+                        <ui:ScrollView name="sp-scroll" class="etw-scroll" horizontal-scroller-visibility="Hidden" mouse-wheel-scroll-size="120" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

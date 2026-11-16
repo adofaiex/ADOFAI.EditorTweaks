@@ -11,14 +11,18 @@
 .ic-cursor { background-image: url("project://database/Assets/EditorTweaksUI/Icons/cursor.png"); }
 .ic-decimal { background-image: url("project://database/Assets/EditorTweaksUI/Icons/decimal.png"); }
 .ic-diamond { background-image: url("project://database/Assets/EditorTweaksUI/Icons/diamond.png"); }
+.ic-download { background-image: url("project://database/Assets/EditorTweaksUI/Icons/download.png"); }
 .ic-drag { background-image: url("project://database/Assets/EditorTweaksUI/Icons/drag.png"); }
 .ic-film { background-image: url("project://database/Assets/EditorTweaksUI/Icons/film.png"); }
+.ic-folder { background-image: url("project://database/Assets/EditorTweaksUI/Icons/folder.png"); }
 .ic-gauge { background-image: url("project://database/Assets/EditorTweaksUI/Icons/gauge.png"); }
 .ic-hand { background-image: url("project://database/Assets/EditorTweaksUI/Icons/hand.png"); }
 .ic-image { background-image: url("project://database/Assets/EditorTweaksUI/Icons/image.png"); }
 .ic-info { background-image: url("project://database/Assets/EditorTweaksUI/Icons/info.png"); }
 .ic-keyboard { background-image: url("project://database/Assets/EditorTweaksUI/Icons/keyboard.png"); }
 .ic-layers { background-image: url("project://database/Assets/EditorTweaksUI/Icons/layers.png"); }
+.ic-link { background-image: url("project://database/Assets/EditorTweaksUI/Icons/link.png"); }
+.ic-logout { background-image: url("project://database/Assets/EditorTweaksUI/Icons/logout.png"); }
 .ic-minus { background-image: url("project://database/Assets/EditorTweaksUI/Icons/minus.png"); }
 .ic-numbers { background-image: url("project://database/Assets/EditorTweaksUI/Icons/numbers.png"); }
 .ic-pivot { background-image: url("project://database/Assets/EditorTweaksUI/Icons/pivot.png"); }
@@ -34,4 +38,6 @@
 .ic-stairs { background-image: url("project://database/Assets/EditorTweaksUI/Icons/stairs.png"); }
 .ic-sync { background-image: url("project://database/Assets/EditorTweaksUI/Icons/sync.png"); }
 .ic-tune { background-image: url("project://database/Assets/EditorTweaksUI/Icons/tune.png"); }
+.ic-users { background-image: url("project://database/Assets/EditorTweaksUI/Icons/users.png"); }
 .ic-warning { background-image: url("project://database/Assets/EditorTweaksUI/Icons/warning.png"); }
+.ic-wifi { background-image: url("project://database/Assets/EditorTweaksUI/Icons/wifi.png"); }

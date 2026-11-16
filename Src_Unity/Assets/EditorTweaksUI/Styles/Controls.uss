@@ -163,3 +163,48 @@
     -unity-text-align: middle-center;
     font-size: 22px;
 }
+
+/* ---------------------------------------------------------------- 动作按钮（多人页：创建 / 邀请 / 选择…） */
+
+.st-btn {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    min-width: 150px;
+    height: 44px;
+    padding: 0 20px;
+    margin-left: 6px;
+    border-width: 1px;
+    border-color: rgba(243, 241, 236, 0.22);
+    background-color: rgba(255, 255, 255, 0.06);
+    transition-property: background-color, border-color, scale, opacity;
+    transition-duration: 0.15s, 0.15s, 0.25s, 0.2s;
+    transition-timing-function: ease-out, ease-out, ease-out-back, ease-out;
+}
+.st-btn > Label { font-size: 21px; color: #F3F1EC; transition-property: color; transition-duration: 0.15s; }
+.st-btn .ic { margin-right: 10px; -unity-background-image-tint-color: rgba(243, 241, 236, 0.8); }
+.st-btn:hover { background-color: rgba(255, 255, 255, 0.16); }
+.st-btn:active { scale: 0.95 0.95; }
+.st-btn.primary { background-color: rgba(255, 255, 255, 0.92); border-color: rgba(255, 255, 255, 0.4); }
+.st-btn.primary > Label { color: #07080D; }
+.st-btn.primary .ic { -unity-background-image-tint-color: #07080D; }
+.st-btn.primary:hover { background-color: #FF4B3A; border-color: #FF4B3A; }
+.st-btn.primary:hover > Label { color: #F3F1EC; }
+.st-btn.primary:hover .ic { -unity-background-image-tint-color: #F3F1EC; }
+.st-btn.off { opacity: 0.3; }
+.st-row.selected .st-btn.primary { border-color: #FF4B3A; }
+
+/* 只读信息行右边的文字（状态、进度） */
+.st-info {
+    font-size: 21px;
+    color: rgba(243, 241, 236, 0.8);
+    -unity-text-align: middle-right;
+    max-width: 520px;
+    white-space: normal;
+}
+.st-info.good { color: #6FE3A0; }
+.st-info.warn { color: #FF4B3A; }
+
+/* 进度条（文件传输） */
+.st-progress { width: 270px; height: 6px; margin-left: 16px; background-color: rgba(255, 255, 255, 0.10); overflow: hidden; }
+.st-progress-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: #FF4B3A; transition-property: width; transition-duration: 0.25s; transition-timing-function: ease-out; }

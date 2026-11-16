@@ -1,5 +1,6 @@
 #nullable disable
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -13,6 +14,8 @@ namespace ADOFAI.EditorTweaks.UI
     /// </summary>
     public abstract class SettingRow
     {
+        private readonly Label _title;
+        private readonly Label _note;
         private Func<bool> _available;
 
         protected SettingRow(string icon, string title, string description)
@@ -28,15 +31,13 @@ namespace ADOFAI.EditorTweaks.UI
 
             var labels = new VisualElement { pickingMode = PickingMode.Ignore };
             labels.AddToClassList("st-labels");
-            var name = new Label(title) { pickingMode = PickingMode.Ignore };
-            name.AddToClassList("st-label");
-            labels.Add(name);
-            if (!string.IsNullOrEmpty(description))
-            {
-                var note = new Label(description) { pickingMode = PickingMode.Ignore };
-                note.AddToClassList("st-hint-text");
-                labels.Add(note);
-            }
+            _title = new Label(title) { pickingMode = PickingMode.Ignore };
+            _title.AddToClassList("st-label");
+            labels.Add(_title);
+            _note = new Label(description) { pickingMode = PickingMode.Ignore };
+            _note.AddToClassList("st-hint-text");
+            if (string.IsNullOrEmpty(description)) _note.style.display = DisplayStyle.None;
+            labels.Add(_note);
 
             Element.Add(labels);
 
@@ -56,6 +57,13 @@ namespace ADOFAI.EditorTweaks.UI
         public bool IsAvailable => _available == null || _available();
 
         public bool IsCollapsed { get; private set; }
+
+        /// <summary>按条件显示 / 收起（和 AvailableWhen 一样，但不缩进，用于随状态出现的行）。</summary>
+        public SettingRow VisibleWhen(Func<bool> condition)
+        {
+            _available = condition;
+            return this;
+        }
 
         /// <summary>依赖别的开关：条件为假时这一行收起来。</summary>
         public SettingRow AvailableWhen(Func<bool> condition)
@@ -88,6 +96,142 @@ namespace ADOFAI.EditorTweaks.UI
         protected void NotifyChanged()
         {
             Changed?.Invoke();
+        }
+
+        /// <summary>内容会自己变的行（状态、进度）：窗口开着时每隔一会儿刷新一次。</summary>
+        public virtual bool IsLive => false;
+
+        /// <summary>换标题和说明（说明为空就隐藏）。</summary>
+        protected void SetTexts(string title, string description)
+        {
+            if (title != null && _title.text != title) _title.text = title;
+            if (description == null) return;
+            if (_note.text != description) _note.text = description;
+            _note.style.display = description.Length == 0 ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+    }
+
+    /// <summary>右边是一个或几个按钮的行（第一个是主按钮，回车 / 空格按它）。标题和说明可以随状态变。</summary>
+    public sealed class ActionRow : SettingRow
+    {
+        private readonly List<ActionButton> _buttons = new List<ActionButton>();
+        private readonly Func<string> _title;
+        private readonly Func<string> _description;
+
+        public ActionRow(string icon, string title, string description)
+            : this(icon, title, description, null, null)
+        {
+        }
+
+        public ActionRow(string icon, string title, string description, Func<string> dynamicTitle, Func<string> dynamicDescription)
+            : base(icon, title, description)
+        {
+            _title = dynamicTitle;
+            _description = dynamicDescription;
+        }
+
+        public override bool IsLive => true;
+
+        /// <summary>加一个按钮。enabled 为假时按钮变灰、点了没反应。</summary>
+        public ActionRow Button(string icon, string label, Action click, bool primary = false, Func<bool> enabled = null)
+        {
+            var element = new VisualElement();
+            element.AddToClassList("st-btn");
+            if (primary) element.AddToClassList("primary");
+            if (!string.IsNullOrEmpty(icon)) element.Add(UiIcon.Create(icon, "sm"));
+            element.Add(new Label(label) { pickingMode = PickingMode.Ignore });
+            var button = new ActionButton(element, click, enabled);
+            element.RegisterCallback<ClickEvent>(_ => button.Press());
+            Control.Add(element);
+            _buttons.Add(button);
+            return this;
+        }
+
+        public override void Refresh(bool animate)
+        {
+            if (_title != null || _description != null) SetTexts(_title?.Invoke(), _description?.Invoke());
+            foreach (ActionButton button in _buttons) button.Element.EnableInClassList("off", !button.IsEnabled);
+        }
+
+        public override void Activate()
+        {
+            if (_buttons.Count > 0) _buttons[0].Press();
+        }
+
+        private sealed class ActionButton
+        {
+            private readonly Action _click;
+            private readonly Func<bool> _enabled;
+
+            public ActionButton(VisualElement element, Action click, Func<bool> enabled)
+            {
+                Element = element;
+                _click = click;
+                _enabled = enabled;
+            }
+
+            public VisualElement Element { get; }
+
+            public bool IsEnabled => _enabled == null || _enabled();
+
+            public void Press()
+            {
+                if (!IsEnabled) return;
+                _click?.Invoke();
+            }
+        }
+    }
+
+    /// <summary>只读的信息行：右边显示一段会变的文字（可选一条进度条）。</summary>
+    public sealed class InfoRow : SettingRow
+    {
+        private readonly Label _value;
+        private readonly Func<string> _text;
+        private readonly Func<string> _tone;
+        private readonly Func<string> _description;
+        private readonly Func<float> _progress;
+        private readonly VisualElement _fill;
+
+        /// <param name="tone">返回 "good" / "warn" / null，决定文字颜色。</param>
+        /// <param name="progress">返回 0~1 显示进度条；返回负数隐藏。</param>
+        public InfoRow(string icon, string title, string description, Func<string> text,
+            Func<string> tone = null, Func<string> dynamicDescription = null, Func<float> progress = null)
+            : base(icon, title, description)
+        {
+            _text = text;
+            _tone = tone;
+            _description = dynamicDescription;
+            _progress = progress;
+            _value = new Label { pickingMode = PickingMode.Ignore };
+            _value.AddToClassList("st-info");
+            Control.Add(_value);
+            if (progress != null)
+            {
+                var bar = new VisualElement { pickingMode = PickingMode.Ignore };
+                bar.AddToClassList("st-progress");
+                _fill = new VisualElement { pickingMode = PickingMode.Ignore };
+                _fill.AddToClassList("st-progress-fill");
+                bar.Add(_fill);
+                Control.Add(bar);
+            }
+        }
+
+        public override bool IsLive => true;
+
+        public override void Refresh(bool animate)
+        {
+            string text = _text?.Invoke() ?? string.Empty;
+            if (_value.text != text) _value.text = text;
+            string tone = _tone?.Invoke();
+            _value.EnableInClassList("good", tone == "good");
+            _value.EnableInClassList("warn", tone == "warn");
+            if (_description != null) SetTexts(null, _description());
+            if (_fill != null)
+            {
+                float progress = _progress();
+                _fill.parent.style.display = progress < 0f ? DisplayStyle.None : DisplayStyle.Flex;
+                _fill.style.width = Length.Percent(Mathf.Clamp01(progress) * 100f);
+            }
         }
     }
 

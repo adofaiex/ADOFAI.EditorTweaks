@@ -36,12 +36,14 @@ namespace ADOFAI.EditorTweaks
                 modEntry.Logger.Log("ADOFAI.EditorTweaks enabled.");
                 new Harmony(modEntry.Info.Id).PatchAll(Assembly.GetExecutingAssembly());
                 SettingsUi.Enable();
+                Coop.CoopSession.Enable();
             }
             else
             {
                 modEntry.Logger.Log("ADOFAI.EditorTweaks disabled.");
                 new Harmony(modEntry.Info.Id).UnpatchAll(modEntry.Info.Id);
                 SettingsUi.Disable();
+                Coop.CoopSession.Disable();
             }
 
             return true;

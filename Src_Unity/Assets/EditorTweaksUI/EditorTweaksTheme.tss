@@ -3,3 +3,4 @@
 @import url("Styles/Icons.uss");
 @import url("Styles/Window.uss");
 @import url("Styles/Controls.uss");
+@import url("Styles/SidePanel.uss");

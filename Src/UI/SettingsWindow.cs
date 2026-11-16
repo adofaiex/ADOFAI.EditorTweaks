@@ -46,6 +46,8 @@ namespace ADOFAI.EditorTweaks.UI
         private int _category = -1;
         private int _selected = -1;
         private int _token;
+        private int _pendingCategory = -1;
+        private float _nextLiveRefresh;
         private bool _open;
         private bool _placed;
         private bool _dragging;
@@ -66,11 +68,14 @@ namespace ADOFAI.EditorTweaks.UI
         /// <param name="host">挂载点：UIDocument 的根元素。</param>
         /// <param name="layout">静态外壳（Settings.uxml）。</param>
         /// <param name="save">把设置写到磁盘。</param>
-        public SettingsWindow(VisualElement host, VisualTreeAsset layout, IEditorTweaksSettings settings, string version, Action save)
+        /// <param name="extraCategories">追加在后面的分类，可以为 null。</param>
+        public SettingsWindow(VisualElement host, VisualTreeAsset layout, IEditorTweaksSettings settings, string version, Action save,
+            IEnumerable<SettingsCategory> extraCategories = null)
         {
             _settings = settings;
             _save = save;
             _categories = SettingsSchema.Build(settings);
+            if (extraCategories != null) _categories.AddRange(extraCategories);
 
             VisualElement root = layout.Instantiate();
             root.style.position = Position.Absolute;
@@ -162,6 +167,20 @@ namespace ADOFAI.EditorTweaks.UI
             else Open();
         }
 
+        /// <summary>打开窗口并切到指定名字的分类（已经开着就直接切过去）。</summary>
+        public void Open(string categoryName)
+        {
+            int index = _categories.FindIndex(c => c.Name == categoryName);
+            if (!_open)
+            {
+                _pendingCategory = index;
+                Open();
+                return;
+            }
+
+            if (index >= 0) ShowCategory(index, animate: true);
+        }
+
         public void Open()
         {
             if (_open) return;
@@ -180,7 +199,8 @@ namespace ADOFAI.EditorTweaks.UI
             _overlay.style.display = DisplayStyle.Flex;
             _overlay.RemoveFromClassList("shown");
             foreach (VisualElement element in _intro) element.AddToClassList("intro-hidden");
-            ShowCategory(0, animate: false);
+            ShowCategory(Mathf.Max(0, _pendingCategory), animate: false);
+            _pendingCategory = -1;
 
             // 下一帧再加 shown，过渡才会播
             _overlay.schedule.Execute(() =>
@@ -561,8 +581,31 @@ namespace ADOFAI.EditorTweaks.UI
         private void OnTick()
         {
             float t = Time.realtimeSinceStartup;
+            if (t >= _nextLiveRefresh)
+            {
+                _nextLiveRefresh = t + 0.25f;
+                RefreshLiveRows();
+            }
+
             _armA.style.rotate = new Rotate(Angle.Degrees(t * 72f));
             _armB.style.rotate = new Rotate(Angle.Degrees(t * 72f + 180f));
+        }
+
+        /// <summary>状态类的行自己刷新文字；可用与否变了就展开 / 收起。</summary>
+        private void RefreshLiveRows()
+        {
+            if (_category < 0) return;
+            bool availabilityChanged = false;
+            foreach (SettingsSection section in _categories[_category].Sections)
+            {
+                foreach (SettingRow row in section.Rows)
+                {
+                    if (row.IsLive) row.Refresh(animate: true);
+                    if (row.IsCollapsed == row.IsAvailable) availabilityChanged = true;
+                }
+            }
+
+            if (availabilityChanged) RefreshDependencies();
         }
 
         // ---------------------------------------------------------------- 小工具
