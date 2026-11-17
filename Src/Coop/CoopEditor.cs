@@ -155,7 +155,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 }
 
                 editor.settingsPanel.ShowPanel(settingsType);
-                editor.customLevel.ReloadAssets(force: false, reloadDecorations: false);
+                RefreshLevelAssets(editor, force: false);
             }
             finally
             {
@@ -233,7 +233,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 {
                     editor.UpdateSongAndLevelSettings();
                     editor.settingsPanel.ShowPanel(settingsType);
-                    editor.customLevel.ReloadAssets(force: false, reloadDecorations: false);
+                    RefreshLevelAssets(editor, force: false);
                 }
 
                 // 检查器正显示的事件被别人改了 / 删了：重新显示（删了就收起）
@@ -287,19 +287,40 @@ namespace ADOFAI.EditorTweaks.Coop
                 return FileHashes.ToHex(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(json)));
         }
 
-        /// <summary>新文件到了之后刷新图片、音频、视频。</summary>
+        /// <summary>
+        /// 新文件到了之后刷新图片、音频、视频，再重建装饰物体（新的装饰图片要重新读）。
+        /// 不能用游戏的 ReloadAssets(force: true, reloadDecorations: true)：它会清空所有装饰物体却不重建，
+        /// 装饰全部消失，装饰列表还会每帧报空引用。
+        /// </summary>
         public static void ReloadAssets()
         {
             scnEditor editor = Editor;
             if (editor == null || editor.isLoading) return;
             try
             {
-                editor.customLevel.ReloadAssets(force: true, reloadDecorations: true);
+                RefreshLevelAssets(editor, force: true);
+                editor.UpdateDecorationObjects();
+                editor.propertyControlDecorationsList.RefreshItemsList(forceRefreshAll: true);
             }
             catch (Exception exception)
             {
                 Main.Log("[Coop] ReloadAssets failed: " + exception.Message);
             }
+        }
+
+        /// <summary>
+        /// 刷新歌曲、背景、轨道贴图、视频、自定义音效（相当于游戏 ReloadAssets 去掉"标记所有图片未使用再卸载"那一步：
+        /// 那一步会把装饰正在用的图片也卸掉，装饰变成空白）。装饰物体不动。
+        /// </summary>
+        private static void RefreshLevelAssets(scnEditor editor, bool force)
+        {
+            scnGame level = editor.customLevel;
+            level.ReloadSong(force);
+            level.UpdateBackgroundSprites();
+            level.UpdateFloorSprites();
+            level.SetBackground();
+            if (force) level.UpdateVideo();
+            level.ReloadCustomSounds(force);
         }
 
         /// <summary>读一个 .adofai 文件的"谱面身份"（作者 + 艺术家 + 曲名），用来判断本地文件夹是不是同一张谱。</summary>

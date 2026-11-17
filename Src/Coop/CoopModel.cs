@@ -101,6 +101,9 @@ namespace ADOFAI.EditorTweaks.Coop
                 writer.Write(pair.Key);
                 writer.Write(pair.Value.Decoration);
                 writer.Write(Fingerprint(pair.Value.Json, pair.Value.FloorTile));
+                // 内容对不上时的后备：按"类型 + 所在砖块"对应
+                writer.Write(pair.Value.Obj.eventType.ToString());
+                writer.Write(pair.Value.FloorTile);
             }
         }
 
@@ -119,14 +122,19 @@ namespace ADOFAI.EditorTweaks.Coop
             var tileIds = new List<long>(tiles);
             for (int i = 0; i < tiles; i++) tileIds.Add(reader.ReadInt64());
             var lookup = new Dictionary<string, Queue<long>>();
+            var fallback = new Dictionary<string, List<long>>();
+            var used = new HashSet<long>();
             int items = reader.ReadInt32();
             for (int i = 0; i < items; i++)
             {
                 long id = reader.ReadInt64();
                 bool decoration = reader.ReadBoolean();
                 string key = (decoration ? "d" : "e") + reader.ReadString();
+                string loose = (decoration ? "d" : "e") + reader.ReadString() + "@" + reader.ReadInt64();
                 if (!lookup.TryGetValue(key, out Queue<long> queue)) lookup[key] = queue = new Queue<long>();
                 queue.Enqueue(id);
+                if (!fallback.TryGetValue(loose, out List<long> list)) fallback[loose] = list = new List<long>();
+                list.Add(id);
                 CoopIds.Observe(id);
             }
 
@@ -144,34 +152,65 @@ namespace ADOFAI.EditorTweaks.Coop
                 CoopIds.Observe(tileIds[i]);
             }
 
-            int unmatched = 0;
-            void Match(LevelEvent levelEvent, bool decoration)
+            // 第一遍：内容完全一样的对上；第二遍：剩下的按"类型 + 所在砖块"对上（两边读谱结果有细微差别时也能保持 ID 一致）
+            var pending = new List<KeyValuePair<LevelEvent, bool>>();
+            var assigned = new Dictionary<LevelEvent, long>();
+            void Exact(LevelEvent levelEvent, bool decoration)
             {
-                string json = Encode(levelEvent);
-                long floorTile = TileOf(levelEvent.floor);
-                string key = (decoration ? "d" : "e") + Fingerprint(json, floorTile);
-                long id;
-                if (lookup.TryGetValue(key, out Queue<long> queue) && queue.Count > 0)
+                string key = (decoration ? "d" : "e") + Fingerprint(Encode(levelEvent), TileOf(levelEvent.floor));
+                while (lookup.TryGetValue(key, out Queue<long> queue) && queue.Count > 0)
                 {
-                    id = queue.Dequeue();
+                    long id = queue.Dequeue();
+                    if (!used.Add(id)) continue;
+                    assigned[levelEvent] = id;
+                    return;
                 }
-                else
+
+                pending.Add(new KeyValuePair<LevelEvent, bool>(levelEvent, decoration));
+            }
+
+            foreach (LevelEvent levelEvent in data.levelEvents) Exact(levelEvent, false);
+            foreach (LevelEvent decoration in data.decorations) Exact(decoration, true);
+
+            int unmatched = 0;
+            foreach (KeyValuePair<LevelEvent, bool> item in pending)
+            {
+                string loose = (item.Value ? "d" : "e") + item.Key.eventType + "@" + TileOf(item.Key.floor);
+                long id = 0;
+                if (fallback.TryGetValue(loose, out List<long> candidates))
+                {
+                    foreach (long candidate in candidates)
+                    {
+                        if (!used.Add(candidate)) continue;
+                        id = candidate;
+                        break;
+                    }
+                }
+
+                if (id == 0)
                 {
                     id = CoopIds.NewId();
                     unmatched++;
                 }
 
-                CoopIds.Set(levelEvent, id);
-                Items[id] = new Item { Obj = levelEvent, Json = json, FloorTile = floorTile, Decoration = decoration };
+                assigned[item.Key] = id;
             }
 
-            foreach (LevelEvent levelEvent in data.levelEvents) Match(levelEvent, false);
+            void Register(LevelEvent levelEvent, bool decoration)
+            {
+                long id = assigned[levelEvent];
+                CoopIds.Set(levelEvent, id);
+                Items[id] = new Item { Obj = levelEvent, Json = Encode(levelEvent), FloorTile = TileOf(levelEvent.floor), Decoration = decoration };
+            }
+
+            foreach (LevelEvent levelEvent in data.levelEvents) Register(levelEvent, false);
             foreach (LevelEvent decoration in data.decorations)
             {
-                Match(decoration, true);
+                Register(decoration, true);
                 DecorationOrder.Add(CoopIds.Get(decoration));
             }
 
+            if (pending.Count > unmatched) Main.Log("[Coop] " + (pending.Count - unmatched) + " item(s) matched by type + tile instead of content");
             CaptureSettings(data);
             if (unmatched > 0 && problem == null) problem = unmatched + " 个事件 / 装饰和房主的对不上";
             return problem == null;
@@ -194,7 +233,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
         private void CaptureSettings(LevelData data)
         {
-            foreach (LevelEvent settings in data.settings) Settings[settings.eventType.ToString()] = EncodeSettings(settings);
+            foreach (LevelEvent settings in SyncedSettings(data)) Settings[settings.eventType.ToString()] = EncodeSettings(settings);
         }
 
         // ================================================================ 本地修改 → 一组修改
@@ -241,7 +280,7 @@ namespace ADOFAI.EditorTweaks.Coop
             DecorationOrder.Clear();
             DecorationOrder.AddRange(order);
 
-            foreach (LevelEvent settings in data.settings)
+            foreach (LevelEvent settings in SyncedSettings(data))
             {
                 string type = settings.eventType.ToString();
                 string json = EncodeSettings(settings);
@@ -684,6 +723,15 @@ namespace ADOFAI.EditorTweaks.Coop
             if (tile == CoopIds.StartTile) return 0;
             int index = TileIds.IndexOf(tile);
             return index < 0 ? -1 : index + 1;
+        }
+
+        /// <summary>
+        /// 要同步的设置：和游戏保存 .adofai 时写进文件的一样，只有这 6 组。
+        /// 另外两组（事件设置、装饰设置）是编辑器面板用的，编码时还会刷"not parsed"警告。
+        /// </summary>
+        public static LevelEvent[] SyncedSettings(LevelData data)
+        {
+            return new[] { data.levelSettings, data.songSettings, data.trackSettings, data.backgroundSettings, data.cameraSettings, data.miscSettings };
         }
 
         /// <summary>事件内容（去掉 floor，所在砖块另外用砖块 ID 记），用来比较和传输。</summary>

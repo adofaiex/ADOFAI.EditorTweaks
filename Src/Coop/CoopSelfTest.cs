@@ -216,7 +216,8 @@ namespace ADOFAI.EditorTweaks.Coop
 
                     break;
                 default:
-                    ChangeSomething(data.settings[random.Next(data.settings.Length)], random);
+                    LevelEvent[] synced = CoopModel.SyncedSettings(data);
+                    ChangeSomething(synced[random.Next(synced.Length)], random);
                     break;
             }
         }
@@ -264,8 +265,8 @@ namespace ADOFAI.EditorTweaks.Coop
             if (string.Join(",", expected.angleData) != string.Join(",", actual.angleData)) parts.Add("砖块");
             if (Section(expected.levelEvents) != Section(actual.levelEvents)) parts.Add("事件");
             if (Section(expected.decorations) != Section(actual.decorations)) parts.Add("装饰");
-            var a = new List<LevelEvent>(expected.settings);
-            var b = new List<LevelEvent>(actual.settings);
+            var a = new List<LevelEvent>(CoopModel.SyncedSettings(expected));
+            var b = new List<LevelEvent>(CoopModel.SyncedSettings(actual));
             for (int i = 0; i < a.Count; i++)
             {
                 string x = CoopModel.EncodeSettings(a[i]), y = CoopModel.EncodeSettings(b[i]);

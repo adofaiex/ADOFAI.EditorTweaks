@@ -7,7 +7,7 @@ namespace ADOFAI.EditorTweaks.Coop
     /// <summary>多人制谱的网络协议常量。改了消息格式就把 Version 加一，不同版本的人进不了同一个房间。</summary>
     internal static class CoopProtocol
     {
-        public const int Version = 2;
+        public const int Version = 3;
 
         /// <summary>Steam 中继 socket 的虚拟端口（同一个 Steam 账号上区分不同用途的连接）。</summary>
         public const int VirtualPort = 7713;

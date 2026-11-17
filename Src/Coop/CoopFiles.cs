@@ -229,7 +229,7 @@ namespace ADOFAI.EditorTweaks.Coop
         /// </summary>
         public static List<string> CollectReferenced(LevelData data, string levelDir)
         {
-            var all = new List<LevelEvent>(data.settings);
+            var all = new List<LevelEvent>(CoopModel.SyncedSettings(data));
             all.AddRange(data.levelEvents);
             all.AddRange(data.decorations);
             return CollectReferenced(all, levelDir);

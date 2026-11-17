@@ -250,6 +250,7 @@ namespace ADOFAI.EditorTweaks.Coop
             try
             {
                 ConfigureNetworking();
+                await WaitForRelayNetwork();
                 Lobby? created = await SteamMatchmaking.CreateLobbyAsync(CoopProtocol.MaxMembers);
                 if (State != CoopState.CreatingRoom)
                 {
@@ -318,6 +319,7 @@ namespace ADOFAI.EditorTweaks.Coop
             try
             {
                 ConfigureNetworking();
+                await WaitForRelayNetwork();
                 Lobby? joined = await SteamMatchmaking.JoinLobbyAsync(lobbyId);
                 if (State != CoopState.JoiningRoom)
                 {
@@ -355,8 +357,9 @@ namespace ADOFAI.EditorTweaks.Coop
 
                 HostName = owner.Name;
                 SetState(CoopState.Connecting);
-                _client = SteamNetworkingSockets.ConnectRelay<CoopClientConnection>(owner.Id, CoopProtocol.VirtualPort);
-                _hostPeer = new CoopPeer(_client.Connection, owner.Id.Value, owner.Name);
+                _connectAttempts = 0;
+                _hostSteamId = owner.Id;
+                ConnectToHost();
             }
             catch (Exception exception)
             {
@@ -908,6 +911,15 @@ namespace ADOFAI.EditorTweaks.Coop
         internal static void ClientDisconnected(string reason)
         {
             if (_hostPeer == null) return;
+            if (State == CoopState.Connecting && !_welcomed && _connectAttempts < 3)
+            {
+                // 握手前就断了（比如 Steam 中继证书还没准备好，报 BadCert）：过一会儿自动重连
+                Main.Log("[Coop] Connection attempt " + _connectAttempts + " failed (" + reason + "), retrying");
+                SetMessage("连接房主失败（" + reason + "），正在重试…");
+                RetryConnect();
+                return;
+            }
+
             Fail(State == CoopState.Connecting ? "连不上房主（" + reason + "）" : "和房主的连接断开了");
         }
 
@@ -1025,6 +1037,64 @@ namespace ADOFAI.EditorTweaks.Coop
         private static IEnumerable<CoopPeer> AcceptedPeers()
         {
             return Peers.Values.Where(p => p.Accepted);
+        }
+
+        private static int _connectAttempts;
+        private static SteamId _hostSteamId;
+
+        private static void ConnectToHost()
+        {
+            _connectAttempts++;
+            _hostPeer?.Dispose();
+            _client = SteamNetworkingSockets.ConnectRelay<CoopClientConnection>(_hostSteamId, CoopProtocol.VirtualPort);
+            _hostPeer = new CoopPeer(_client.Connection, _hostSteamId.Value, HostName);
+            SetState(CoopState.Connecting);
+        }
+
+        private static async void RetryConnect()
+        {
+            CoopClientConnection old = _client;
+            _client = null;
+            _hostPeer = null;
+            try
+            {
+                old?.Close(false, 0, "retry");
+            }
+            catch (Exception)
+            {
+                // 已经关了
+            }
+
+            await System.Threading.Tasks.Task.Delay(2000);
+            if (State != CoopState.Connecting) return;
+            try
+            {
+                await WaitForRelayNetwork();
+                if (State == CoopState.Connecting) ConnectToHost();
+            }
+            catch (Exception exception)
+            {
+                Fail("重新连接房主失败：" + exception.Message);
+            }
+        }
+
+        /// <summary>等 Steam 中继网络就绪（最多 10 秒）。没就绪就建 socket / 连接，对方会报 BadCert。</summary>
+        private static async System.Threading.Tasks.Task WaitForRelayNetwork()
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                SteamNetworkingAvailability status = SteamNetworkingUtils.Status;
+                if (status == SteamNetworkingAvailability.Current) return;
+                if (status == SteamNetworkingAvailability.Failed || status == SteamNetworkingAvailability.CannotTry)
+                {
+                    Main.Log("[Coop] Relay network unavailable: " + status);
+                    return;
+                }
+
+                await System.Threading.Tasks.Task.Delay(100);
+            }
+
+            Main.Log("[Coop] Relay network still not ready after 10s: " + SteamNetworkingUtils.Status);
         }
 
         private static void ConfigureNetworking()

@@ -42,6 +42,9 @@ namespace ADOFAI.EditorTweaks.Coop
         private static int _pendingHashSeq = -1;
         private static string _pendingHash;
         private static bool _awaitingResync;
+
+        /// <summary>收到整份谱面后，本地读出来的和房主的仍然不一样（读谱环境不同）：再校验也没用，关掉自动校对免得一直重新同步。</summary>
+        private static bool _hashCheckDisabled;
         private static CoopSnapshot _resync;
 
         private sealed class Outgoing
@@ -73,6 +76,7 @@ namespace ADOFAI.EditorTweaks.Coop
             _pendingHashSeq = -1;
             _pendingHash = null;
             _awaitingResync = false;
+            _hashCheckDisabled = false;
             _resync = null;
             _assetsDirty = false;
             _editorMissingSince = -1f;
@@ -512,6 +516,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
             _appliedSeq = _offer.Seq;
             ClientInbox.RemoveAll(b => b.Seq <= _appliedSeq);
+            CheckReadsLikeHost(_offer.Json, "加入时");
             return true;
         }
 
@@ -562,12 +567,31 @@ namespace ADOFAI.EditorTweaks.Coop
         /// <summary>客人：和房主同一个序号、自己也没有在路上的修改时，比一下校验值；对不上就请房主重发整份谱面。</summary>
         private static void MaybeCheckHash()
         {
-            if (_pendingHash == null || State != CoopState.Synced || _awaitingResync) return;
+            if (_pendingHash == null || State != CoopState.Synced || _awaitingResync || _hashCheckDisabled) return;
             if (_appliedSeq != _pendingHashSeq || ClientInbox.Count > 0 || _dirty || OutQueue.Count > 0 || _ownAcked < _authorSeq) return;
             if (!CoopEditor.CanApplyNow) return;
             string expected = _pendingHash;
             _pendingHash = null;
             if (CoopEditor.HashLevel() != expected) RequestResync("谱面校验不一致");
+        }
+
+        /// <summary>
+        /// 刚把房主的整份谱面读进来：本地重新编码应该和房主发来的 JSON 一模一样。不一样说明两边读谱的环境不同
+        /// （缺 DLC 事件、装了改谱面数据的 Mod 之类），把差异写进日志，并关掉自动校对，避免每次修改后都重新同步。
+        /// </summary>
+        private static void CheckReadsLikeHost(string hostJson, string when)
+        {
+            string local = CoopEditor.EncodeLevel();
+            if (local == null || local == hostJson) return;
+            int i = 0;
+            while (i < local.Length && i < hostJson.Length && local[i] == hostJson[i]) i++;
+            int start = Math.Max(0, i - 120);
+            string Clip(string text) => start >= text.Length
+                ? string.Empty
+                : text.Substring(start, Math.Min(360, text.Length - start)).Replace((char)13, ' ').Replace((char)10, ' ');
+            Main.Log("[Coop] " + when + "本地读出的谱面和房主的不一样（第 " + i + " 个字符起）。房主: …" + Clip(hostJson) + "… 本地: …" + Clip(local) + "…");
+            _hashCheckDisabled = true;
+            SetMessage("你的游戏读这张谱的结果和房主有细微差别（可能是缺少 DLC 或装了会改谱面数据的 Mod），已关闭自动校对。差异已写入日志。", error: true);
         }
 
         private static void RequestResync(string reason)
@@ -601,6 +625,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 Main.Log("[Coop] Resync id table mismatch: " + problem);
             _appliedSeq = snapshot.Seq;
             _dirty = false;
+            CheckReadsLikeHost(snapshot.Json, "重新同步后");
             // 自己已经发出去、但还没回来的修改：回来时一定要重放（快照里不一定有它们）
             _foreignApplied++;
             EnsureFiles(snapshot.Manifest, LevelDir, _hostPeer);

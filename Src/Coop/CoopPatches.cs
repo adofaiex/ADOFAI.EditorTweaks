@@ -36,4 +36,18 @@ namespace ADOFAI.EditorTweaks.Coop
     {
         private static void Postfix() => CoopSession.MarkDirty();
     }
+
+    /// <summary>
+    /// "专业事件"是每个玩家自己的偏好：没开的人读谱时会把专业属性直接丢掉。房主开了、客人没开，
+    /// 客人读出来的谱就和房主的不一样（校验永远对不上，一直重新同步），客人改了这些事件还会把专业属性抹掉。
+    /// 所以在多人房间里一律按"开"来读写谱面（只影响读写，不改玩家的设置，也不改检查器里显示什么）。
+    /// </summary>
+    [HarmonyPatch(typeof(ADOFAI.LevelEvent), nameof(ADOFAI.LevelEvent.enableProEvents), MethodType.Getter)]
+    internal static class CoopProEventsPatch
+    {
+        private static void Postfix(ref bool __result)
+        {
+            if (!__result && CoopSession.InSession) __result = true;
+        }
+    }
 }
