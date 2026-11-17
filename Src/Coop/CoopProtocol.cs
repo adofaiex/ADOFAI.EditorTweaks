@@ -7,7 +7,7 @@ namespace ADOFAI.EditorTweaks.Coop
     /// <summary>多人制谱的网络协议常量。改了消息格式就把 Version 加一，不同版本的人进不了同一个房间。</summary>
     internal static class CoopProtocol
     {
-        public const int Version = 3;
+        public const int Version = 4;
 
         /// <summary>Steam 中继 socket 的虚拟端口（同一个 Steam 账号上区分不同用途的连接）。</summary>
         public const int VirtualPort = 7713;
@@ -34,6 +34,9 @@ namespace ADOFAI.EditorTweaks.Coop
     {
         Control = 0,
         Files = 1,
+
+        /// <summary>语音：不可靠、立刻发（丢一两包只是一点杂音，不能为了重传而延迟）。</summary>
+        Voice = 2,
     }
 
     internal enum CoopMessage : byte
@@ -67,6 +70,9 @@ namespace ADOFAI.EditorTweaks.Coop
 
         /// <summary>对方没有这个文件。</summary>
         FileMissing = 22,
+
+        /// <summary>一段压缩的语音（说话人 SteamID + Steam 语音数据）。客人 → 房主，房主转发给其他人。</summary>
+        Voice = 30,
     }
 
     /// <summary>消息体读写的小工具（BinaryWriter / BinaryReader，字符串用 UTF-8）。</summary>

@@ -17,6 +17,9 @@ namespace ADOFAI.EditorTweaks.UI
         public string Badge;
 
         public bool IsHost;
+
+        /// <summary>正在说话（头像亮绿圈）。</summary>
+        public bool Speaking;
     }
 
     /// <summary>当前谱面卡片显示的内容。</summary>
@@ -157,6 +160,7 @@ namespace ADOFAI.EditorTweaks.UI
             {
                 _person = person;
                 Element.EnableInClassList("host", person.IsHost);
+                Element.EnableInClassList("speaking", person.Speaking);
                 if (person.Avatar != null)
                 {
                     Element.style.backgroundImage = new StyleBackground(person.Avatar);

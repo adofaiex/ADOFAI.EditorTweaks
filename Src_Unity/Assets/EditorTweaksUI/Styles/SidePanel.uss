@@ -303,3 +303,145 @@
 .feed-empty .ic { width: 56px; height: 56px; -unity-background-image-tint-color: rgba(243, 241, 236, 0.2); margin-bottom: 14px; }
 .feed-empty-title { font-size: 22px; color: rgba(243, 241, 236, 0.6); }
 .feed-empty-hint { font-size: 15px; color: rgba(243, 241, 236, 0.32); margin-top: 6px; white-space: normal; -unity-text-align: middle-center; }
+
+/* ---------------------------------------------------------------- 侧边栏红色数字（未读）、把手红点、头像说话绿圈 */
+
+.cat-badge {
+    position: absolute;
+    right: 12px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 12px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    color: #FFFFFF;
+    background-color: #FF4B3A;
+    opacity: 0;
+    scale: 0.4 0.4;
+    transition-property: opacity, scale;
+    transition-duration: 0.2s, 0.35s;
+    transition-timing-function: ease-out, ease-out-back;
+}
+.cat-badge.show { opacity: 1; scale: 1 1; }
+
+.sp-handle.unread .sp-handle-dot { opacity: 1; background-color: #FF4B3A; }
+
+.av.speaking { border-color: #6FE3A0; scale: 1.08 1.08; }
+
+/* ---------------------------------------------------------------- 聊天页 */
+
+.chat { flex-grow: 1; padding: 0 22px 18px 20px; transition-property: opacity, translate; transition-duration: 0.4s, 0.5s; transition-timing-function: ease-out, ease-out-cubic; }
+.chat.hidden { opacity: 0; translate: 0 20px; }
+
+/* 语音条 */
+.chat-voice {
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 16px;
+    margin: 4px 0 10px 0;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-left-width: 3px;
+    border-color: rgba(243, 241, 236, 0.16);
+    transition-property: border-color;
+    transition-duration: 0.2s;
+}
+.chat-mic {
+    width: 56px; height: 56px;
+    flex-shrink: 0;
+    border-radius: 28px;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-width: 2px;
+    border-color: rgba(243, 241, 236, 0.2);
+    transition-property: background-color, border-color, scale;
+    transition-duration: 0.2s, 0.2s, 0.3s;
+    transition-timing-function: ease-out, ease-out, ease-out-back;
+}
+.chat-mic:hover { background-color: rgba(255, 255, 255, 0.16); }
+.chat-mic:active { scale: 0.9 0.9; }
+.chat-mic.on { background-color: rgba(111, 227, 160, 0.18); border-color: #6FE3A0; }
+.chat-mic.on .ic { -unity-background-image-tint-color: #6FE3A0; }
+.chat-mic.speaking { scale: 1.12 1.12; background-color: rgba(111, 227, 160, 0.35); }
+.chat-mic.off { opacity: 0.35; }
+.chat-voice-labels { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+.chat-voice-title { font-size: 20px; }
+.chat-voice-status { font-size: 14px; color: rgba(243, 241, 236, 0.45); margin-top: 2px; }
+.chat-volume-icon { margin: 0 10px 0 16px; }
+.chat .sl.chat-volume { width: 170px; }
+.chat-volume-value { width: 56px; font-size: 16px; -unity-text-align: middle-right; color: rgba(243, 241, 236, 0.7); }
+
+/* 消息列表 */
+.chat-list-host { flex-grow: 1; }
+.chat-list { flex-grow: 1; }
+.chat-list .unity-scroll-view__content-container { padding: 6px 22px 10px 4px; }
+.chat-row {
+    flex-direction: row;
+    align-items: flex-start;
+    margin-top: 14px;
+    transition-property: opacity, translate;
+    transition-duration: 0.3s, 0.4s;
+    transition-timing-function: ease-out, ease-out-back;
+}
+.chat-row.cont { margin-top: 4px; }
+.chat-row.enter { opacity: 0; translate: 0 18px; }
+.chat-row.mine { flex-direction: row-reverse; }
+.chat-row.system { justify-content: center; margin-top: 12px; }
+.chat-system { font-size: 14px; color: rgba(243, 241, 236, 0.38); padding: 3px 12px; background-color: rgba(255, 255, 255, 0.04); }
+.chat-av {
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    border-radius: 19px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.14);
+    -unity-background-scale-mode: scale-and-crop;
+}
+.chat-row.cont .chat-av { height: 0; background-color: rgba(0, 0, 0, 0); }
+.chat-av.host { border-width: 2px; border-color: #FF4B3A; }
+.chat-row.cont .chat-av.host { border-width: 0; }
+.chat-col { max-width: 72%; margin: 0 12px; }
+.chat-row.mine .chat-col { align-items: flex-end; }
+.chat-head { flex-direction: row; align-items: flex-end; margin-bottom: 4px; }
+.chat-row.mine .chat-head { flex-direction: row-reverse; }
+.chat-name { font-size: 14px; color: rgba(243, 241, 236, 0.6); }
+.chat-time { font-size: 12px; color: rgba(243, 241, 236, 0.3); margin: 0 8px; }
+.chat-bubble {
+    font-size: 19px;
+    white-space: normal;
+    padding: 9px 14px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border-left-width: 3px;
+    border-color: rgba(243, 241, 236, 0.2);
+}
+.chat-row.mine .chat-bubble { background-color: rgba(255, 75, 58, 0.16); border-left-width: 0; border-right-width: 3px; border-color: #FF4B3A; }
+
+/* 输入框 */
+.chat-input {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px 8px 8px 14px;
+    margin-top: 8px;
+    background-color: rgba(255, 255, 255, 0.06);
+    border-width: 1px;
+    border-color: rgba(243, 241, 236, 0.16);
+    transition-property: border-color, background-color;
+    transition-duration: 0.2s;
+}
+.chat-input.focused { border-color: #FF4B3A; background-color: rgba(255, 255, 255, 0.09); }
+.chat-field { flex-grow: 1; flex-shrink: 1; margin: 0; }
+.chat-field .unity-base-text-field__input,
+.chat-field .unity-text-field__input {
+    font-size: 19px;
+    color: #F3F1EC;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    padding: 6px 4px;
+    --unity-cursor-color: #FF4B3A;
+}
+.chat-field .unity-text-element--placeholder,
+.chat-field .unity-base-text-field__input--placeholder { color: rgba(243, 241, 236, 0.3); }
+.chat-send { min-width: 120px; }

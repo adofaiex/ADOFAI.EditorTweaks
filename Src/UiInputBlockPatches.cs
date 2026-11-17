@@ -27,6 +27,16 @@ namespace ADOFAI.EditorTweaks
         }
     }
 
+    /// <summary>在我们的输入框里打字时，告诉编辑器"用户正在输入框里编辑"，它就不会把按键当快捷键（Delete 删砖、空格播放之类）。</summary>
+    [HarmonyPatch(typeof(scnEditor), nameof(scnEditor.userIsEditingAnInputField), MethodType.Getter)]
+    internal static class TypingInOurUiPatch
+    {
+        private static void Postfix(ref bool __result)
+        {
+            if (!__result && SettingsUi.IsTyping()) __result = true;
+        }
+    }
+
     [HarmonyPatch(typeof(scnEditor), nameof(scnEditor.ZoomCamera))]
     internal static class ZoomOverUiPatch
     {

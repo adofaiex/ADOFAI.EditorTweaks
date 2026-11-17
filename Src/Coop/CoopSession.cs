@@ -67,6 +67,12 @@ namespace ADOFAI.EditorTweaks.Coop
         /// <summary>编辑数据在同步中（房主，或已经打开房主谱面的客人）。</summary>
         public static bool IsSyncing => State == CoopState.Hosting || State == CoopState.Synced;
 
+        /// <summary>和房间里的人连通了（房主，或握手完成的客人）：可以收发语音。</summary>
+        public static bool IsConnected => IsHost || _hostPeer != null && _welcomed;
+
+        /// <summary>当前所在的 Steam 房间（聊天用）。</summary>
+        public static Lobby? Lobby => InSession ? _lobby : null;
+
         /// <summary>最近一条提示（出错、断开之类），界面上显示。</summary>
         public static string Message { get; private set; } = string.Empty;
 
@@ -185,6 +191,7 @@ namespace ADOFAI.EditorTweaks.Coop
             try
             {
                 SteamFriends.OnGameLobbyJoinRequested += OnJoinRequested;
+                CoopChat.Enable();
             }
             catch (Exception exception)
             {
@@ -198,6 +205,7 @@ namespace ADOFAI.EditorTweaks.Coop
             try
             {
                 SteamFriends.OnGameLobbyJoinRequested -= OnJoinRequested;
+                CoopChat.Disable();
             }
             catch (Exception)
             {
@@ -247,6 +255,7 @@ namespace ADOFAI.EditorTweaks.Coop
             SetState(CoopState.CreatingRoom);
             SetMessage(string.Empty);
             CoopActivity.Clear();
+            CoopChat.Clear();
             try
             {
                 ConfigureNetworking();
@@ -313,6 +322,7 @@ namespace ADOFAI.EditorTweaks.Coop
             if (InSession) Leave(null);
             ResetSync();
             CoopActivity.Clear();
+            CoopChat.Clear();
             SetState(CoopState.JoiningRoom);
             SetMessage(string.Empty);
             SettingsUi.OpenSidePanel(CoopPage.CategoryName);
@@ -473,6 +483,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
         private static void Leave(string message)
         {
+            CoopVoice.Stop();
             foreach (CoopPeer peer in Peers.Values) peer.Dispose();
             Peers.Clear();
             _hostPeer?.Dispose();
@@ -543,6 +554,7 @@ namespace ADOFAI.EditorTweaks.Coop
             CheckCommandLine();
             MaybeAutoSelfTest();
             if (State == CoopState.Idle) return;
+            CoopVoice.Update();
 
             try
             {
@@ -824,6 +836,7 @@ namespace ADOFAI.EditorTweaks.Coop
             if (!Peers.TryGetValue(connection.Id, out CoopPeer peer)) return;
             Peers.Remove(connection.Id);
             peer.Dispose();
+            CoopVoice.Forget(peer.SteamId);
             foreach (string sha in Downloads.Where(d => d.Value.Source == peer).Select(d => d.Key).ToList())
             {
                 Downloads[sha].Abort();
@@ -864,6 +877,13 @@ namespace ADOFAI.EditorTweaks.Coop
                         break;
                     case CoopMessage.FileMissing when peer.Accepted:
                         OnFileMissing(peer, payload);
+                        break;
+                    case CoopMessage.Voice when peer.Accepted:
+                        // 只接受本人的声音（不能冒充别人），房主自己放，再转给其他人
+                        if (CoopVoice.SpeakerOf(payload) != peer.SteamId) break;
+                        CoopVoice.Play(payload);
+                        foreach (CoopPeer other in AcceptedPeers())
+                            if (other != peer) other.SendUnreliable(CoopLane.Voice, CoopMessage.Voice, payload);
                         break;
                 }
             }
@@ -958,6 +978,9 @@ namespace ADOFAI.EditorTweaks.Coop
                     case CoopMessage.FileMissing:
                         OnFileMissing(peer, payload);
                         break;
+                    case CoopMessage.Voice:
+                        CoopVoice.Play(payload);
+                        break;
                 }
             }
             catch (Exception exception)
@@ -1037,6 +1060,19 @@ namespace ADOFAI.EditorTweaks.Coop
         private static IEnumerable<CoopPeer> AcceptedPeers()
         {
             return Peers.Values.Where(p => p.Accepted);
+        }
+
+        /// <summary>发出自己的一段语音：房主发给所有人，客人发给房主（由房主转发）。</summary>
+        internal static void SendVoice(byte[] payload)
+        {
+            if (IsHost)
+            {
+                foreach (CoopPeer peer in AcceptedPeers()) peer.SendUnreliable(CoopLane.Voice, CoopMessage.Voice, payload);
+            }
+            else if (_welcomed)
+            {
+                _hostPeer?.SendUnreliable(CoopLane.Voice, CoopMessage.Voice, payload);
+            }
         }
 
         private static int _connectAttempts;

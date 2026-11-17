@@ -28,6 +28,7 @@ namespace ADOFAI.EditorTweaks.UI
         private readonly AvatarStack _avatars;
         private VisualElement _customContent;
         private readonly List<VisualElement> _categoryButtons = new List<VisualElement>();
+        private readonly List<Label> _badges = new List<Label>();
         private readonly List<SettingRow> _rows = new List<SettingRow>();
         private readonly List<KeyValuePair<VisualElement, SettingsSection>> _headers = new List<KeyValuePair<VisualElement, SettingsSection>>();
 
@@ -84,6 +85,10 @@ namespace ADOFAI.EditorTweaks.UI
                 name.AddToClassList("cat-name");
                 button.Add(name);
                 button.RegisterCallback<ClickEvent>(_ => ShowCategory(index, animate: true));
+                var badge = new Label { pickingMode = PickingMode.Ignore };
+                badge.AddToClassList("cat-badge");
+                button.Add(badge);
+                _badges.Add(badge);
                 cats.Add(button);
                 _categoryButtons.Add(button);
             }
@@ -127,6 +132,9 @@ namespace ADOFAI.EditorTweaks.UI
         /// <summary>为真时把手上亮小绿点（比如在多人房间里）。</summary>
         public Func<bool> Live { get; set; }
 
+        /// <summary>为真时把手上的小圆点变红（比如有未读消息）。</summary>
+        public Func<bool> Unread { get; set; }
+
         /// <summary>为真时把手闪红，提醒用户点开（比如客人要选谱面放哪）。</summary>
         public Func<bool> Attention { get; set; }
 
@@ -150,6 +158,7 @@ namespace ADOFAI.EditorTweaks.UI
             if (_open || !_available) return;
             _open = true;
             _dock.AddToClassList("open");
+            _categories[_category].Shown?.Invoke(true);
             foreach (SettingRow row in _rows) row.Refresh(animate: false);
             RefreshDependencies();
             Populate(++_token);
@@ -168,6 +177,7 @@ namespace ADOFAI.EditorTweaks.UI
             if (!_open) return;
             _open = false;
             _dock.RemoveFromClassList("open");
+            _categories[_category].Shown?.Invoke(false);
             Select(null);
         }
 
@@ -177,7 +187,9 @@ namespace ADOFAI.EditorTweaks.UI
         {
             index = Mathf.Clamp(index, 0, _categories.Count - 1);
             if (index == _category) return;
+            if (_category >= 0) _categories[_category].Shown?.Invoke(false);
             _category = index;
+            if (_open) _categories[_category].Shown?.Invoke(true);
             int token = ++_token;
             for (int i = 0; i < _categoryButtons.Count; i++) _categoryButtons[i].EnableInClassList("selected", i == index);
             _highlight.style.top = index * CategoryStride;
@@ -338,6 +350,14 @@ namespace ADOFAI.EditorTweaks.UI
             _chip.EnableInClassList("busy", tone == "busy");
             _chip.EnableInClassList("warn", tone == "warn");
             _handle.EnableInClassList("live", Live != null && Live());
+            _handle.EnableInClassList("unread", Unread != null && Unread());
+            for (int i = 0; i < _categories.Count; i++)
+            {
+                int count = _categories[i].Badge?.Invoke() ?? 0;
+                string text = count <= 0 ? string.Empty : count > 99 ? "99+" : count.ToString();
+                if (_badges[i].text != text) _badges[i].text = text;
+                _badges[i].EnableInClassList("show", count > 0);
+            }
         }
 
         /// <summary>状态类的行自己刷新文字；可用与否变了就展开 / 收起。</summary>

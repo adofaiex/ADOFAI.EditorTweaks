@@ -359,6 +359,41 @@ def icon_music(p):
     p.circle(17.5, 16, 2.6)
 
 
+def icon_chat(p):
+    # 圆角气泡 + 左下角的小尾巴
+    p.line([(7, 18), (4, 21), (4.5, 17)])
+    p.rrect(2.5, 4, 19, 13.5, 4)
+    for x in (8, 12, 16):
+        p.disc(x, 10.8, 1.1)
+
+
+def _mic(p):
+    p.rrect(9, 2.5, 6, 11.5, 3)
+    p.arc(12, 10.5, 6.5, 0, 180)
+    p.line([(12, 17), (12, 21)])
+    p.line([(8.5, 21), (15.5, 21)])
+
+
+def icon_mic(p):
+    _mic(p)
+
+
+def icon_mic_off(p):
+    _mic(p)
+    p.line([(3.5, 3.5), (20.5, 20.5)])
+
+
+def icon_send(p):
+    p.line([(3, 11.5), (21, 3), (14, 21), (11, 13.5)], closed=True)
+    p.line([(11, 13.5), (21, 3)])
+
+
+def icon_volume(p):
+    p.line([(3, 9), (7, 9), (12, 4.5), (12, 19.5), (7, 15), (3, 15)], closed=True)
+    p.arc(13, 12, 4.5, -50, 50)
+    p.arc(13, 12, 8.5, -50, 50)
+
+
 ICONS = {
     "settings": icon_settings, "close": icon_close, "check": icon_check,
     "chevron-right": icon_chevron_right, "chevron-down": icon_chevron_down,
@@ -373,6 +408,7 @@ ICONS = {
     "layers": icon_layers, "arrow-left": icon_arrow_left, "arrow-right": icon_arrow_right, "plus": icon_plus, "minus": icon_minus, "hand": icon_hand,
     "users": icon_users, "link": icon_link, "logout": icon_logout, "folder": icon_folder,
     "download": icon_download, "wifi": icon_wifi, "history": icon_history, "music": icon_music,
+    "chat": icon_chat, "mic": icon_mic, "mic-off": icon_mic_off, "send": icon_send, "volume": icon_volume,
 }
 
 META_TEMPLATE = """fileFormatVersion: 2

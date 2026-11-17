@@ -38,7 +38,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
         public static List<SettingsCategory> Build()
         {
-            return new List<SettingsCategory> { BuildRoom(), BuildHistory(), BuildHelp() };
+            return new List<SettingsCategory> { BuildRoom(), BuildChat(), BuildHistory(), BuildHelp() };
         }
 
         // ---------------------------------------------------------------- 房间
@@ -183,6 +183,42 @@ namespace ADOFAI.EditorTweaks.Coop
         private static string Clean(string text)
         {
             return Tags.Replace(text ?? string.Empty, string.Empty).Trim();
+        }
+
+        // ---------------------------------------------------------------- 聊天
+
+        private static SettingsCategory BuildChat()
+        {
+            var view = new ChatView(new ChatSource
+            {
+                Lines = () => CoopChat.All,
+                Send = CoopChat.Send,
+                CanSend = () => CoopChat.CanSend,
+                Placeholder = () => CoopChat.Placeholder,
+                MaxLength = CoopChat.MaxLength,
+                MicOn = () => CoopVoice.MicOn,
+                SetMic = on => CoopVoice.MicOn = on,
+                CanTalk = () => CoopSession.IsConnected,
+                Speaking = () => CoopVoice.SelfSpeaking,
+                VoiceStatus = () => CoopVoice.StatusText,
+                Volume = () => CoopVoice.Volume,
+                SetVolume = v => CoopVoice.Volume = v,
+            });
+            return new SettingsCategory("聊天", "chat")
+            {
+                Content = view,
+                Refresh = () =>
+                {
+                    view.Refresh();
+                    CoopChat.MarkRead();
+                },
+                Badge = () => CoopChat.Unread,
+                Shown = visible =>
+                {
+                    CoopChat.Viewing = visible;
+                    if (visible) CoopChat.MarkRead();
+                },
+            };
         }
 
         // ---------------------------------------------------------------- 修改记录

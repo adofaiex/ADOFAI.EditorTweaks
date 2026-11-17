@@ -26,6 +26,12 @@ namespace ADOFAI.EditorTweaks
 
         public int MaxFloatingPoints = 3;
 
+        /// <summary>多人制谱：麦克风开着（Steam 只在说话时才有语音数据，相当于自由麦）。</summary>
+        public bool VoiceMicOn = false;
+
+        /// <summary>多人制谱：别人语音的音量（0~2）。</summary>
+        public float VoiceVolume = 1f;
+
         /// <summary>呼出设置界面的按键。</summary>
         public KeyCode OpenSettingsKey = KeyCode.F8;
 

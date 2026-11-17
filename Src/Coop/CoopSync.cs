@@ -210,6 +210,7 @@ namespace ADOFAI.EditorTweaks.Coop
                     Name = name,
                     Avatar = CoopAvatars.Get(id),
                     IsHost = host,
+                    Speaking = CoopVoice.IsSpeaking(id),
                     Badge = id == me ? (host ? "你 · 房主" : "你") : host ? "房主" : null,
                 });
             }

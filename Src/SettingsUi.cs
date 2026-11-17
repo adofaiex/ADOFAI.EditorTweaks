@@ -66,6 +66,20 @@ namespace ADOFAI.EditorTweaks
             sidePanel!.Open(category);
         }
 
+        /// <summary>正在我们界面的输入框里打字（聊天、设置数值）：编辑器快捷键和呼出键都要让路。</summary>
+        public static bool IsTyping()
+        {
+            try
+            {
+                Focusable focused = document != null ? document.rootVisualElement?.panel?.focusController?.focusedElement : null;
+                return focused is VisualElement element && (element is TextField || element.GetFirstAncestorOfType<TextField>() != null);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         /// <summary>鼠标是不是在我们的界面上（设置窗口或侧边面板）。是的话编辑器不该响应这次点击 / 滚轮。</summary>
         public static bool IsPointerOverUi()
         {
@@ -122,6 +136,7 @@ namespace ADOFAI.EditorTweaks
                 sidePanel = new SidePanel(sideLayer!, layout, Coop.CoopPage.Build())
                 {
                     People = Coop.CoopSession.People,
+                    Unread = () => Coop.CoopChat.Unread > 0,
                     StatusText = () => Coop.CoopSession.StatusText,
                     StatusTone = Coop.CoopPage.StatusTone,
                     Live = () => Coop.CoopSession.InSession,
@@ -234,7 +249,7 @@ namespace ADOFAI.EditorTweaks
             {
                 try
                 {
-                    if (Input.GetKeyDown(Main.Settings.OpenSettingsKey)) Toggle();
+                    if (Input.GetKeyDown(Main.Settings.OpenSettingsKey) && !IsTyping()) Toggle();
                     UpdateSidePanel();
                 }
                 catch (Exception exception)

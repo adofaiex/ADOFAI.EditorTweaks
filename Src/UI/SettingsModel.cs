@@ -61,6 +61,12 @@ namespace ADOFAI.EditorTweaks.UI
 
         /// <summary>这一页显示着的时候每 0.25 秒调用一次（刷新卡片、记录之类）。</summary>
         public Action Refresh { get; set; }
+
+        /// <summary>侧边栏按钮上的红色数字（比如聊天未读数），0 不显示。</summary>
+        public Func<int> Badge { get; set; }
+
+        /// <summary>切到 / 离开这一页时调用（参数：是否正在显示）。</summary>
+        public Action<bool> Shown { get; set; }
     }
 
     /// <summary>设置页里有哪些分类、哪些设置、各自怎么显示。</summary>

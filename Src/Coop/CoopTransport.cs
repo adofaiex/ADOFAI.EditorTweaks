@@ -20,8 +20,8 @@ namespace ADOFAI.EditorTweaks.Coop
         private const byte Middle = 2;
         private const byte Last = 3;
 
-        private readonly Queue<byte[]>[] _outgoing = { new Queue<byte[]>(), new Queue<byte[]>() };
-        private readonly Reassembly[] _incoming = { new Reassembly(), new Reassembly() };
+        private readonly Queue<byte[]>[] _outgoing = { new Queue<byte[]>(), new Queue<byte[]>(), new Queue<byte[]>() };
+        private readonly Reassembly[] _incoming = { new Reassembly(), new Reassembly(), new Reassembly() };
         private readonly Queue<FileJob> _fileJobs = new Queue<FileJob>();
         private FileJob _activeJob;
         private bool _lanesConfigured;
@@ -55,6 +55,18 @@ namespace ADOFAI.EditorTweaks.Coop
         }
 
         // ---------------------------------------------------------------- 发送
+
+        /// <summary>不可靠地立刻发出一条小消息（语音用）：不排队、不重传，Steam 缓冲满了就直接丢掉。</summary>
+        public void SendUnreliable(CoopLane lane, CoopMessage type, byte[] payload)
+        {
+            if (!_lanesConfigured || payload.Length + 3 > CoopProtocol.FragmentSize) return;
+            var frame = new byte[payload.Length + 3];
+            frame[0] = (byte)lane;
+            frame[1] = Whole;
+            frame[2] = (byte)type;
+            Buffer.BlockCopy(payload, 0, frame, 3, payload.Length);
+            Connection.SendMessage(frame, SendType.Unreliable | SendType.NoNagle, (ushort)lane);
+        }
 
         public void Send(CoopLane lane, CoopMessage type, byte[] payload)
         {
@@ -125,7 +137,8 @@ namespace ADOFAI.EditorTweaks.Coop
             if (!_lanesConfigured)
             {
                 // 通道 0（编辑数据）优先级高于通道 1（文件）：数字越小越优先。连上之前配置会失败，下一帧再试
-                if (Connection.ConfigureConnectionLanes(new[] { 0, 1 }, new ushort[] { 1, 1 }) != Result.OK) return;
+                // 编辑数据和语音优先（0），文件其次（1）
+                if (Connection.ConfigureConnectionLanes(new[] { 0, 1, 0 }, new ushort[] { 1, 1, 1 }) != Result.OK) return;
                 _lanesConfigured = true;
             }
 
