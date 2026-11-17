@@ -260,7 +260,7 @@ namespace ADOFAI.EditorTweaks.Coop
             {
                 ConfigureNetworking();
                 await WaitForRelayNetwork();
-                Lobby? created = await SteamMatchmaking.CreateLobbyAsync(CoopProtocol.MaxMembers);
+                Lobby? created = await SteamMatchmaking.CreateLobbyAsync(CoopSettings.MaxMembers);
                 if (State != CoopState.CreatingRoom)
                 {
                     created?.Leave();
@@ -275,7 +275,8 @@ namespace ADOFAI.EditorTweaks.Coop
 
                 Lobby lobby = created.Value;
                 _lobby = lobby;
-                lobby.SetFriendsOnly();
+                if (CoopSettings.InviteOnly) lobby.SetPrivate();
+                else lobby.SetFriendsOnly();
                 lobby.SetJoinable(true);
                 lobby.SetData(CoopProtocol.LobbyKey, CoopProtocol.Version.ToString());
                 lobby.SetData(CoopProtocol.LobbyLevelKey, CoopEditor.CurrentSongName());
@@ -1062,6 +1063,22 @@ namespace ADOFAI.EditorTweaks.Coop
             return Peers.Values.Where(p => p.Accepted);
         }
 
+        /// <summary>房主改了"仅受邀者可加入"：立刻应用到当前房间。</summary>
+        internal static void ApplyRoomVisibility()
+        {
+            if (!IsHost || !_lobby.HasValue) return;
+            try
+            {
+                Lobby lobby = _lobby.Value;
+                if (CoopSettings.InviteOnly) lobby.SetPrivate();
+                else lobby.SetFriendsOnly();
+            }
+            catch (Exception exception)
+            {
+                Main.Log("[Coop] Changing room visibility failed: " + exception.Message);
+            }
+        }
+
         /// <summary>发出自己的一段语音：房主发给所有人，客人发给房主（由房主转发）。</summary>
         internal static void SendVoice(byte[] payload)
         {
@@ -1149,7 +1166,11 @@ namespace ADOFAI.EditorTweaks.Coop
             string hash;
             using (var md5 = System.Security.Cryptography.MD5.Create())
                 hash = FileHashes.ToHex(md5.ComputeHash(Encoding.UTF8.GetBytes(snapshot.Identity + "\n" + snapshot.LevelFileName))).Substring(0, 8);
-            return LevelFiles.DataDir("CoopLevels", name + "-" + hash);
+            string root = CoopSettings.DownloadDir;
+            if (root == null) return LevelFiles.DataDir("CoopLevels", name + "-" + hash);
+            string folder = Path.Combine(root, name + "-" + hash);
+            Directory.CreateDirectory(folder);
+            return folder;
         }
 
         private static string SafeFileName(string name)

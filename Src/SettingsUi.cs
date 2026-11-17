@@ -249,8 +249,9 @@ namespace ADOFAI.EditorTweaks
             {
                 try
                 {
-                    if (Input.GetKeyDown(Main.Settings.OpenSettingsKey) && !IsTyping()) Toggle();
+                    if (Input.GetKeyDown(Main.Settings.OpenSettingsKey) && !IsTyping() && !KeyBindRow.AnyListening) Toggle();
                     UpdateSidePanel();
+                    if (sidePanel != null && Input.GetKeyDown(Coop.CoopSettings.PanelKey) && !IsTyping() && !KeyBindRow.AnyListening) sidePanel.Toggle();
                 }
                 catch (Exception exception)
                 {

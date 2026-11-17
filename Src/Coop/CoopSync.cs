@@ -211,6 +211,8 @@ namespace ADOFAI.EditorTweaks.Coop
                     Avatar = CoopAvatars.Get(id),
                     IsHost = host,
                     Speaking = CoopVoice.IsSpeaking(id),
+                    Muted = id != me && CoopVoice.IsMuted(id),
+                    Click = id == me ? (Action)null : () => CoopVoice.ToggleMute(id),
                     Badge = id == me ? (host ? "你 · 房主" : "你") : host ? "房主" : null,
                 });
             }
@@ -568,7 +570,7 @@ namespace ADOFAI.EditorTweaks.Coop
         /// <summary>客人：和房主同一个序号、自己也没有在路上的修改时，比一下校验值；对不上就请房主重发整份谱面。</summary>
         private static void MaybeCheckHash()
         {
-            if (_pendingHash == null || State != CoopState.Synced || _awaitingResync || _hashCheckDisabled) return;
+            if (_pendingHash == null || State != CoopState.Synced || _awaitingResync || _hashCheckDisabled || !CoopSettings.AutoVerify) return;
             if (_appliedSeq != _pendingHashSeq || ClientInbox.Count > 0 || _dirty || OutQueue.Count > 0 || _ownAcked < _authorSeq) return;
             if (!CoopEditor.CanApplyNow) return;
             string expected = _pendingHash;

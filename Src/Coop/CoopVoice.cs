@@ -21,27 +21,30 @@ namespace ADOFAI.EditorTweaks.Coop
         private static int _sampleRate;
         private static float _lastSentAt = -10f;
 
-        public static bool MicOn
-        {
-            get => Main.Settings != null && Main.Settings.VoiceMicOn;
-            set
-            {
-                if (Main.Settings == null) return;
-                Main.Settings.VoiceMicOn = value;
-                Save();
-            }
-        }
+        private static readonly HashSet<ulong> Muted = new HashSet<ulong>();
+
+        public static bool MicOn => CoopSettings.Mic != MicMode.Off;
 
         public static float Volume
         {
-            get => Main.Settings == null ? 1f : Mathf.Clamp(Main.Settings.VoiceVolume, 0f, 2f);
+            get => CoopSettings.Volume;
             set
             {
-                if (Main.Settings == null) return;
-                Main.Settings.VoiceVolume = Mathf.Clamp(value, 0f, 2f);
-                foreach (Speaker speaker in Speakers.Values) speaker.Source.volume = Mathf.Min(1f, Main.Settings.VoiceVolume);
-                Save();
+                CoopSettings.Volume = value;
+                foreach (Speaker speaker in Speakers.Values) speaker.Source.volume = Mathf.Min(1f, CoopSettings.Volume);
             }
+        }
+
+        /// <summary>这个人被我静音了（只影响自己这边听不听得到）。</summary>
+        public static bool IsMuted(ulong steamId)
+        {
+            return Muted.Contains(steamId);
+        }
+
+        public static void ToggleMute(ulong steamId)
+        {
+            if (!Muted.Remove(steamId)) Muted.Add(steamId);
+            if (Speakers.TryGetValue(steamId, out Speaker speaker)) speaker.Source.mute = Muted.Contains(steamId);
         }
 
         /// <summary>自己刚刚在说话（0.3 秒内发出过语音）。</summary>
@@ -59,8 +62,12 @@ namespace ADOFAI.EditorTweaks.Coop
             get
             {
                 if (!CoopSession.IsConnected) return "进入房间后可以语音";
-                if (!MicOn) return "麦克风已关闭";
-                return SelfSpeaking ? "正在说话…" : "麦克风已打开，说话即可";
+                switch (CoopSettings.Mic)
+                {
+                    case MicMode.Open: return SelfSpeaking ? "正在说话…" : "自由麦：直接说话即可";
+                    case MicMode.PushToTalk: return SelfSpeaking ? "正在说话…" : "按住 " + CoopSettings.KeyName(CoopSettings.PushKey) + " 说话";
+                    default: return "麦克风已关闭";
+                }
             }
         }
 
@@ -68,7 +75,9 @@ namespace ADOFAI.EditorTweaks.Coop
 
         public static void Update()
         {
-            bool record = MicOn && CoopSession.IsConnected && SteamClient.IsValid;
+            MicMode mode = CoopSettings.Mic;
+            bool keyHeld = mode == MicMode.PushToTalk && CoopSettings.PushKey != KeyCode.None && Input.GetKey(CoopSettings.PushKey) && !SettingsUi.IsTyping();
+            bool record = (mode == MicMode.Open || keyHeld) && CoopSession.IsConnected && SteamClient.IsValid;
             try
             {
                 if (SteamUser.VoiceRecord != record) SteamUser.VoiceRecord = record;
@@ -84,7 +93,7 @@ namespace ADOFAI.EditorTweaks.Coop
             catch (Exception exception)
             {
                 Main.Log("[Coop] Voice capture failed: " + exception.Message);
-                MicOn = false;
+                CoopSettings.Mic = MicMode.Off;
             }
         }
 
@@ -101,6 +110,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
             foreach (Speaker speaker in Speakers.Values) speaker.Dispose();
             Speakers.Clear();
+            Muted.Clear();
             if (_host != null) UnityEngine.Object.Destroy(_host);
             _host = null;
         }
@@ -145,6 +155,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 if (!Speakers.TryGetValue(speakerId, out Speaker speaker))
                 {
                     speaker = new Speaker(Host(), _sampleRate, Volume);
+                    speaker.Source.mute = Muted.Contains(speakerId);
                     Speakers[speakerId] = speaker;
                 }
 
@@ -171,11 +182,6 @@ namespace ADOFAI.EditorTweaks.Coop
             _host = new GameObject("ADOFAI.EditorTweaks Voice");
             UnityEngine.Object.DontDestroyOnLoad(_host);
             return _host;
-        }
-
-        private static void Save()
-        {
-            if (Main.Mod != null) Main.Settings.Save(Main.Mod);
         }
 
         /// <summary>一个说话的人：环形缓冲 + 流式 AudioClip（音频线程从缓冲里取样本）。</summary>

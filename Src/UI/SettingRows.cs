@@ -413,4 +413,141 @@ namespace ADOFAI.EditorTweaks.UI
             _stepper.Nudge(direction);
         }
     }
+
+    /// <summary>多选一：并排的几个选项按钮（和"开 | 关"一样的样式，比如"关闭 | 自由麦 | 按住说话"）。</summary>
+    public sealed class ChoiceRow : SettingRow
+    {
+        private readonly ChoiceControl _choice;
+        private readonly Func<int> _get;
+
+        public ChoiceRow(string icon, string title, string description, string[] options, Func<int> get, Action<int> set)
+            : base(icon, title, description)
+        {
+            _get = get;
+            _choice = new ChoiceControl(options);
+            Control.Add(_choice);
+            _choice.Changed += index =>
+            {
+                set(index);
+                NotifyChanged();
+            };
+        }
+
+        public override void Refresh(bool animate)
+        {
+            _choice.SetIndexWithoutNotify(_get(), animate);
+        }
+
+        public override void Nudge(int direction)
+        {
+            _choice.Nudge(direction);
+        }
+
+        public override void Activate()
+        {
+            _choice.Nudge(_choice.Index + 1 < _choice.Count ? 1 : -(_choice.Count - 1));
+        }
+    }
+
+    /// <summary>
+    /// 设置按键：右边一个按钮显示当前按键，点一下进入"请按一个键"，按下任意键 / 鼠标键（左键除外）就设成它，Esc 取消。
+    /// 鼠标侧键这类 UI Toolkit 收不到的键，靠每帧轮询 Input 抓。
+    /// </summary>
+    public sealed class KeyBindRow : SettingRow
+    {
+        private static KeyCode[] _candidates;
+        private static int _listening;
+
+        /// <summary>有按键行正在等用户按键（这时各种快捷键都不该响应）。</summary>
+        public static bool AnyListening => _listening > 0 || Time.frameCount - _stoppedFrame <= 1;
+
+        private static int _stoppedFrame = -10;
+
+        private readonly VisualElement _button;
+        private readonly Label _label;
+        private readonly Func<KeyCode> _get;
+        private readonly Action<KeyCode> _set;
+        private readonly Func<KeyCode, string> _name;
+        private IVisualElementScheduledItem _listen;
+        private float _listenSince;
+
+        public KeyBindRow(string icon, string title, string description, Func<KeyCode> get, Action<KeyCode> set, Func<KeyCode, string> name)
+            : base(icon, title, description)
+        {
+            _get = get;
+            _set = set;
+            _name = name ?? (k => k.ToString());
+            _button = new VisualElement();
+            _button.AddToClassList("st-btn");
+            _button.AddToClassList("st-key");
+            _button.Add(UiIcon.Create("keyboard", "sm"));
+            _label = new Label { pickingMode = PickingMode.Ignore };
+            _button.Add(_label);
+            _button.RegisterCallback<ClickEvent>(_ => StartListening());
+            Control.Add(_button);
+        }
+
+        public override void Refresh(bool animate)
+        {
+            if (_listen == null) _label.text = _name(_get());
+        }
+
+        public override void Activate()
+        {
+            StartListening();
+        }
+
+        private void StartListening()
+        {
+            if (_listen != null) return;
+            if (_candidates == null)
+            {
+                var keys = new List<KeyCode>();
+                foreach (KeyCode key in (KeyCode[])Enum.GetValues(typeof(KeyCode)))
+                    if (key != KeyCode.None && key != KeyCode.Mouse0 && key < KeyCode.JoystickButton0 && !keys.Contains(key)) keys.Add(key);
+                _candidates = keys.ToArray();
+            }
+
+            _button.AddToClassList("listening");
+            _label.text = "请按一个键…（Esc 取消）";
+            _listenSince = Time.realtimeSinceStartup;
+            _listen = _button.schedule.Execute(Poll).Every(16);
+            _listening++;
+        }
+
+        private void Poll()
+        {
+            // 刚点下去的那一下不算
+            if (Time.realtimeSinceStartup - _listenSince < 0.15f) return;
+            if (Time.realtimeSinceStartup - _listenSince > 8f)
+            {
+                Stop();
+                return;
+            }
+
+            foreach (KeyCode key in _candidates)
+            {
+                if (!Input.GetKeyDown(key)) continue;
+                if (key != KeyCode.Escape)
+                {
+                    _set(key);
+                    NotifyChanged();
+                }
+
+                Stop();
+                return;
+            }
+        }
+
+        private void Stop()
+        {
+            if (_listen == null) return;
+            _listen.Pause();
+            _listen = null;
+            _listening = Math.Max(0, _listening - 1);
+            _stoppedFrame = Time.frameCount;
+            _button.RemoveFromClassList("listening");
+            _label.text = _name(_get());
+        }
+    }
 }

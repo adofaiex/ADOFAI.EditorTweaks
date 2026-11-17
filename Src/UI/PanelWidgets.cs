@@ -20,6 +20,12 @@ namespace ADOFAI.EditorTweaks.UI
 
         /// <summary>正在说话（头像亮绿圈）。</summary>
         public bool Speaking;
+
+        /// <summary>被我静音了（头像上盖一个静音图标）。</summary>
+        public bool Muted;
+
+        /// <summary>点头像做什么（比如静音 / 取消静音），null 表示不能点。</summary>
+        public Action Click;
     }
 
     /// <summary>当前谱面卡片显示的内容。</summary>
@@ -138,6 +144,7 @@ namespace ADOFAI.EditorTweaks.UI
         {
             private readonly Label _initial;
             private readonly Label _badge;
+            private readonly VisualElement _muteIcon;
             private PersonInfo _person;
 
             public Entry(PersonInfo person, UiTooltip tooltip)
@@ -151,7 +158,15 @@ namespace ADOFAI.EditorTweaks.UI
                 _badge = new Label { pickingMode = PickingMode.Ignore };
                 _badge.AddToClassList("av-badge");
                 Element.Add(_badge);
-                tooltip.Attach(Element, () => string.IsNullOrEmpty(_person.Badge) ? _person.Name : _person.Name + "（" + _person.Badge + "）");
+                _muteIcon = UiIcon.Create("mic-off", "sm av-mute");
+                Element.Add(_muteIcon);
+                Element.RegisterCallback<ClickEvent>(_ => _person.Click?.Invoke());
+                tooltip.Attach(Element, () =>
+                {
+                    string text = string.IsNullOrEmpty(_person.Badge) ? _person.Name : _person.Name + "（" + _person.Badge + "）";
+                    if (_person.Click != null) text += _person.Muted ? " · 已静音，点击取消" : " · 点击静音";
+                    return text;
+                });
             }
 
             public VisualElement Element { get; }
@@ -160,7 +175,9 @@ namespace ADOFAI.EditorTweaks.UI
             {
                 _person = person;
                 Element.EnableInClassList("host", person.IsHost);
-                Element.EnableInClassList("speaking", person.Speaking);
+                Element.EnableInClassList("speaking", person.Speaking && !person.Muted);
+                Element.EnableInClassList("muted", person.Muted);
+                Element.EnableInClassList("clickable", person.Click != null);
                 if (person.Avatar != null)
                 {
                     Element.style.backgroundImage = new StyleBackground(person.Avatar);

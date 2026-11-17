@@ -123,7 +123,7 @@ namespace ADOFAI.EditorTweaks.Coop
             if (!mine && !Viewing)
             {
                 Unread++;
-                CoopEditor.Notify(friend.Name + "：" + (text.Length > 40 ? text.Substring(0, 40) + "…" : text));
+                if (CoopSettings.ChatNotify) CoopEditor.Notify(friend.Name + "：" + (text.Length > 40 ? text.Substring(0, 40) + "…" : text));
             }
         }
 

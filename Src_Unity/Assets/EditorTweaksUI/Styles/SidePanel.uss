@@ -445,3 +445,21 @@
 .chat-field .unity-text-element--placeholder,
 .chat-field .unity-base-text-field__input--placeholder { color: rgba(243, 241, 236, 0.3); }
 .chat-send { min-width: 120px; }
+
+/* ---------------------------------------------------------------- 头像：可点（静音）、已静音 */
+
+.av-mute {
+    position: absolute;
+    right: -4px; top: -4px;
+    width: 20px; height: 20px;
+    border-radius: 10px;
+    background-color: #FF4B3A;
+    -unity-background-image-tint-color: #FFFFFF;
+    opacity: 0;
+    scale: 0.5 0.5;
+    transition-property: opacity, scale;
+    transition-duration: 0.2s, 0.3s;
+    transition-timing-function: ease-out, ease-out-back;
+}
+.av.muted .av-mute { opacity: 1; scale: 1 1; }
+.av.muted { -unity-background-image-tint-color: rgba(255, 255, 255, 0.45); }

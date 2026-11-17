@@ -232,3 +232,9 @@
 }
 .ss-bar.hover .ss-thumb { width: 8px; background-color: rgba(243, 241, 236, 0.36); }
 .ss-bar.dragging .ss-thumb { width: 8px; background-color: #FF4B3A; }
+
+/* 按键设置按钮：等待按键时闪红 */
+.st-key { min-width: 200px; }
+.st-key.listening { background-color: #FF4B3A; border-color: #FF4B3A; }
+.st-key.listening > Label { color: #FFFFFF; }
+.st-key.listening .ic { -unity-background-image-tint-color: #FFFFFF; }

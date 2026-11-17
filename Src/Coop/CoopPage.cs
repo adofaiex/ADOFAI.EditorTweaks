@@ -38,7 +38,7 @@ namespace ADOFAI.EditorTweaks.Coop
 
         public static List<SettingsCategory> Build()
         {
-            return new List<SettingsCategory> { BuildRoom(), BuildChat(), BuildHistory(), BuildHelp() };
+            return new List<SettingsCategory> { BuildRoom(), BuildChat(), BuildHistory(), BuildSettings(), BuildHelp() };
         }
 
         // ---------------------------------------------------------------- 房间
@@ -197,7 +197,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 Placeholder = () => CoopChat.Placeholder,
                 MaxLength = CoopChat.MaxLength,
                 MicOn = () => CoopVoice.MicOn,
-                SetMic = on => CoopVoice.MicOn = on,
+                SetMic = _ => CoopSettings.ToggleMic(),
                 CanTalk = () => CoopSession.IsConnected,
                 Speaking = () => CoopVoice.SelfSpeaking,
                 VoiceStatus = () => CoopVoice.StatusText,
@@ -231,6 +231,65 @@ namespace ADOFAI.EditorTweaks.Coop
                 Content = feed,
                 Refresh = feed.Refresh,
             };
+        }
+
+        // ---------------------------------------------------------------- 设置
+
+        private static SettingsCategory BuildSettings()
+        {
+            var mic = new ChoiceRow("mic", "麦克风", "自由麦：开着就行，Steam 只在你说话时才发送声音。按住说话：按住下面设置的键时才发送。",
+                new[] { "关闭", "自由麦", "按住说话" }, () => (int)CoopSettings.Mic, i => CoopSettings.Mic = (MicMode)i);
+            var pushKey = new KeyBindRow("keyboard", "按住说话的按键", "点一下再按想用的键或鼠标键（鼠标左键除外）。",
+                    () => CoopSettings.PushKey, k => CoopSettings.PushKey = k, CoopSettings.KeyName)
+                .AvailableWhen(() => CoopSettings.Mic == MicMode.PushToTalk);
+            var volume = new SliderRow("volume", "别人的音量", "超过 100% 会放大声音（太大可能会爆音）。",
+                0f, 2f, false, 0.05f, v => Mathf.Round(v / 0.05f) * 0.05f, v => Mathf.RoundToInt(v * 100f).ToString(CultureInfo.InvariantCulture), "%",
+                () => CoopSettings.Volume, v => CoopVoice.Volume = v, "静音");
+            var muteHint = new InfoRow("users", "单独静音某个人", "点顶栏上他的头像就能静音 / 取消静音，只影响你自己听不听得到。", () => string.Empty);
+
+            var notify = new ToggleRow("chat", "新消息提示", "不在聊天页时收到消息，在编辑器里弹一条提示。",
+                () => CoopSettings.ChatNotify, v => CoopSettings.ChatNotify = v);
+
+            var inviteOnly = new ToggleRow("link", "仅受邀者可加入", "打开后好友不能从好友列表直接加入，只能接受你的邀请。房间开着时改也立刻生效。",
+                () => CoopSettings.InviteOnly, v => CoopSettings.InviteOnly = v);
+            var maxMembers = new StepperRow("users", "最多人数", "包括房主自己。下次创建房间时生效。",
+                2, 8, v => v + " 人", () => CoopSettings.MaxMembers, v => CoopSettings.MaxMembers = v);
+
+            var verify = new ToggleRow("check", "自动校对", "大家停手后核对一次整份谱面，不一致时自动重新同步。关掉后不会再整份重新载入，但出现偏差也不会被纠正。",
+                () => CoopSettings.AutoVerify, v => CoopSettings.AutoVerify = v);
+
+            var folder = new ActionRow("folder", "下载目录", null, null,
+                    () => (CoopSettings.DownloadDir ?? Path.Combine(Persistence.DataPath, "EditorTweaks", "CoopLevels")) +
+                          (CoopSettings.DownloadDir == null ? "（默认）" : string.Empty))
+                .Button("folder", "选择…", PickDownloadFolder)
+                .Button("reset", "默认", () => CoopSettings.DownloadDir = null, enabled: () => CoopSettings.DownloadDir != null);
+
+            var panelKey = new KeyBindRow("keyboard", "打开 / 收起面板", "在关卡编辑器里按这个键拉出或收起右侧面板。",
+                () => CoopSettings.PanelKey, k => CoopSettings.PanelKey = k, CoopSettings.KeyName);
+
+            return new SettingsCategory("设置", "settings",
+                new SettingsSection("语音", mic, pushKey, volume, muteHint),
+                new SettingsSection("提醒", notify),
+                new SettingsSection("房间（房主）", inviteOnly, maxMembers),
+                new SettingsSection("同步", verify),
+                new SettingsSection("文件", folder),
+                new SettingsSection("面板", panelKey));
+        }
+
+        private static void PickDownloadFolder()
+        {
+            try
+            {
+                string start = CoopSettings.DownloadDir ?? Persistence.DataPath;
+                string picked = UnityFileDialog.FileBrowser.PickFolder(start, string.Empty, new string[0], "选择下载别人谱面的目录");
+                if (string.IsNullOrEmpty(picked)) return;
+                picked = Uri.UnescapeDataString(picked.Replace("file:", string.Empty));
+                if (Directory.Exists(picked)) CoopSettings.DownloadDir = picked;
+            }
+            catch (Exception exception)
+            {
+                Main.Log("[Coop] Picking download folder failed: " + exception.Message);
+            }
         }
 
         // ---------------------------------------------------------------- 帮助
