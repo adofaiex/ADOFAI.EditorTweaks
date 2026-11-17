@@ -26,6 +26,7 @@ namespace ADOFAI.EditorTweaks.UI
         private readonly VisualElement _armA;
         private readonly VisualElement _armB;
         private readonly AvatarStack _avatars;
+        private readonly PingBadge _ping;
         private VisualElement _customContent;
         private readonly List<VisualElement> _categoryButtons = new List<VisualElement>();
         private readonly List<Label> _badges = new List<Label>();
@@ -69,6 +70,9 @@ namespace ADOFAI.EditorTweaks.UI
             _armB = Need<VisualElement>(root, "sp-arm-b");
             Tooltip = new UiTooltip(Need<VisualElement>(root, "sp-root"));
             _avatars = new AvatarStack(Tooltip);
+            // 右上角的延迟牌：和面板同一层，但不跟着面板滑动
+            _ping = new PingBadge(Tooltip);
+            Need<VisualElement>(root, "sp-root").Add(_ping);
             Need<VisualElement>(root, "sp-avatars").Add(_avatars);
 
             _handle.RegisterCallback<ClickEvent>(_ => Toggle());
@@ -131,6 +135,9 @@ namespace ADOFAI.EditorTweaks.UI
 
         /// <summary>为真时把手上亮小绿点（比如在多人房间里）。</summary>
         public Func<bool> Live { get; set; }
+
+        /// <summary>右上角延迟牌的内容；返回 null 时不显示（没连上）。</summary>
+        public Func<PingInfo> Ping { get; set; }
 
         /// <summary>为真时把手上的小圆点变红（比如有未读消息）。</summary>
         public Func<bool> Unread { get; set; }
@@ -351,6 +358,9 @@ namespace ADOFAI.EditorTweaks.UI
             _chip.EnableInClassList("warn", tone == "warn");
             _handle.EnableInClassList("live", Live != null && Live());
             _handle.EnableInClassList("unread", Unread != null && Unread());
+            PingInfo ping = _available ? Ping?.Invoke() : null;
+            _ping.SetVisible(ping != null);
+            if (ping != null) _ping.SetInfo(ping);
             for (int i = 0; i < _categories.Count; i++)
             {
                 int count = _categories[i].Badge?.Invoke() ?? 0;

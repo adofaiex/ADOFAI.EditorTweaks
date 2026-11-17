@@ -463,3 +463,52 @@
 }
 .av.muted .av-mute { opacity: 1; scale: 1 1; }
 .av.muted { -unity-background-image-tint-color: rgba(255, 255, 255, 0.45); }
+
+/* ---------------------------------------------------------------- 右上角延迟牌 */
+
+.ping {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    flex-direction: row;
+    align-items: center;
+    height: 46px;
+    padding: 0 16px 0 14px;
+    background-color: rgba(7, 8, 13, 0.82);
+    border-width: 1px;
+    border-color: rgba(243, 241, 236, 0.16);
+    border-left-width: 3px;
+    border-left-color: rgba(243, 241, 236, 0.3);
+    opacity: 0;
+    translate: 0 -24px;
+    transition-property: opacity, translate, border-left-color;
+    transition-duration: 0.3s, 0.45s, 0.3s;
+    transition-timing-function: ease-out, ease-out-back, ease-out;
+}
+.ping.show { opacity: 1; translate: 0 0; }
+.ping:hover { background-color: rgba(20, 22, 30, 0.92); }
+.ping.good { border-left-color: #6FE3A0; }
+.ping.fair { border-left-color: #FFC24B; }
+.ping.poor { border-left-color: #FF4B3A; }
+
+/* 三格信号：从矮到高 */
+.ping-bars { flex-direction: row; align-items: flex-end; height: 20px; margin-right: 12px; }
+.ping-bar {
+    width: 5px;
+    margin-right: 3px;
+    background-color: rgba(243, 241, 236, 0.18);
+    transition-property: background-color;
+    transition-duration: 0.3s;
+}
+.ping-bar.b0 { height: 7px; }
+.ping-bar.b1 { height: 13px; }
+.ping-bar.b2 { height: 20px; margin-right: 0; }
+.ping.good .ping-bar.lit { background-color: #6FE3A0; }
+.ping.fair .ping-bar.lit { background-color: #FFC24B; }
+.ping.poor .ping-bar.lit { background-color: #FF4B3A; }
+
+.ping-text { justify-content: center; }
+.ping-row { flex-direction: row; align-items: flex-end; }
+.ping-value { font-size: 22px; -unity-font-style: bold; min-width: 34px; -unity-text-align: lower-right; }
+.ping-unit { font-size: 13px; color: rgba(243, 241, 236, 0.45); margin-left: 4px; margin-bottom: 3px; }
+.ping-loss { font-size: 12px; color: #FF4B3A; margin-top: -2px; }

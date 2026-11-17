@@ -1063,6 +1063,50 @@ namespace ADOFAI.EditorTweaks.Coop
             return Peers.Values.Where(p => p.Accepted);
         }
 
+        /// <summary>
+        /// 右上角延迟牌的内容：客人看到自己到房主的延迟；房主看到到各个客人里最慢的那个。
+        /// 数据来自 Steam 连接状态（Ping 和连接质量，质量 = 送达的包占比）。没连上 / 没人加入时返回 null。
+        /// </summary>
+        public static UI.PingInfo Ping()
+        {
+            try
+            {
+                var lines = new List<string>();
+                int worst = -1;
+                float loss = 0f;
+
+                void Measure(CoopPeer peer, string label)
+                {
+                    ConnectionStatus status = peer.Connection.QuickStatus();
+                    int ping = Math.Max(0, status.Ping);
+                    float delivered = status.ConnectionQualityLocal;
+                    float lost = delivered < 0f ? 0f : Mathf.Clamp01(1f - delivered);
+                    worst = Math.Max(worst, ping);
+                    loss = Mathf.Max(loss, lost);
+                    string line = label + "：" + ping + " ms";
+                    if (lost >= 0.01f) line += " · 丢包 " + Mathf.RoundToInt(lost * 100f) + "%";
+                    lines.Add(line);
+                }
+
+                if (IsHost)
+                {
+                    foreach (CoopPeer peer in AcceptedPeers()) Measure(peer, peer.Name);
+                }
+                else if (IsConnected && _hostPeer != null)
+                {
+                    Measure(_hostPeer, "房主 " + HostName);
+                }
+
+                if (worst < 0) return null;
+                lines.Insert(0, IsHost ? "到每个人的延迟" : "到房主的延迟");
+                return new UI.PingInfo { Ms = worst, Loss = loss, Detail = string.Join("\n", lines) };
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         /// <summary>房主改了"仅受邀者可加入"：立刻应用到当前房间。</summary>
         internal static void ApplyRoomVisibility()
         {

@@ -137,6 +137,7 @@ namespace ADOFAI.EditorTweaks
                 {
                     People = Coop.CoopSession.People,
                     Unread = () => Coop.CoopChat.Unread > 0,
+                    Ping = Coop.CoopSession.Ping,
                     StatusText = () => Coop.CoopSession.StatusText,
                     StatusTone = Coop.CoopPage.StatusTone,
                     Live = () => Coop.CoopSession.InSession,

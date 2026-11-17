@@ -68,6 +68,26 @@ namespace ADOFAI.EditorTweaks.UI
             _label = new Label { pickingMode = PickingMode.Ignore };
             _label.AddToClassList("tip");
             layer.Add(_label);
+            // 量出提示条的宽度后，别让它伸出屏幕左右边缘
+            _label.RegisterCallback<GeometryChangedEvent>(_ => Clamp());
+        }
+
+        private float _anchorX;
+
+        private void Clamp()
+        {
+            float width = _label.resolvedStyle.width;
+            float layerWidth = _layer.resolvedStyle.width;
+            if (float.IsNaN(width) || float.IsNaN(layerWidth) || width <= 0f) return;
+            float x = Mathf.Clamp(_anchorX, width * 0.5f + 8f, Mathf.Max(width * 0.5f + 8f, layerWidth - width * 0.5f - 8f));
+            if (Mathf.Abs(_label.resolvedStyle.left - x) > 0.5f) _label.style.left = x;
+        }
+
+        /// <summary>悬停期间内容变了（比如延迟数字）：更新提示文字。</summary>
+        public void Update(VisualElement target, string text)
+        {
+            if (_target != target || string.IsNullOrEmpty(text) || _label.text == text) return;
+            _label.text = text;
         }
 
         public void Attach(VisualElement target, Func<string> text)
@@ -83,7 +103,9 @@ namespace ADOFAI.EditorTweaks.UI
             _target = target;
             _label.text = text;
             Rect bounds = _layer.WorldToLocal(target.worldBound);
+            _anchorX = bounds.center.x;
             _label.style.left = bounds.center.x;
+            Clamp();
             _label.style.top = bounds.yMax + 10f;
             _label.BringToFront();
             _label.AddToClassList("show");
@@ -416,6 +438,97 @@ namespace ADOFAI.EditorTweaks.UI
             if (span.TotalMinutes < 1) return (int)span.TotalSeconds + " 秒前";
             if (span.TotalHours < 1) return (int)span.TotalMinutes + " 分钟前";
             return time.ToString("HH:mm");
+        }
+    }
+
+    /// <summary>右上角延迟牌显示的内容。</summary>
+    public sealed class PingInfo
+    {
+        /// <summary>延迟（毫秒）；房主时是到各个客人里最慢的那个。</summary>
+        public int Ms;
+
+        /// <summary>丢包率（0~1）。</summary>
+        public float Loss;
+
+        /// <summary>悬停时显示的详细情况（每人一行）。</summary>
+        public string Detail;
+    }
+
+    /// <summary>
+    /// 屏幕右上角的延迟小牌子：三格信号 + 平滑后的毫秒数（绿 &lt;80、黄 &lt;160、红），有丢包时加一行丢包率；
+    /// 悬停显示每个人的延迟。数字按指数平滑，不会一跳一跳。
+    /// </summary>
+    public sealed class PingBadge : VisualElement
+    {
+        private readonly VisualElement[] _bars = new VisualElement[3];
+        private readonly Label _value;
+        private readonly Label _loss;
+        private readonly UiTooltip _tooltip;
+        private float _shown = -1f;
+        private string _detail;
+
+        public PingBadge(UiTooltip tooltip)
+        {
+            _tooltip = tooltip;
+            AddToClassList("ping");
+            var bars = new VisualElement { pickingMode = PickingMode.Ignore };
+            bars.AddToClassList("ping-bars");
+            for (int i = 0; i < 3; i++)
+            {
+                _bars[i] = new VisualElement { pickingMode = PickingMode.Ignore };
+                _bars[i].AddToClassList("ping-bar");
+                _bars[i].AddToClassList("b" + i);
+                bars.Add(_bars[i]);
+            }
+
+            Add(bars);
+            var text = new VisualElement { pickingMode = PickingMode.Ignore };
+            text.AddToClassList("ping-text");
+            var row = new VisualElement { pickingMode = PickingMode.Ignore };
+            row.AddToClassList("ping-row");
+            _value = new Label("--") { pickingMode = PickingMode.Ignore };
+            _value.AddToClassList("ping-value");
+            var unit = new Label("ms") { pickingMode = PickingMode.Ignore };
+            unit.AddToClassList("ping-unit");
+            row.Add(_value);
+            row.Add(unit);
+            text.Add(row);
+            _loss = new Label { pickingMode = PickingMode.Ignore };
+            _loss.AddToClassList("ping-loss");
+            text.Add(_loss);
+            Add(text);
+            tooltip.Attach(this, () => _detail);
+        }
+
+        /// <summary>显示 / 藏起来（藏的时候淡出并往上收）。</summary>
+        public void SetVisible(bool visible)
+        {
+            EnableInClassList("show", visible);
+            if (!visible) _shown = -1f;
+        }
+
+        public void SetInfo(PingInfo info)
+        {
+            if (info == null) return;
+            float target = Mathf.Max(0, info.Ms);
+            _shown = _shown < 0f ? target : Mathf.Lerp(_shown, target, 0.35f);
+            int ms = Mathf.RoundToInt(_shown);
+            string text = ms.ToString();
+            if (_value.text != text) _value.text = text;
+
+            int level = ms < 80 ? 3 : ms < 160 ? 2 : 1;
+            if (info.Loss > 0.1f) level = Mathf.Min(level, 1);
+            else if (info.Loss > 0.02f) level = Mathf.Min(level, 2);
+            EnableInClassList("good", level == 3);
+            EnableInClassList("fair", level == 2);
+            EnableInClassList("poor", level == 1);
+            for (int i = 0; i < 3; i++) _bars[i].EnableInClassList("lit", i < level);
+
+            bool lossy = info.Loss >= 0.01f;
+            _loss.text = lossy ? "丢包 " + Mathf.RoundToInt(info.Loss * 100f) + "%" : string.Empty;
+            _loss.style.display = lossy ? DisplayStyle.Flex : DisplayStyle.None;
+            _detail = info.Detail;
+            _tooltip.Update(this, _detail);
         }
     }
 }
