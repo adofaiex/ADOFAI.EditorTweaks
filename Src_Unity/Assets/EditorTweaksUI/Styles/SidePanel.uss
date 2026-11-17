@@ -432,19 +432,27 @@
     transition-duration: 0.2s;
 }
 .chat-input.focused { border-color: #FF4B3A; background-color: rgba(255, 255, 255, 0.09); }
-.chat-field { flex-grow: 1; flex-shrink: 1; margin: 0; }
+/* 输入框：默认主题给内部输入区设了固定的小高度，字号一大就被裁掉，这里整个撑到 44px 并垂直居中 */
+.chat-field { flex-grow: 1; flex-shrink: 1; margin: 0; height: 44px; min-height: 44px; }
 .chat-field .unity-base-text-field__input,
 .chat-field .unity-text-field__input {
+    flex-grow: 1;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 6px;
     font-size: 19px;
+    -unity-text-align: middle-left;
     color: #F3F1EC;
     background-color: rgba(0, 0, 0, 0);
     border-width: 0;
-    padding: 6px 4px;
     --unity-cursor-color: #FF4B3A;
 }
+.chat-field .unity-text-element { font-size: 19px; -unity-text-align: middle-left; }
 .chat-field .unity-text-element--placeholder,
 .chat-field .unity-base-text-field__input--placeholder { color: rgba(243, 241, 236, 0.3); }
-.chat-send { min-width: 120px; }
+.chat-send { min-width: 120px; height: 44px; }
+
 
 /* ---------------------------------------------------------------- 头像：可点（静音）、已静音 */
 

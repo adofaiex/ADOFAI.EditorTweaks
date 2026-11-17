@@ -101,6 +101,7 @@ namespace ADOFAI.EditorTweaks
         {
             window = null;
             sidePanel = null;
+            sidePanelAvailable = false;
             sideLayer = null;
             windowLayer = null;
             document = null;
@@ -235,8 +236,15 @@ namespace ADOFAI.EditorTweaks
                 if (!EnsureSidePanel()) return;
             }
 
+            bool wasAvailable = sidePanelAvailable;
+            sidePanelAvailable = needed;
             sidePanel!.SetAvailable(needed);
+
+            // 刚进编辑器（或试玩结束）而客人还在加入流程中：自动拉出面板到「房间」页
+            if (needed && !wasAvailable && Coop.CoopSession.IsJoining) sidePanel.Open(Coop.CoopPage.CategoryName);
         }
+
+        private static bool sidePanelAvailable;
 
         private static void SaveSettings()
         {

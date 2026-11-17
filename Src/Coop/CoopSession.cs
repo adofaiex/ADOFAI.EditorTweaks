@@ -326,6 +326,8 @@ namespace ADOFAI.EditorTweaks.Coop
             CoopChat.Clear();
             SetState(CoopState.JoiningRoom);
             SetMessage(string.Empty);
+            // 不在编辑器里（主菜单、选关、刚被 Steam 拉起来）：自动进编辑器，进去后面板会自己弹出来
+            _wantEditor = CoopEditor.Editor == null;
             SettingsUi.OpenSidePanel(CoopPage.CategoryName);
             try
             {
@@ -528,6 +530,7 @@ namespace ADOFAI.EditorTweaks.Coop
             _sessionLevelPath = null;
             _hashingJobs = 0;
             _welcomed = false;
+            _wantEditor = false;
             _backupStamp = null;
             ResetSync();
             bool wasInSession = InSession;
@@ -555,6 +558,7 @@ namespace ADOFAI.EditorTweaks.Coop
             CheckCommandLine();
             MaybeAutoSelfTest();
             if (State == CoopState.Idle) return;
+            MaybeEnterEditor();
             CoopVoice.Update();
 
             try
@@ -1133,6 +1137,40 @@ namespace ADOFAI.EditorTweaks.Coop
             else if (_welcomed)
             {
                 _hostPeer?.SendUnreliable(CoopLane.Voice, CoopMessage.Voice, payload);
+            }
+        }
+
+        private static bool _wantEditor;
+        private static float _editorRequestedAt = -100f;
+
+        /// <summary>客人还在加入流程中（连接、选文件夹、下载、打开谱面）。</summary>
+        public static bool IsJoining => State == CoopState.JoiningRoom || State == CoopState.Connecting ||
+                                        State == CoopState.ChoosingFolder || State == CoopState.Downloading || State == CoopState.Opening;
+
+        /// <summary>
+        /// 接受邀请时不在编辑器里：等游戏能切场景了就切到编辑器（Steam 刚把游戏拉起来时场景系统还没准备好）。
+        /// 切一次没成功（比如被别的过场挡住）就过几秒再试。
+        /// </summary>
+        private static void MaybeEnterEditor()
+        {
+            if (!_wantEditor) return;
+            if (CoopEditor.Editor != null || !IsJoining)
+            {
+                _wantEditor = false;
+                return;
+            }
+
+            if (ADOBase.loader == null || Time.unscaledTime - _editorRequestedAt < 6f) return;
+            _editorRequestedAt = Time.unscaledTime;
+            try
+            {
+                scnEditor.levelToOpenOnLoad = null;
+                ADOBase.loader.LoadScene("scnEditor");
+                Main.Log("[Coop] Entering the level editor to join the room");
+            }
+            catch (Exception exception)
+            {
+                Main.Log("[Coop] Entering the editor failed: " + exception.Message);
             }
         }
 

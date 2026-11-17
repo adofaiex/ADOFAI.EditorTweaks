@@ -66,7 +66,7 @@ namespace ADOFAI.EditorTweaks.Coop
                 {
                     case MicMode.Open: return SelfSpeaking ? "正在说话…" : "自由麦：直接说话即可";
                     case MicMode.PushToTalk: return SelfSpeaking ? "正在说话…" : "按住 " + CoopSettings.KeyName(CoopSettings.PushKey) + " 说话";
-                    default: return "麦克风已关闭";
+                    default: return "点左边的按钮打开麦克风";
                 }
             }
         }
